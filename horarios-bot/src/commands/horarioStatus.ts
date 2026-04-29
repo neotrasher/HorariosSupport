@@ -34,11 +34,15 @@ export function registerHorarioStatus(app: App) {
       const shiftDate = baseDate.toFormat('yyyy-LL-dd');
       const state = getShiftState(agent.slack_id, shiftDate, s.shift.id);
 
+      const sStart = Math.floor(w.start.toJSDate().getTime() / 1000);
+      const sEnd = Math.floor(w.end.toJSDate().getTime() / 1000);
+      const sUtc = w.start.toFormat('HH:mm');
+      const eUtc = w.end.toFormat('HH:mm');
       const row: Row = {
         agent: agent.name,
         dept: s.dept,
         shift: `${s.shift.id} (${s.shift.label})`,
-        window: `${w.start.toFormat('HH:mm')}–${w.end.toFormat('HH:mm')}`,
+        window: `${sUtc}–${eUtc} UTC (<!date^${sStart}^{time}|${sUtc}>–<!date^${sEnd}^{time}|${eUtc}>)`,
         status: ''
       };
 

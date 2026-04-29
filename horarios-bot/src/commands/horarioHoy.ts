@@ -47,11 +47,16 @@ export function registerHorarioHoy(app: App) {
         const [dept, shiftId] = key.split('|');
         const sample = list[0];
         const w = shiftWindow(date, sample);
+        const sStart = Math.floor(w.start.toJSDate().getTime() / 1000);
+        const sEnd = Math.floor(w.end.toJSDate().getTime() / 1000);
+        const sUtc = w.start.toFormat('HH:mm');
+        const eUtc = w.end.toFormat('HH:mm');
         const names = list
           .map(s => agentByPid.get(s.planner_id)?.name || `#${s.planner_id}`)
           .sort()
           .join(', ');
-        return `*${dept} ${shiftId}* ${sample.shift.label} ${w.start.toFormat('HH:mm')}–${w.end.toFormat('HH:mm')}\n${names}`;
+        return `*${dept} ${shiftId}* ${sample.shift.label} ${sUtc}–${eUtc} UTC ` +
+               `(local <!date^${sStart}^{time}|${sUtc}>–<!date^${sEnd}^{time}|${eUtc}>)\n${names}`;
       });
 
     await respond({
