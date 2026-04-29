@@ -19,7 +19,7 @@ export function recordPunch(
   slackId: string,
   type: PunchType,
   opts: {
-    source?: 'button' | 'manual' | 'test';
+    source?: 'button' | 'manual' | 'test' | 'auto';
     ts?: DateTime;
     note?: string;
     shiftDate?: string;
@@ -135,6 +135,23 @@ export function listAgentsOnBreak(): { slack_id: string; shift_date: string; shi
           AND p2.ts > p.ts
       )
   `).all() as { slack_id: string; shift_date: string; shift_id: string; break_in_ts: string }[];
+}
+
+/** Agents whose latest shift-scoped punch is clock_in or break_out (state='in'). */
+export function listInShiftAgents(): { slack_id: string; shift_date: string; shift_id: string; last_ts: string; last_type: string }[] {
+  return db.prepare(`
+    SELECT p.slack_id, p.shift_date, p.shift_id, p.ts AS last_ts, p.type AS last_type FROM punches p
+    WHERE p.shift_date IS NOT NULL AND p.shift_id IS NOT NULL
+      AND p.type IN ('clock_in', 'break_out')
+      AND p.ts >= datetime('now', '-36 hours')
+      AND NOT EXISTS (
+        SELECT 1 FROM punches p2
+        WHERE p2.slack_id = p.slack_id
+          AND p2.shift_date = p.shift_date
+          AND p2.shift_id = p.shift_id
+          AND p2.ts > p.ts
+      )
+  `).all() as { slack_id: string; shift_date: string; shift_id: string; last_ts: string; last_type: string }[];
 }
 
 export function updatePunchNote(punchId: number, note: string) {

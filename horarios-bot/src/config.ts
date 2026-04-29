@@ -23,6 +23,10 @@ export const config = {
   breakInLockoutMin: parseInt(process.env.BREAK_IN_LOCKOUT_MIN || '60', 10),
   // Maximum allowed break duration; reminder fires past this and excess is logged
   breakMaxMin: parseInt(process.env.BREAK_MAX_MIN || '60', 10),
+  // Grace period after shift end before auto-clockout fires (agent forgot to mark out)
+  autoClockoutGraceMin: parseInt(process.env.AUTO_CLOCKOUT_GRACE_MIN || '30', 10),
+  // Window after shift end during which auto-clockout will fire (don't fire after this)
+  autoClockoutWindowMin: parseInt(process.env.AUTO_CLOCKOUT_WINDOW_MIN || '120', 10),
   dbPath: process.env.DB_PATH || './data/bot.db',
   anchorDate: process.env.ANCHOR_DATE || '2026-04-27',
   anchorCycle: (process.env.ANCHOR_CYCLE || 'A') as 'A' | 'B' | 'C' | 'D',

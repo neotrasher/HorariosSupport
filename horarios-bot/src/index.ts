@@ -15,6 +15,7 @@ import { registerSwapButtons } from './actions/swapButtons';
 import { runShiftReminder } from './jobs/shiftReminder';
 import { runLateChecker } from './jobs/lateChecker';
 import { runBreakOverdueChecker } from './jobs/breakOverdueChecker';
+import { runForgotClockoutChecker } from './jobs/forgotClockoutChecker';
 
 async function main() {
   migrate();
@@ -57,8 +58,9 @@ async function main() {
       runShiftReminder(app).catch(e => console.error('reminder job error:', e));
       runLateChecker(app).catch(e => console.error('late job error:', e));
       runBreakOverdueChecker(app).catch(e => console.error('break overdue job error:', e));
+      runForgotClockoutChecker(app).catch(e => console.error('forgot clockout job error:', e));
     });
-    console.log(`Cron: reminders ${config.reminderLeadMin}m before · late ${config.lateThresholdMin}m · break max ${config.breakMaxMin}m · break-in lockout ${config.breakInLockoutMin}m`);
+    console.log(`Cron: reminders ${config.reminderLeadMin}m before · late ${config.lateThresholdMin}m · break max ${config.breakMaxMin}m · break-in lockout ${config.breakInLockoutMin}m · auto-clockout ${config.autoClockoutGraceMin}-${config.autoClockoutWindowMin}m after end`);
   }
   console.log(`Managers: ${config.managerSlackIds.join(', ') || '(none configured)'}`);
   console.log(`Attendance channel: ${config.attendanceChannelId || '(none — DM only)'}`);
