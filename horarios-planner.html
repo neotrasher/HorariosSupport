@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planificador Horarios Support</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f0f4f8;--surface:#fff;--border:#e2e8f0;
+  --text:#1a202c;--muted:#718096;--accent:#4299e1;--accent-dk:#2b6cb0;
+  --hdr:#1a202c;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;overflow:hidden;height:100vh}
+
+/* HEADER */
+.hdr{background:var(--hdr);color:#fff;display:flex;align-items:center;padding:0 16px;height:50px;gap:10px;flex-shrink:0}
+.hdr-logo{font-size:15px;font-weight:800;color:#63b3ed;letter-spacing:-.02em;white-space:nowrap}
+.hdr-sep{width:1px;height:24px;background:#2d3748}
+.hdr-lbl{font-size:10px;color:#718096;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.cycle-tabs{display:flex;gap:2px;background:#2d3748;padding:3px;border-radius:8px}
+.ctab{padding:5px 13px;border-radius:5px;cursor:pointer;font-size:13px;font-weight:700;color:#a0aec0;border:none;background:transparent;transition:all .15s}
+.ctab:hover{color:#fff}
+.ctab.active{background:var(--accent);color:#fff;box-shadow:0 1px 4px rgba(66,153,225,.4)}
+.hdr-actions{margin-left:auto;display:flex;gap:6px}
+.btn{padding:5px 12px;border-radius:6px;border:none;cursor:pointer;font-size:12px;font-weight:600;transition:all .15s}
+.btn-ghost{background:transparent;color:#a0aec0;border:1px solid #4a5568}
+.btn-ghost:hover{background:#2d3748;color:#fff}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-dk)}
+.btn-danger{background:transparent;color:#fc8181;border:1px solid #63171b}
+.btn-danger:hover{background:#63171b;color:#fff}
+
+/* LAYOUT */
+.body{display:flex;height:calc(100vh - 50px)}
+.sidebar{width:200px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.sb-hdr{padding:8px 10px 6px;border-bottom:1px solid var(--border);background:#f7fafc}
+.sb-title{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.sb-body{overflow-y:auto;flex:1;padding:6px}
+.sb-dept-title{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:6px 4px 3px;margin-top:4px;border-bottom:1px solid var(--border)}
+.emp-row{display:flex;align-items:center;gap:6px;padding:5px 5px;border-radius:6px;cursor:default;transition:background .1s}
+.emp-row:hover{background:var(--bg)}
+.emp-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.emp-row-name{font-size:11px;font-weight:500;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.emp-stats{display:flex;gap:2px;flex-shrink:0}
+.st{font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px;background:var(--bg)}
+
+/* SCHEDULE AREA */
+.sched-area{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:12px}
+
+/* DEPT CARD */
+.dept-card{background:var(--surface);border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.07),0 0 0 1px rgba(0,0,0,.04);overflow:hidden}
+.dept-hdr{display:flex;align-items:center;padding:8px 14px;gap:8px;border-bottom:1px solid var(--border)}
+.dept-badge{padding:2px 9px;border-radius:5px;font-size:11px;font-weight:800;letter-spacing:.05em}
+.badge-L2{background:#ebf8ff;color:#2b6cb0}
+.badge-L1{background:#f0fff4;color:#276749}
+.badge-S{background:#faf5ff;color:#553c9a}
+.dept-title{font-size:13px;font-weight:700;color:#4a5568}
+.shift-times{margin-left:auto;display:flex;gap:5px}
+.shift-lbl{font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;color:#fff}
+
+/* GRID */
+.grid-wrap{overflow-x:auto}
+.sgrid{display:grid;min-width:540px}
+.gh{padding:7px 8px;background:#f7fafc;font-size:11px;font-weight:700;color:#4a5568;text-align:center;border-bottom:1px solid var(--border);border-right:1px solid var(--border);position:sticky;top:0;z-index:2}
+.gh:last-child{border-right:none}
+.gday{display:flex;align-items:center;justify-content:center;padding:4px;background:#f7fafc;border-bottom:1px solid var(--border);border-right:1px solid var(--border);font-size:13px;font-weight:800;color:#4a5568;min-height:52px}
+.gcell{padding:4px 5px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);min-height:52px;display:flex;flex-wrap:wrap;gap:3px;align-content:flex-start;cursor:pointer;transition:background .1s;position:relative}
+.gcell:hover{background:#ebf8ff}
+.gcell:last-child{border-right:none}
+.grow:last-child .gcell,.grow:last-child .gday{border-bottom:none}
+.grow{display:contents}
+
+/* Add indicator */
+.add-indicator{display:none;position:absolute;bottom:4px;right:5px;width:18px;height:18px;border-radius:50%;background:#bee3f8;color:#2b6cb0;font-size:14px;font-weight:700;align-items:center;justify-content:center;line-height:1}
+.gcell:hover .add-indicator{display:flex}
+
+/* E shift (intermedio) — orange tint */
+.gcell-E{background:#fffaf0}
+.gcell-E:hover{background:#feebc8}
+.gh-E{background:#fff8ed;color:#b45309}
+
+/* Days off */
+.emp-row{cursor:pointer}
+.emp-do-row{display:flex;gap:3px;margin-top:3px;flex-wrap:wrap}
+.do-tag{font-size:9px;font-weight:700;color:#7b341e;background:#fed7aa;padding:1px 4px;border-radius:3px;white-space:nowrap}
+.do-tag-empty{font-size:9px;color:#cbd5e0;padding:1px 3px}
+.chip-warn{outline:2px solid #f6ad55;outline-offset:1px}
+
+/* Employee management modal */
+.mgmt-group{margin-bottom:14px}
+.mgmt-group-title{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:4px 0 7px;border-bottom:1px solid var(--border);margin-bottom:6px}
+.mgmt-emp-row{display:flex;align-items:center;gap:7px;padding:3px 0}
+.mgmt-color-btn{width:22px;height:22px;border-radius:50%;border:2px solid rgba(0,0,0,.12);cursor:pointer;flex-shrink:0;position:relative;overflow:hidden}
+.mgmt-color-input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;padding:0;border:none}
+.mgmt-name-input{flex:1;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;outline:none;min-width:0}
+.mgmt-name-input:focus{border-color:var(--accent)}
+.mgmt-id{font-size:10px;color:#cbd5e0;font-weight:700;min-width:22px;text-align:right}
+.mgmt-del{width:26px;height:26px;border-radius:6px;border:none;background:transparent;color:#fc8181;cursor:pointer;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.mgmt-del:hover{background:#fff5f5;color:#e53e3e}
+.mgmt-add{display:flex;align-items:center;gap:5px;padding:5px 8px;border-radius:6px;border:1px dashed var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:12px;font-weight:600;width:100%;margin-top:5px;transition:all .15s}
+.mgmt-add:hover{border-color:var(--accent);color:var(--accent);background:#ebf8ff}
+
+/* Days-off modal */
+.do-grid{display:flex;flex-direction:column;gap:8px;padding:2px 0}
+.do-row{display:flex;align-items:center;gap:8px}
+.do-cy-lbl{font-size:11px;font-weight:800;color:var(--muted);width:40px;flex-shrink:0}
+.do-days{display:flex;gap:3px}
+.do-daybtn{width:30px;height:30px;border-radius:6px;border:2px solid var(--border);background:var(--surface);font-size:12px;font-weight:700;color:#4a5568;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;user-select:none}
+.do-daybtn:hover{border-color:#a0aec0;background:var(--bg)}
+.do-daybtn.off{background:#fed7aa;border-color:#f6ad55;color:#7b341e}
+.do-cnt{font-size:10px;font-weight:700;color:var(--muted);min-width:20px}
+
+/* CHIPS */
+.chip{display:inline-flex;align-items:center;gap:2px;padding:2px 6px 2px 7px;border-radius:12px;font-size:11px;font-weight:700;color:#fff;white-space:nowrap;user-select:none;box-shadow:0 1px 2px rgba(0,0,0,.15);max-width:110px}
+.chip-name{overflow:hidden;text-overflow:ellipsis;flex:1}
+.chip-x{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;background:rgba(255,255,255,.25);cursor:pointer;font-size:9px;flex-shrink:0;line-height:1}
+.chip-x:hover{background:rgba(255,255,255,.5)}
+.chip-note{font-size:9px;background:#fed7aa;color:#7b341e;padding:1px 5px;border-radius:3px;font-weight:700;align-self:center}
+
+/* Cell note */
+.cell-note-txt{width:100%;font-size:9px;color:var(--muted);margin-top:2px;font-style:italic}
+
+/* OVERLAY & MODAL */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:100;display:none;align-items:center;justify-content:center}
+.overlay.show{display:flex}
+.modal{background:#fff;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:290px;overflow:hidden;max-height:90vh;display:flex;flex-direction:column}
+.modal-hdr{padding:13px 16px;border-bottom:1px solid var(--border)}
+.modal-title{font-size:14px;font-weight:700;color:var(--text)}
+.modal-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.modal-body{padding:12px 16px;overflow-y:auto;flex:1}
+.modal-section-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:4px 0 3px;border-bottom:1px solid var(--border);margin-bottom:4px}
+.memp{display:flex;align-items:center;gap:8px;padding:6px 6px;border-radius:7px;cursor:pointer;transition:background .1s}
+.memp:hover{background:var(--bg)}
+.memp.sel{background:#ebf8ff}
+.mcheck{width:16px;height:16px;border-radius:4px;border:2px solid #cbd5e0;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;color:#fff;transition:all .1s}
+.memp.sel .mcheck{background:var(--accent);border-color:var(--accent)}
+.mdot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.mname{font-size:13px;font-weight:500;color:var(--text);flex:1}
+.mdept-tag{font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--bg);color:var(--muted)}
+.modal-note-row{padding:10px 0 2px}
+.modal-note-row label{font-size:11px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px}
+.modal-note-input{width:100%;border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:12px;outline:none}
+.modal-note-input:focus{border-color:var(--accent)}
+.modal-ftr{padding:10px 16px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
+
+/* Copy modal */
+.copy-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:4px 0 8px}
+.ccbtn{padding:14px;border:2px solid var(--border);border-radius:8px;text-align:center;cursor:pointer;font-weight:700;font-size:15px;color:#4a5568;transition:all .15s}
+.ccbtn:hover{border-color:var(--accent);color:var(--accent);background:#ebf8ff}
+
+/* TOAST */
+.toast{position:fixed;bottom:18px;right:18px;background:#2d3748;color:#fff;padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 4px 15px rgba(0,0,0,.2);transform:translateY(70px);opacity:0;transition:all .22s;z-index:200}
+.toast.show{transform:translateY(0);opacity:1}
+
+/* Scrollbars */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-thumb{background:#cbd5e0;border-radius:3px}
+::-webkit-scrollbar-track{background:transparent}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <span class="hdr-logo">⏱ Horarios Support</span>
+  <div class="hdr-sep"></div>
+  <span class="hdr-lbl">Ciclo</span>
+  <div class="cycle-tabs" id="cycleTabs">
+    <button class="ctab active" data-cycle="A">Sem A</button>
+    <button class="ctab" data-cycle="B">Sem B</button>
+    <button class="ctab" data-cycle="C">Sem C</button>
+    <button class="ctab" data-cycle="D">Sem D</button>
+  </div>
+  <div class="hdr-actions">
+    <button class="btn btn-ghost" id="btnCopy">Copiar ciclo →</button>
+    <button class="btn btn-ghost" id="btnPrint">Imprimir</button>
+    <button class="btn btn-ghost" id="btnExport">📤 Exportar</button>
+    <label class="btn btn-ghost" style="cursor:pointer" title="Importar horario desde archivo JSON">📥 Importar<input type="file" id="fileImport" accept=".json" style="display:none"></label>
+    <button class="btn btn-danger" id="btnClear">Limpiar</button>
+    <button class="btn btn-primary" id="btnSave">💾 Guardar</button>
+  </div>
+</div>
+
+<div class="body">
+  <div class="sidebar">
+    <div class="sb-hdr" style="display:flex;align-items:center;justify-content:space-between">
+      <span class="sb-title">Equipo · Sem <span id="sbCycleLabel">A</span></span>
+      <button id="btnEmpMgmt" title="Gestionar agentes" style="background:none;border:none;cursor:pointer;color:#a0aec0;font-size:15px;padding:2px 4px;border-radius:4px;line-height:1" onmouseover="this.style.color='#4a5568'" onmouseout="this.style.color='#a0aec0'">⚙</button>
+    </div>
+    <div class="sb-body" id="sbBody"></div>
+  </div>
+  <div class="sched-area" id="schedArea"></div>
+</div>
+
+<!-- Cell modal -->
+<div class="overlay" id="ovCell">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-title" id="mTitle"></div>
+      <div class="modal-sub" id="mSub"></div>
+    </div>
+    <div class="modal-body" id="mBody"></div>
+    <div class="modal-ftr">
+      <button class="btn btn-ghost" id="btnMClose">Cancelar</button>
+      <button class="btn btn-primary" id="btnMSave">Aplicar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Copy cycle modal -->
+<div class="overlay" id="ovCopy">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-title">Copiar <span id="copyFrom"></span> a…</div>
+      <div class="modal-sub">Reemplazará los turnos del ciclo destino</div>
+    </div>
+    <div class="modal-body">
+      <div class="copy-grid" id="copyGrid"></div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-ghost" id="btnCopyClose">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Employee management modal -->
+<div class="overlay" id="ovEmpMgmt">
+  <div class="modal" style="width:360px">
+    <div class="modal-hdr">
+      <div class="modal-title">Gestionar equipo</div>
+      <div class="modal-sub">Edita nombre y color · agrega o elimina agentes</div>
+    </div>
+    <div class="modal-body" id="empMgmtBody"></div>
+    <div class="modal-ftr">
+      <button class="btn btn-primary" id="btnEmpMgmtClose">Listo</button>
+    </div>
+  </div>
+</div>
+
+<!-- Days-off modal -->
+<div class="overlay" id="ovDO">
+  <div class="modal" style="width:340px">
+    <div class="modal-hdr">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div id="doEmpDot" style="width:12px;height:12px;border-radius:50%;flex-shrink:0"></div>
+        <div>
+          <div class="modal-title" id="doEmpName"></div>
+          <div class="modal-sub" id="doSubtitle">Máx. 8 días libres en total (distribuidos entre los 4 ciclos)</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-body" id="doBdy"></div>
+    <div class="modal-ftr">
+      <button class="btn btn-primary" id="btnDOClose">Listo</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── DATA ─────────────────────────────────────────────────────────────────────
+
+const DAYS = ['L','M','C','J','V','S','D'];
+const DAY_FULL = {L:'Lunes',M:'Martes',C:'Miércoles',J:'Jueves',V:'Viernes',S:'Sábado',D:'Domingo'};
+const CYCLES = ['A','B','C','D'];
+
+const DEPTS = [
+  { id:'L2', label:'Horario L2', shifts:[
+    {id:'M', label:'Mañana',    time:'03–11', color:'#dd6b20'},
+    {id:'T', label:'Tarde',     time:'11–19', color:'#2b6cb0'},
+    {id:'E', label:'Intermedio',time:'15–23', color:'#b45309'},
+    {id:'N', label:'Noche',     time:'19–03', color:'#553c9a'},
+  ]},
+  { id:'L1', label:'Horario L1', shifts:[
+    {id:'M', label:'Mañana',    time:'00–08', color:'#276749'},
+    {id:'T', label:'Tarde',     time:'08–16', color:'#97266d'},
+    {id:'E', label:'Intermedio',time:'12–20', color:'#b45309'},
+    {id:'N', label:'Noche',     time:'16–00', color:'#44337a'},
+  ]},
+];
+
+let EMPLOYEES = [
+  // L2
+  {id:11, name:'Nelly',     dept:'L2', color:'#10b981'},
+  {id:12, name:'Rosi',      dept:'L2', color:'#f43f5e'},
+  {id:13, name:'Maribel',   dept:'L2', color:'#ec4899'},
+  {id:14, name:'Carlos',    dept:'L2', color:'#f97316'},
+  {id:15, name:'Maria',     dept:'L2', color:'#3b82f6'},
+  {id:16, name:'Will',      dept:'L2', color:'#d97706'},
+  {id:17, name:'Cindy',     dept:'L2', color:'#ef4444'},
+  // L1
+  {id:1,  name:'Moisés',    dept:'L1', color:'#16a34a'},
+  {id:2,  name:'Karol',     dept:'L1', color:'#4f46e5'},
+  {id:3,  name:'Alejandra', dept:'L1', color:'#f59e0b'},
+  {id:4,  name:'Johan',     dept:'L1', color:'#b91c1c'},
+  {id:5,  name:'Nuviangi',  dept:'L1', color:'#0284c7'},
+  {id:6,  name:'Jerónimo',  dept:'L1', color:'#059669'},
+  {id:7,  name:'Laura',     dept:'L1', color:'#7c3aed'},
+  {id:8,  name:'Esteban',   dept:'L1', color:'#ea580c'},
+  {id:9,  name:'Alixander', dept:'L1', color:'#6366f1'},
+  {id:10, name:'Michael',   dept:'L1', color:'#0d9488'},
+];
+
+// schedule[cycle][deptId][day][shiftId] = { emps: [id,...], note: '' }
+let schedule = {};
+
+function initSchedule() {
+  for (const cy of CYCLES) {
+    schedule[cy] = {};
+    for (const dept of DEPTS) {
+      schedule[cy][dept.id] = {};
+      for (const day of DAYS) {
+        schedule[cy][dept.id][day] = {};
+        for (const sh of dept.shifts) {
+          schedule[cy][dept.id][day][sh.id] = {emps:[], note:''};
+        }
+      }
+    }
+  }
+}
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+let currentCycle = 'A';
+let modalCell = null;   // {deptId, day, shiftId}
+let modalSel = [];      // temp employee selection
+let modalNote = '';     // temp note
+
+// ── RENDER ───────────────────────────────────────────────────────────────────
+function render() {
+  document.getElementById('sbCycleLabel').textContent = currentCycle;
+  renderSidebar();
+  renderSchedule();
+}
+
+function renderSchedule() {
+  const area = document.getElementById('schedArea');
+  area.innerHTML = '';
+  for (const dept of DEPTS) area.appendChild(buildDeptCard(dept));
+}
+
+function buildDeptCard(dept) {
+  const card = document.createElement('div');
+  card.className = 'dept-card';
+
+  // Header
+  const hdr = document.createElement('div');
+  hdr.className = 'dept-hdr';
+  hdr.innerHTML = `
+    <span class="dept-badge badge-${dept.id}">${dept.id}</span>
+    <span class="dept-title">${dept.label}</span>
+    <div class="shift-times">
+      ${dept.shifts.map(s=>`<span class="shift-lbl" style="background:${s.color}">${s.label} ${s.time}</span>`).join('')}
+    </div>`;
+  card.appendChild(hdr);
+
+  // Grid
+  const wrap = document.createElement('div');
+  wrap.className = 'grid-wrap';
+  const cols = `48px repeat(${dept.shifts.length}, 1fr)`;
+  const grid = document.createElement('div');
+  grid.className = 'sgrid';
+  grid.style.gridTemplateColumns = cols;
+
+  // Column headers
+  const corner = document.createElement('div');
+  corner.className = 'gh';
+  grid.appendChild(corner);
+  for (const sh of dept.shifts) {
+    const h = document.createElement('div');
+    h.className = 'gh' + (sh.id==='E' ? ' gh-E' : '');
+    h.innerHTML = `<span style="font-size:13px;font-weight:800">${sh.id}</span><br><span style="font-size:9px;color:#a0aec0;font-weight:400">${sh.time}</span>`;
+    grid.appendChild(h);
+  }
+
+  // Day rows
+  for (const day of DAYS) {
+    const rowDiv = document.createElement('div');
+    rowDiv.className = 'grow';
+
+    const dl = document.createElement('div');
+    dl.className = 'gday';
+    dl.title = DAY_FULL[day];
+    dl.textContent = day;
+    dl.style.gridColumn = '1';
+    rowDiv.appendChild(dl);
+
+    for (const sh of dept.shifts) {
+      const cell = buildCell(dept.id, day, sh.id);
+      rowDiv.appendChild(cell);
+    }
+    grid.appendChild(rowDiv);
+  }
+
+  wrap.appendChild(grid);
+  card.appendChild(wrap);
+  return card;
+}
+
+function buildCell(deptId, day, shiftId) {
+  const cell = document.createElement('div');
+  cell.className = 'gcell' + (shiftId==='E' ? ' gcell-E' : '');
+  const data = schedule[currentCycle][deptId][day][shiftId];
+
+  for (const eid of data.emps) {
+    const emp = EMPLOYEES.find(e=>e.id===eid);
+    if (!emp) continue;
+    const chip = document.createElement('div');
+    const onDayOff = isOffDay(emp.id, day);
+    chip.className = 'chip' + (onDayOff ? ' chip-warn' : '');
+    chip.style.background = emp.color;
+    chip.title = onDayOff ? `⚠ ${emp.name} tiene libre este día` : emp.name;
+    // Show dept tag if cross-dept assignment
+    const deptTag = emp.dept !== deptId && emp.dept !== 'S'
+      ? `<span style="font-size:9px;background:rgba(0,0,0,.25);padding:0 3px;border-radius:3px;margin-right:2px">${emp.dept}</span>`
+      : '';
+    chip.innerHTML = `${deptTag}<span class="chip-name">${emp.name.split(' ')[0]}</span>
+      <span class="chip-x" data-dept="${deptId}" data-day="${day}" data-shift="${shiftId}" data-emp="${eid}">×</span>`;
+    chip.querySelector('.chip-x').addEventListener('click', e=>{
+      e.stopPropagation();
+      removeEmp(deptId, day, shiftId, parseInt(e.target.dataset.emp));
+    });
+    cell.appendChild(chip);
+  }
+
+  if (data.note) {
+    const nt = document.createElement('div');
+    nt.className = 'chip-note';
+    nt.textContent = data.note;
+    cell.appendChild(nt);
+  }
+
+  const plus = document.createElement('div');
+  plus.className = 'add-indicator';
+  plus.textContent = '+';
+  cell.appendChild(plus);
+
+  cell.addEventListener('click', ()=>openModal(deptId, day, shiftId));
+  return cell;
+}
+
+function removeEmp(deptId, day, shiftId, empId) {
+  const arr = schedule[currentCycle][deptId][day][shiftId].emps;
+  const i = arr.indexOf(empId);
+  if (i >= 0) { arr.splice(i,1); render(); autosave(); }
+}
+
+// ── EMPLOYEE MANAGEMENT ──────────────────────────────────────────────────────
+const NEW_EMP_COLORS = ['#6366f1','#ec4899','#f97316','#10b981','#0284c7','#7c3aed','#ef4444','#d97706','#0891b2','#65a30d'];
+
+function openEmpMgmt() {
+  renderEmpMgmt();
+  document.getElementById('ovEmpMgmt').classList.add('show');
+}
+
+function renderEmpMgmt() {
+  const body = document.getElementById('empMgmtBody');
+  body.innerHTML = '';
+  for (const deptId of ['L2','L1']) {
+    const group = document.createElement('div');
+    group.className = 'mgmt-group';
+    const title = document.createElement('div');
+    title.className = 'mgmt-group-title';
+    title.textContent = `Equipo ${deptId}`;
+    group.appendChild(title);
+    for (const emp of EMPLOYEES.filter(e => e.dept === deptId))
+      group.appendChild(buildMgmtRow(emp));
+    const addBtn = document.createElement('button');
+    addBtn.className = 'mgmt-add';
+    addBtn.innerHTML = `<span style="font-size:16px;line-height:1">+</span> Agregar agente ${deptId}`;
+    addBtn.addEventListener('click', () => addEmployee(deptId));
+    group.appendChild(addBtn);
+    body.appendChild(group);
+  }
+}
+
+function buildMgmtRow(emp) {
+  const row = document.createElement('div');
+  row.className = 'mgmt-emp-row';
+  // Color picker
+  const colorBtn = document.createElement('div');
+  colorBtn.className = 'mgmt-color-btn';
+  colorBtn.style.background = emp.color;
+  colorBtn.title = 'Cambiar color';
+  const colorInput = document.createElement('input');
+  colorInput.type = 'color';
+  colorInput.className = 'mgmt-color-input';
+  colorInput.value = emp.color;
+  colorInput.addEventListener('input', e => {
+    emp.color = e.target.value;
+    colorBtn.style.background = e.target.value;
+    autosave();
+  });
+  colorInput.addEventListener('change', () => { render(); });
+  colorBtn.appendChild(colorInput);
+  row.appendChild(colorBtn);
+  // Name input
+  const nameInput = document.createElement('input');
+  nameInput.className = 'mgmt-name-input';
+  nameInput.value = emp.name;
+  nameInput.placeholder = 'Nombre';
+  nameInput.addEventListener('change', e => {
+    const v = e.target.value.trim();
+    if (v) { emp.name = v; autosave(); renderSidebar(); }
+    else e.target.value = emp.name;
+  });
+  row.appendChild(nameInput);
+  // ID label
+  const idLbl = document.createElement('span');
+  idLbl.className = 'mgmt-id';
+  idLbl.textContent = `#${emp.id}`;
+  row.appendChild(idLbl);
+  // Delete button
+  const delBtn = document.createElement('button');
+  delBtn.className = 'mgmt-del';
+  delBtn.title = `Eliminar ${emp.name}`;
+  delBtn.textContent = '×';
+  delBtn.addEventListener('click', () => deleteEmployee(emp.id));
+  row.appendChild(delBtn);
+  return row;
+}
+
+function addEmployee(dept) {
+  const newId = Math.max(...EMPLOYEES.map(e => e.id), 17) + 1;
+  const color = NEW_EMP_COLORS[EMPLOYEES.length % NEW_EMP_COLORS.length];
+  EMPLOYEES.push({ id: newId, name: `Agente ${newId}`, dept, color });
+  daysOff[newId] = {};
+  for (const cy of CYCLES) daysOff[newId][cy] = [];
+  renderEmpMgmt();
+  autosave();
+}
+
+function deleteEmployee(empId) {
+  const emp = EMPLOYEES.find(e => e.id === empId);
+  if (!emp) return;
+  if (!confirm(`¿Eliminar a ${emp.name}?\nSus turnos asignados también se quitarán.`)) return;
+  EMPLOYEES.splice(EMPLOYEES.indexOf(emp), 1);
+  for (const cy of CYCLES)
+    for (const dept of DEPTS)
+      for (const day of DAYS)
+        for (const sh of dept.shifts) {
+          const cell = schedule[cy][dept.id][day][sh.id];
+          const i = cell.emps.indexOf(empId);
+          if (i >= 0) cell.emps.splice(i, 1);
+        }
+  delete daysOff[empId];
+  renderEmpMgmt();
+  render();
+  autosave();
+}
+
+// ── DAYS OFF ─────────────────────────────────────────────────────────────────
+let daysOff = {};
+
+function initDaysOff() {
+  for (const emp of EMPLOYEES) {
+    daysOff[emp.id] = {};
+    for (const cy of CYCLES) daysOff[emp.id][cy] = [];
+  }
+}
+
+function isOffDay(empId, day) {
+  return (daysOff[empId]?.[currentCycle] || []).includes(day);
+}
+
+function openDaysOffModal(empId) {
+  const emp = EMPLOYEES.find(e => e.id === empId);
+  if (!emp) return;
+  document.getElementById('doEmpName').textContent = emp.name;
+  document.getElementById('doEmpDot').style.background = emp.color;
+  renderDOBody(empId);
+  document.getElementById('ovDO').classList.add('show');
+}
+
+function renderDOBody(empId) {
+  const body = document.getElementById('doBdy');
+  body.innerHTML = '';
+  const grid = document.createElement('div');
+  grid.className = 'do-grid';
+  for (const cy of CYCLES) {
+    const offDays = daysOff[empId][cy] || [];
+    const row = document.createElement('div');
+    row.className = 'do-row';
+    const lbl = document.createElement('div');
+    lbl.className = 'do-cy-lbl';
+    lbl.textContent = `Sem ${cy}`;
+    row.appendChild(lbl);
+    const daysDiv = document.createElement('div');
+    daysDiv.className = 'do-days';
+    for (const day of DAYS) {
+      const btn = document.createElement('div');
+      btn.className = 'do-daybtn' + (offDays.includes(day) ? ' off' : '');
+      btn.textContent = day;
+      btn.title = DAY_FULL[day];
+      btn.addEventListener('click', () => toggleDayOff(empId, cy, day));
+      daysDiv.appendChild(btn);
+    }
+    row.appendChild(daysDiv);
+    const cnt = document.createElement('span');
+    cnt.className = 'do-cnt';
+    cnt.textContent = offDays.length > 0 ? `${offDays.length}` : '—';
+    row.appendChild(cnt);
+    grid.appendChild(row);
+  }
+  // Total row
+  const total = totalDaysOff(empId);
+  const totalRow = document.createElement('div');
+  totalRow.style.cssText = 'display:flex;justify-content:flex-end;padding-top:6px;border-top:1px solid var(--border);margin-top:4px';
+  totalRow.innerHTML = `<span style="font-size:12px;font-weight:700;color:${total>8?'#e53e3e':total===8?'#276749':'var(--muted)'}">
+    Total: ${total}/8 días libres</span>`;
+  body.appendChild(grid);
+  body.appendChild(totalRow);
+}
+
+function totalDaysOff(empId) {
+  return CYCLES.reduce((sum, cy) => sum + (daysOff[empId][cy]||[]).length, 0);
+}
+
+function toggleDayOff(empId, cycle, day) {
+  const arr = daysOff[empId][cycle];
+  const i = arr.indexOf(day);
+  if (i >= 0) {
+    arr.splice(i, 1);
+  } else {
+    if (totalDaysOff(empId) >= 8) { showToast('Máximo 8 días libres en total'); return; }
+    arr.push(day);
+  }
+  renderDOBody(empId);
+  renderSchedule();
+  autosave();
+}
+
+// ── SIDEBAR ──────────────────────────────────────────────────────────────────
+function renderSidebar() {
+  const body = document.getElementById('sbBody');
+  body.innerHTML = '';
+  const stats = calcStats();
+  const groups = [{id:'L2',label:'Equipo L2'},{id:'L1',label:'Equipo L1'}];
+
+  for (const g of groups) {
+    const title = document.createElement('div');
+    title.className = 'sb-dept-title';
+    title.textContent = g.label;
+    body.appendChild(title);
+
+    for (const emp of EMPLOYEES.filter(e=>e.dept===g.id)) {
+      const st = stats[emp.id]||{M:0,T:0,N:0,E:0};
+      const row = document.createElement('div');
+      row.className = 'emp-row';
+      row.title = `${emp.name} — ${emp.dept}`;
+      const shiftsToShow = ['M','T','N','E'];
+      const statHtml = shiftsToShow.map(s=>`<span class="st">${s}${st[s]||0}</span>`).join('');
+      const doTags = CYCLES.map(cy => {
+        const d = (daysOff[emp.id]?.[cy] || []);
+        return d.length
+          ? `<span class="do-tag">${cy}:${d.join(',')}</span>`
+          : `<span class="do-tag-empty">${cy}:—</span>`;
+      }).join('');
+      row.innerHTML = `<div class="emp-dot" style="background:${emp.color}"></div>
+        <div style="flex:1;min-width:0">
+          <div class="emp-row-name">${emp.name}</div>
+          <div class="emp-do-row">${doTags}</div>
+        </div>
+        <div class="emp-stats">${statHtml}</div>`;
+      row.addEventListener('click', () => openDaysOffModal(emp.id));
+      body.appendChild(row);
+    }
+  }
+}
+
+function calcStats() {
+  const s = {};
+  for (const emp of EMPLOYEES) s[emp.id]={M:0,T:0,N:0,E:0};
+  const cy = schedule[currentCycle];
+  for (const dept of DEPTS)
+    for (const day of DAYS)
+      for (const sh of dept.shifts)
+        for (const eid of cy[dept.id][day][sh.id].emps)
+          if (s[eid]) s[eid][sh.id]=(s[eid][sh.id]||0)+1;
+  return s;
+}
+
+// ── MODAL ─────────────────────────────────────────────────────────────────────
+function openModal(deptId, day, shiftId) {
+  modalCell = {deptId, day, shiftId};
+  const dept = DEPTS.find(d=>d.id===deptId);
+  const sh = dept.shifts.find(s=>s.id===shiftId);
+  const data = schedule[currentCycle][deptId][day][shiftId];
+  modalSel = [...data.emps];
+  modalNote = data.note || '';
+
+  document.getElementById('mTitle').textContent = `${DAY_FULL[day]} — Turno ${sh.label} (${sh.time})`;
+  document.getElementById('mSub').textContent = `Ciclo Sem ${currentCycle} · ${dept.label}`;
+
+  buildModalBody(deptId);
+  document.getElementById('ovCell').classList.add('show');
+}
+
+function buildModalBody(deptId) {
+  const body = document.getElementById('mBody');
+  body.innerHTML = '';
+
+  // Employee list grouped by dept
+  const groups = [
+    {id: deptId, label: 'Mismo departamento'},
+    ...DEPTS.filter(d=>d.id!==deptId).map(d=>({id:d.id, label:d.label}))
+  ];
+
+  for (const g of groups) {
+    const emps = EMPLOYEES.filter(e=>e.dept===g.id);
+    if (!emps.length) continue;
+    const lbl = document.createElement('div');
+    lbl.className = 'modal-section-lbl';
+    lbl.textContent = g.label;
+    body.appendChild(lbl);
+    for (const emp of emps) {
+      const item = document.createElement('div');
+      item.className = 'memp' + (modalSel.includes(emp.id)?' sel':'');
+      item.dataset.id = emp.id;
+      item.innerHTML = `<div class="mcheck">${modalSel.includes(emp.id)?'✓':''}</div>
+        <div class="mdot" style="background:${emp.color}"></div>
+        <div class="mname">${emp.name}</div>
+        <span class="mdept-tag">${emp.dept}</span>`;
+      item.addEventListener('click', ()=>toggleModalEmp(emp.id, deptId));
+      body.appendChild(item);
+    }
+  }
+
+  // Note field
+  const noteRow = document.createElement('div');
+  noteRow.className = 'modal-note-row';
+  noteRow.innerHTML = `<label>Nota de celda (ej: "2 L2", "cobertura")</label>
+    <input class="modal-note-input" id="noteInput" type="text" placeholder="Opcional…" value="${escHtml(modalNote)}">`;
+  body.appendChild(noteRow);
+}
+
+function toggleModalEmp(empId, deptId) {
+  const i = modalSel.indexOf(empId);
+  if (i>=0) modalSel.splice(i,1); else modalSel.push(empId);
+  buildModalBody(deptId);
+}
+
+function closeModal() {
+  document.getElementById('ovCell').classList.remove('show');
+  modalCell = null; modalSel = []; modalNote = '';
+}
+
+function saveModal() {
+  if (!modalCell) return;
+  const {deptId, day, shiftId} = modalCell;
+  const noteEl = document.getElementById('noteInput');
+  schedule[currentCycle][deptId][day][shiftId] = {
+    emps: [...modalSel],
+    note: noteEl ? noteEl.value.trim() : ''
+  };
+  closeModal(); render(); autosave();
+}
+
+// ── CYCLE ACTIONS ─────────────────────────────────────────────────────────────
+function switchCycle(cy) {
+  currentCycle = cy;
+  document.querySelectorAll('.ctab').forEach(t=>t.classList.toggle('active', t.dataset.cycle===cy));
+  render();
+}
+
+function clearCycle() {
+  if (!confirm(`¿Limpiar TODOS los turnos del ciclo Sem ${currentCycle} y los días libres de todos los empleados?`)) return;
+  for (const dept of DEPTS)
+    for (const day of DAYS)
+      for (const sh of dept.shifts)
+        schedule[currentCycle][dept.id][day][sh.id] = {emps:[], note:''};
+  for (const emp of EMPLOYEES)
+    if (daysOff[emp.id])
+      for (const cy of CYCLES) daysOff[emp.id][cy] = [];
+  render(); autosave();
+  showToast(`Ciclo Sem ${currentCycle} limpiado`);
+}
+
+function openCopyModal() {
+  document.getElementById('copyFrom').textContent = `Sem ${currentCycle}`;
+  const grid = document.getElementById('copyGrid');
+  grid.innerHTML = '';
+  for (const cy of CYCLES) {
+    if (cy===currentCycle) continue;
+    const btn = document.createElement('div');
+    btn.className = 'ccbtn';
+    btn.textContent = `Sem ${cy}`;
+    btn.addEventListener('click', ()=>{ copyCycle(cy); document.getElementById('ovCopy').classList.remove('show'); });
+    grid.appendChild(btn);
+  }
+  document.getElementById('ovCopy').classList.add('show');
+}
+
+function copyCycle(to) {
+  for (const dept of DEPTS)
+    for (const day of DAYS)
+      for (const sh of dept.shifts) {
+        const src = schedule[currentCycle][dept.id][day][sh.id];
+        schedule[to][dept.id][day][sh.id] = {emps:[...src.emps], note:src.note};
+      }
+  autosave();
+  showToast(`Sem ${currentCycle} copiado a Sem ${to}`);
+}
+
+// ── PERSISTENCE ───────────────────────────────────────────────────────────────
+const SKEY = 'horarios_v2';
+
+function saveData() {
+  localStorage.setItem(SKEY, JSON.stringify({schedule, daysOff, employees:EMPLOYEES, savedAt:new Date().toISOString()}));
+  showToast('Guardado ✓');
+}
+
+function loadData() {
+  const raw = localStorage.getItem(SKEY);
+  if (!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    // Restore employees list
+    if (data.employees && Array.isArray(data.employees) && data.employees.length) {
+      EMPLOYEES.length = 0;
+      data.employees.forEach(e => EMPLOYEES.push(e));
+    }
+    // Restore schedule
+    if (data.schedule) {
+      for (const cy of CYCLES) {
+        if (!data.schedule[cy]) continue;
+        for (const dept of DEPTS) {
+          if (!data.schedule[cy][dept.id]) continue;
+          for (const day of DAYS) {
+            if (!data.schedule[cy][dept.id][day]) continue;
+            for (const sh of dept.shifts) {
+              const cell = data.schedule[cy][dept.id][day][sh.id];
+              if (!cell) continue;
+              schedule[cy][dept.id][day][sh.id] = Array.isArray(cell)
+                ? {emps:cell, note:''}
+                : {emps:cell.emps||[], note:cell.note||''};
+            }
+          }
+        }
+      }
+    }
+    // Restore days off
+    if (data.daysOff) {
+      for (const emp of EMPLOYEES) {
+        if (data.daysOff[emp.id]) {
+          for (const cy of CYCLES)
+            daysOff[emp.id][cy] = data.daysOff[emp.id][cy] || [];
+        }
+      }
+    }
+  } catch(e) { console.error(e); }
+}
+
+let _autosaveT;
+function autosave() {
+  clearTimeout(_autosaveT);
+  _autosaveT = setTimeout(()=>localStorage.setItem(SKEY, JSON.stringify({schedule, daysOff, employees:EMPLOYEES, savedAt:new Date().toISOString()})), 600);
+}
+
+// ── PRINT ─────────────────────────────────────────────────────────────────────
+function printSchedule() {
+  window.print();
+}
+
+// ── EXPORT / IMPORT ───────────────────────────────────────────────────────────
+function exportData() {
+  const data = { schedule, daysOff, employees: EMPLOYEES, exportedAt: new Date().toISOString(), version: 3 };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const date = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `horarios-support-${date}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Horario exportado ✓');
+}
+
+function importData(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.schedule) { showToast('Archivo inválido'); return; }
+      if (!confirm('¿Reemplazar el horario actual con el archivo importado?')) return;
+      // Re-init and load
+      initSchedule();
+      initDaysOff();
+      // Load schedule
+      for (const cy of CYCLES) {
+        if (!data.schedule[cy]) continue;
+        for (const dept of DEPTS) {
+          if (!data.schedule[cy][dept.id]) continue;
+          for (const day of DAYS) {
+            if (!data.schedule[cy][dept.id][day]) continue;
+            for (const sh of dept.shifts) {
+              const cell = data.schedule[cy][dept.id][day][sh.id];
+              if (!cell) continue;
+              schedule[cy][dept.id][day][sh.id] = Array.isArray(cell)
+                ? { emps: cell, note: '' }
+                : { emps: cell.emps || [], note: cell.note || '' };
+            }
+          }
+        }
+      }
+      // Load daysOff
+      if (data.daysOff) {
+        for (const emp of EMPLOYEES) {
+          if (data.daysOff[emp.id]) {
+            for (const cy of CYCLES)
+              daysOff[emp.id][cy] = data.daysOff[emp.id][cy] || [];
+          }
+        }
+      }
+      autosave();
+      render();
+      showToast('Horario importado ✓');
+    } catch (err) {
+      showToast('Error al leer el archivo');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+let _toastT;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(_toastT);
+  _toastT = setTimeout(()=>t.classList.remove('show'), 2400);
+}
+
+// ── EVENTS ───────────────────────────────────────────────────────────────────
+document.getElementById('cycleTabs').addEventListener('click', e=>{
+  const t = e.target.closest('.ctab');
+  if (t) switchCycle(t.dataset.cycle);
+});
+
+document.getElementById('btnSave').addEventListener('click', saveData);
+document.getElementById('btnEmpMgmt').addEventListener('click', openEmpMgmt);
+document.getElementById('btnEmpMgmtClose').addEventListener('click', () => { document.getElementById('ovEmpMgmt').classList.remove('show'); render(); });
+document.getElementById('ovEmpMgmt').addEventListener('click', e => { if (e.target === document.getElementById('ovEmpMgmt')) { document.getElementById('ovEmpMgmt').classList.remove('show'); render(); } });
+document.getElementById('btnExport').addEventListener('click', exportData);
+document.getElementById('fileImport').addEventListener('change', e => { importData(e.target.files[0]); e.target.value = ''; });
+document.getElementById('btnClear').addEventListener('click', clearCycle);
+document.getElementById('btnCopy').addEventListener('click', openCopyModal);
+document.getElementById('btnPrint').addEventListener('click', printSchedule);
+document.getElementById('btnMClose').addEventListener('click', closeModal);
+document.getElementById('btnMSave').addEventListener('click', saveModal);
+document.getElementById('btnCopyClose').addEventListener('click', ()=>document.getElementById('ovCopy').classList.remove('show'));
+document.getElementById('btnDOClose').addEventListener('click', ()=>{ document.getElementById('ovDO').classList.remove('show'); renderSidebar(); });
+document.getElementById('ovDO').addEventListener('click', e=>{ if(e.target===document.getElementById('ovDO')){ document.getElementById('ovDO').classList.remove('show'); renderSidebar(); } });
+
+document.getElementById('ovCell').addEventListener('click', e=>{
+  if (e.target===document.getElementById('ovCell')) closeModal();
+});
+document.getElementById('ovCopy').addEventListener('click', e=>{
+  if (e.target===document.getElementById('ovCopy')) document.getElementById('ovCopy').classList.remove('show');
+});
+document.addEventListener('keydown', e=>{
+  if (e.key==='Escape') {
+    closeModal();
+    document.getElementById('ovCopy').classList.remove('show');
+    document.getElementById('ovDO').classList.remove('show'); renderSidebar();
+  }
+  if ((e.ctrlKey||e.metaKey) && e.key==='s') { e.preventDefault(); saveData(); }
+});
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+initSchedule();
+initDaysOff();
+loadData();
+render();
+</script>
+</body>
+</html>

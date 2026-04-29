@@ -1,0 +1,20 @@
+node_modules/
+dist/
+data/
+logs/
+.env
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Inputs we don't want to track (PII / per-month exports)
+horarios-bot/scripts/input/
+*.pdf
+schedule-week-*.json
+
+# Claude session metadata
+.claude/
