@@ -7,6 +7,9 @@
         <a href="/mi-horario" class="text-gray-600 hover:text-gray-900">Mi horario</a>
         <a href="/horarios" class="text-gray-600 hover:text-gray-900">Horarios</a>
         <a href="/solicitudes" class="text-gray-600 hover:text-gray-900">Solicitudes</a>
+        <% if (user.role === 'manager' || user.role === 'admin') { %>
+          <a href="/agentes" class="text-gray-600 hover:text-gray-900">Agentes</a>
+        <% } %>
       </div>
     </div>
     <div class="flex items-center gap-3">
@@ -15,7 +18,10 @@
       <% } %>
       <span class="text-sm text-gray-700"><%= user.name %></span>
       <span class="text-xs px-2 py-0.5 rounded-full
-        <%= user.role === 'manager' ? 'bg-purple-100 text-purple-700' : user.role === 'agent' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600' %>">
+        <% if (user.role === 'admin') { %>bg-rose-100 text-rose-700
+        <% } else if (user.role === 'manager') { %>bg-purple-100 text-purple-700
+        <% } else if (user.role === 'agent') { %>bg-blue-100 text-blue-700
+        <% } else { %>bg-gray-100 text-gray-600<% } %>">
         <%= user.role %>
       </span>
       <a href="/auth/logout" class="text-sm text-gray-400 hover:text-gray-600 ml-2">Salir</a>

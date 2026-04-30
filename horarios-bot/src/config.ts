@@ -17,6 +17,10 @@ export const config = {
     .split(',')
     .map(s => s.trim())
     .filter(Boolean),
+  adminSlackIds: (process.env.ADMIN_SLACK_IDS || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean),
   lateThresholdMin: parseInt(process.env.LATE_THRESHOLD_MIN || '15', 10),
   reminderLeadMin: parseInt(process.env.REMINDER_LEAD_MIN || '5', 10),
   // Block Break In if within this many minutes of shift end (don't break-and-leave)

@@ -1,0 +1,155 @@
+import { Router } from 'express';
+import { DateTime } from 'luxon';
+import {
+  Agent, getAgentBySlackId, listAllAgents, createAgent,
+  updateAgentFields, setActive,
+  OPERATIONAL_FIELDS, SENSITIVE_FIELDS
+} from '../../services/agents';
+import { requireManager } from './auth';
+
+export const agentesRouter = Router();
+
+agentesRouter.use(requireManager);
+
+agentesRouter.get('/', (req, res) => {
+  const user = (req.session as any).user;
+  const includeInactive = req.query.inactive === '1';
+  const agents = listAllAgents(includeInactive);
+  res.render('agentes-list', { user, agents, includeInactive, isAdmin: user.role === 'admin' });
+});
+
+agentesRouter.get('/nuevo', (req, res) => {
+  const user = (req.session as any).user;
+  res.render('agentes-form', {
+    user, isAdmin: user.role === 'admin',
+    mode: 'create',
+    agent: emptyAgent(),
+    error: null
+  });
+});
+
+agentesRouter.post('/nuevo', (req, res) => {
+  const user = (req.session as any).user;
+  const slackId = (req.body.slack_id as string || '').trim();
+  const plannerIdRaw = (req.body.planner_id as string || '').trim();
+  const name = (req.body.name as string || '').trim();
+  const dept = (req.body.dept as string || '').trim();
+
+  const renderError = (msg: string) => {
+    const merged = { ...emptyAgent(), ...req.body };
+    res.status(400).render('agentes-form', {
+      user, isAdmin: user.role === 'admin', mode: 'create', agent: merged, error: msg
+    });
+  };
+
+  if (!slackId || !slackId.match(/^[A-Z0-9]+$/)) return renderError('slack_id invalido (ej: U01ABCDE).');
+  const plannerId = parseInt(plannerIdRaw, 10);
+  if (isNaN(plannerId)) return renderError('planner_id debe ser numero.');
+  if (!name) return renderError('Nombre es obligatorio.');
+  if (!['L1', 'L2'].includes(dept)) return renderError('Dept debe ser L1 o L2.');
+
+  if (getAgentBySlackId(slackId)) return renderError('Ya existe un agente con ese slack_id.');
+
+  try {
+    createAgent({ slackId, plannerId, name, dept, role: req.body.role === 'manager' ? 'manager' : 'agent' });
+  } catch (e: any) {
+    return renderError(`Error al crear: ${e?.message || 'desconocido'}`);
+  }
+
+  // Apply operational fields from the form (sensitive are blocked unless admin — handled in update)
+  const opFields = pickFields(req.body, OPERATIONAL_FIELDS as readonly string[]);
+  delete (opFields as any).name;
+  delete (opFields as any).dept;
+  if (Object.keys(opFields).length) updateAgentFields(slackId, opFields);
+
+  if (user.role === 'admin') {
+    const sensFields = pickFields(req.body, SENSITIVE_FIELDS as readonly string[]);
+    if (Object.keys(sensFields).length) updateAgentFields(slackId, sensFields);
+  }
+
+  res.redirect(`/agentes/${slackId}`);
+});
+
+agentesRouter.get('/:slackId', (req, res) => {
+  const user = (req.session as any).user;
+  const agent = getAgentBySlackId(req.params.slackId);
+  if (!agent) {
+    res.status(404).render('error', { message: 'Agente no encontrado.', user });
+    return;
+  }
+  res.render('agentes-form', {
+    user, isAdmin: user.role === 'admin',
+    mode: 'edit', agent, error: null
+  });
+});
+
+agentesRouter.post('/:slackId', (req, res) => {
+  const user = (req.session as any).user;
+  const slackId = req.params.slackId;
+  const agent = getAgentBySlackId(slackId);
+  if (!agent) {
+    res.status(404).render('error', { message: 'Agente no encontrado.', user });
+    return;
+  }
+
+  // Operational fields — both managers and admin can edit
+  const opFields = pickFields(req.body, [...OPERATIONAL_FIELDS, 'role']);
+  // dept must be L1/L2; role agent/manager (whitelist)
+  if (opFields.dept && !['L1', 'L2'].includes(opFields.dept as string)) {
+    res.status(400).render('error', { message: 'Dept debe ser L1 o L2.', user });
+    return;
+  }
+  if (opFields.role && !['agent', 'manager'].includes(opFields.role as string)) {
+    delete (opFields as any).role;
+  }
+  if (Object.keys(opFields).length) updateAgentFields(slackId, opFields);
+
+  // Sensitive fields — admin only. Defense in depth: even if the form was tampered,
+  // we ignore the sensitive keys for non-admin users.
+  if (user.role === 'admin') {
+    const sensFields = pickFields(req.body, SENSITIVE_FIELDS as readonly string[]);
+    // Coerce numeric fields (sqlite is lax but we want clean nulls vs zero)
+    for (const numKey of ['salary_current', 'salary_previous', 'salary_new', 'last_adjustment_pct', 'holiday_day_amount']) {
+      if (numKey in sensFields) {
+        const raw = sensFields[numKey];
+        if (raw === '' || raw === undefined || raw === null) sensFields[numKey] = null;
+        else {
+          const n = parseFloat(String(raw));
+          sensFields[numKey] = isNaN(n) ? null : n;
+        }
+      }
+    }
+    if (Object.keys(sensFields).length) updateAgentFields(slackId, sensFields);
+  }
+
+  res.redirect(`/agentes/${slackId}`);
+});
+
+agentesRouter.post('/:slackId/toggle-active', (req, res) => {
+  const user = (req.session as any).user;
+  const slackId = req.params.slackId;
+  const agent = getAgentBySlackId(slackId);
+  if (!agent) {
+    res.status(404).render('error', { message: 'Agente no encontrado.', user });
+    return;
+  }
+  setActive(slackId, !agent.active);
+  res.redirect(`/agentes/${slackId}`);
+});
+
+function pickFields<T extends Record<string, any>>(body: T, allowedKeys: readonly string[]): Record<string, any> {
+  const out: Record<string, any> = {};
+  for (const k of allowedKeys) {
+    if (k in body) {
+      const v = body[k];
+      out[k] = v === '' ? null : v;
+    }
+  }
+  return out;
+}
+
+function emptyAgent(): Partial<Agent> {
+  return {
+    slack_id: '', planner_id: 0, name: '', dept: 'L1', role: 'agent', active: 1
+  };
+}

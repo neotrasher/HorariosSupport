@@ -1,0 +1,190 @@
+<%- include('partials/head') %>
+<%- include('partials/nav', { user }) %>
+
+<main class="max-w-3xl mx-auto px-4 py-6">
+  <a href="/agentes" class="text-xs text-gray-500 hover:underline">&larr; Volver a agentes</a>
+  <div class="flex items-start justify-between mt-1 mb-6">
+    <div>
+      <h2 class="text-xl font-semibold text-gray-900">
+        <%= mode === 'create' ? 'Nuevo agente' : agent.name %>
+      </h2>
+      <% if (mode === 'edit') { %>
+        <p class="text-xs text-gray-400"><%= agent.slack_id %> · planner #<%= agent.planner_id %></p>
+      <% } %>
+    </div>
+    <% if (mode === 'edit') { %>
+      <div class="flex items-center gap-2">
+        <a href="/horarios/agente/<%= agent.planner_id %>" class="text-xs px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50">Ver horario</a>
+        <form method="post" action="/agentes/<%= agent.slack_id %>/toggle-active" class="inline">
+          <button class="text-xs px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50">
+            <%= agent.active ? 'Desactivar' : 'Reactivar' %>
+          </button>
+        </form>
+      </div>
+    <% } %>
+  </div>
+
+  <% if (error) { %>
+    <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3 mb-4"><%= error %></div>
+  <% } %>
+
+  <form method="post" action="<%= mode === 'create' ? '/agentes/nuevo' : '/agentes/' + agent.slack_id %>" class="space-y-6">
+
+    <!-- ─── Identificacion / link al bot ─── -->
+    <% if (mode === 'create') { %>
+      <section class="bg-white rounded-lg border border-gray-200 p-5">
+        <h3 class="font-semibold text-gray-900 mb-3 text-sm">Vinculacion bot</h3>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Slack ID</label>
+            <input type="text" name="slack_id" required value="<%= agent.slack_id %>"
+                   placeholder="U01ABCDE"
+                   class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Planner ID</label>
+            <input type="number" name="planner_id" required value="<%= agent.planner_id || '' %>"
+                   class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+          </div>
+        </div>
+      </section>
+    <% } %>
+
+    <!-- ─── Datos operativos ─── -->
+    <section class="bg-white rounded-lg border border-gray-200 p-5">
+      <h3 class="font-semibold text-gray-900 mb-3 text-sm">Datos operativos</h3>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-medium text-gray-700 mb-1">Nombre completo</label>
+          <input type="text" name="name" required value="<%= agent.name || '' %>"
+                 class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-700 mb-1">Cargo</label>
+          <input type="text" name="position" value="<%= agent.position || '' %>"
+                 placeholder="L1 Support, Team Lead..."
+                 class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-700 mb-1">Departamento</label>
+          <select name="dept" class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            <option value="L1" <%= agent.dept === 'L1' ? 'selected' : '' %>>L1</option>
+            <option value="L2" <%= agent.dept === 'L2' ? 'selected' : '' %>>L2</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-700 mb-1">Rol bot</label>
+          <select name="role" class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            <option value="agent" <%= agent.role === 'agent' ? 'selected' : '' %>>agent</option>
+            <option value="manager" <%= agent.role === 'manager' ? 'selected' : '' %>>manager</option>
+          </select>
+          <p class="text-[10px] text-gray-400 mt-1">Solo afecta los swaps. Manager web se controla por env.</p>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-700 mb-1">Usuario admin</label>
+          <input type="text" name="admin_user" value="<%= agent.admin_user || '' %>"
+                 class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-700 mb-1">Email empresa</label>
+          <input type="email" name="email_company" value="<%= agent.email_company || '' %>"
+                 class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-700 mb-1">Email personal</label>
+          <input type="email" name="email_personal" value="<%= agent.email_personal || '' %>"
+                 class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-700 mb-1">Telefono</label>
+          <input type="text" name="phone" value="<%= agent.phone || '' %>"
+                 class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-700 mb-1">Cumpleaños</label>
+          <input type="date" name="birthdate" value="<%= agent.birthdate || '' %>"
+                 class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-700 mb-1">Direccion</label>
+          <input type="text" name="address" value="<%= agent.address || '' %>"
+                 class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-700 mb-1">Fecha ingreso</label>
+          <input type="date" name="start_date" value="<%= agent.start_date || '' %>"
+                 class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-700 mb-1">Fecha egreso</label>
+          <input type="date" name="end_date" value="<%= agent.end_date || '' %>"
+                 class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-700 mb-1">Ultima evaluacion</label>
+          <input type="date" name="last_evaluation_date" value="<%= agent.last_evaluation_date || '' %>"
+                 class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-700 mb-1">Proxima evaluacion</label>
+          <input type="date" name="next_evaluation_date" value="<%= agent.next_evaluation_date || '' %>"
+                 class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Datos sensibles (solo admin) ─── -->
+    <% if (isAdmin) { %>
+      <section class="bg-rose-50/40 rounded-lg border border-rose-200 p-5">
+        <h3 class="font-semibold text-rose-900 mb-1 text-sm">Datos sensibles</h3>
+        <p class="text-xs text-rose-700/70 mb-3">Solo visibles para admin. No se renderizan para managers.</p>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Cedula</label>
+            <input type="text" name="id_number" value="<%= agent.id_number || '' %>"
+                   class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Salario actual</label>
+            <input type="number" step="0.01" name="salary_current" value="<%= agent.salary_current ?? '' %>"
+                   class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Salario anterior</label>
+            <input type="number" step="0.01" name="salary_previous" value="<%= agent.salary_previous ?? '' %>"
+                   class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Salario nuevo</label>
+            <input type="number" step="0.01" name="salary_new" value="<%= agent.salary_new ?? '' %>"
+                   class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono">
+            <p class="text-[10px] text-gray-400 mt-1">Tras un aumento, antes de aplicar.</p>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">% Ult. ajuste</label>
+            <input type="number" step="0.01" name="last_adjustment_pct" value="<%= agent.last_adjustment_pct ?? '' %>"
+                   class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Fecha ult. ajuste salario</label>
+            <input type="date" name="last_salary_adjustment_date" value="<%= agent.last_salary_adjustment_date || '' %>"
+                   class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Monto dia festivo</label>
+            <input type="number" step="0.01" name="holiday_day_amount" value="<%= agent.holiday_day_amount ?? '' %>"
+                   class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono">
+          </div>
+        </div>
+      </section>
+    <% } %>
+
+    <div class="flex justify-end gap-2">
+      <a href="/agentes" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg">Cancelar</a>
+      <button type="submit" class="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-800">
+        <%= mode === 'create' ? 'Crear agente' : 'Guardar cambios' %>
+      </button>
+    </div>
+  </form>
+</main>
+<%- include('partials/foot') %>

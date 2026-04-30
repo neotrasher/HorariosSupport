@@ -11,7 +11,7 @@ declare module 'express-session' {
       slack_id: string;
       name: string;
       avatar: string;
-      role: 'manager' | 'agent' | 'viewer';
+      role: 'admin' | 'manager' | 'agent' | 'viewer';
       dept?: string;
     };
   }
@@ -58,10 +58,12 @@ authRouter.get('/slack/callback', async (req: Request, res: Response) => {
     const avatar = userInfo.picture || '';
 
     const agent = getAgentBySlackId(slackId);
+    const isAdmin = config.adminSlackIds.includes(slackId);
     const isManager = config.managerSlackIds.includes(slackId);
 
-    let role: 'manager' | 'agent' | 'viewer' = 'viewer';
-    if (isManager) role = 'manager';
+    let role: 'admin' | 'manager' | 'agent' | 'viewer' = 'viewer';
+    if (isAdmin) role = 'admin';
+    else if (isManager) role = 'manager';
     else if (agent) role = 'agent';
 
     (req.session as any).user = { slack_id: slackId, name, avatar, role, dept: agent?.dept };
@@ -84,8 +86,14 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
 
 export function requireManager(req: Request, res: Response, next: NextFunction) {
   const user = (req.session as any)?.user;
-  if (user?.role === 'manager') return next();
+  if (user?.role === 'manager' || user?.role === 'admin') return next();
   res.status(403).render('error', { message: 'Acceso restringido a managers.' });
+}
+
+export function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  const user = (req.session as any)?.user;
+  if (user?.role === 'admin') return next();
+  res.status(403).render('error', { message: 'Acceso restringido al administrador.' });
 }
 
 function slackTokenExchange(code: string): Promise<any> {

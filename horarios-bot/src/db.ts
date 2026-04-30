@@ -136,6 +136,30 @@ export function migrate() {
   if (!hasCol('shift_date')) db.exec('ALTER TABLE punches ADD COLUMN shift_date TEXT');
   if (!hasCol('shift_id'))   db.exec('ALTER TABLE punches ADD COLUMN shift_id TEXT');
 
+  // Extended HR fields on agents (operational + sensitive)
+  const agentCols = db.prepare("PRAGMA table_info(agents)").all() as { name: string }[];
+  const hasAgentCol = (n: string) => agentCols.some(c => c.name === n);
+  // Operational
+  if (!hasAgentCol('admin_user'))            db.exec('ALTER TABLE agents ADD COLUMN admin_user TEXT');
+  if (!hasAgentCol('position'))              db.exec('ALTER TABLE agents ADD COLUMN position TEXT');
+  if (!hasAgentCol('email_company'))         db.exec('ALTER TABLE agents ADD COLUMN email_company TEXT');
+  if (!hasAgentCol('email_personal'))        db.exec('ALTER TABLE agents ADD COLUMN email_personal TEXT');
+  if (!hasAgentCol('start_date'))            db.exec('ALTER TABLE agents ADD COLUMN start_date TEXT');
+  if (!hasAgentCol('end_date'))              db.exec('ALTER TABLE agents ADD COLUMN end_date TEXT');
+  if (!hasAgentCol('last_evaluation_date'))  db.exec('ALTER TABLE agents ADD COLUMN last_evaluation_date TEXT');
+  if (!hasAgentCol('next_evaluation_date'))  db.exec('ALTER TABLE agents ADD COLUMN next_evaluation_date TEXT');
+  if (!hasAgentCol('birthdate'))             db.exec('ALTER TABLE agents ADD COLUMN birthdate TEXT');
+  if (!hasAgentCol('address'))               db.exec('ALTER TABLE agents ADD COLUMN address TEXT');
+  if (!hasAgentCol('phone'))                 db.exec('ALTER TABLE agents ADD COLUMN phone TEXT');
+  // Sensitive (admin only)
+  if (!hasAgentCol('id_number'))                  db.exec('ALTER TABLE agents ADD COLUMN id_number TEXT');
+  if (!hasAgentCol('salary_current'))             db.exec('ALTER TABLE agents ADD COLUMN salary_current REAL');
+  if (!hasAgentCol('salary_previous'))            db.exec('ALTER TABLE agents ADD COLUMN salary_previous REAL');
+  if (!hasAgentCol('salary_new'))                 db.exec('ALTER TABLE agents ADD COLUMN salary_new REAL');
+  if (!hasAgentCol('last_adjustment_pct'))        db.exec('ALTER TABLE agents ADD COLUMN last_adjustment_pct REAL');
+  if (!hasAgentCol('last_salary_adjustment_date')) db.exec('ALTER TABLE agents ADD COLUMN last_salary_adjustment_date TEXT');
+  if (!hasAgentCol('holiday_day_amount'))         db.exec('ALTER TABLE agents ADD COLUMN holiday_day_amount REAL');
+
   // Now safe to create indexes that reference the new columns
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_punches_shift
