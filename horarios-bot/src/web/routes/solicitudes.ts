@@ -105,6 +105,8 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
     if (slackApp) {
       const targets: { slack_id: string; channel: string; ts: string }[] = [];
       for (const managerId of config.managerSlackIds) {
+        // If the requester is also a manager, don't send the approve buttons to themselves
+        if (managerId === user.slack_id) continue;
         try {
           const im = await slackApp.client.conversations.open({ users: managerId });
           const ch = im.channel?.id;
@@ -188,6 +190,10 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
       res.redirect('/solicitudes');
       return;
     }
+    if (r.requester_slack_id === user.slack_id) {
+      res.status(403).render('error', { message: 'No puedes aprobar tu propia solicitud. Pide a otro manager que la revise.', user });
+      return;
+    }
     const agent = getAgentBySlackId(r.requester_slack_id);
     if (!agent) {
       res.status(400).render('error', { message: 'Agente no vinculado, no se puede aprobar.', user });
@@ -212,6 +218,10 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
     const r = getRequest(id);
     if (!r || r.status !== 'pending') {
       res.redirect('/solicitudes');
+      return;
+    }
+    if (r.requester_slack_id === user.slack_id) {
+      res.status(403).render('error', { message: 'No puedes rechazar tu propia solicitud.', user });
       return;
     }
     reject(id, user.slack_id, reasonInput);

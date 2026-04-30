@@ -37,6 +37,15 @@ export function registerTimeOffButtons(app: App) {
       return;
     }
 
+    if (req.requester_slack_id === approverSlackId) {
+      await client.chat.postEphemeral({
+        channel: (body as any).channel.id,
+        user: approverSlackId,
+        text: '❌ No puedes aprobar tu propia solicitud. Pide a otro manager que la revise.'
+      });
+      return;
+    }
+
     const agent = getAgentBySlackId(req.requester_slack_id);
     if (!agent) {
       await client.chat.postEphemeral({
@@ -73,6 +82,16 @@ export function registerTimeOffButtons(app: App) {
         channel: (body as any).channel.id,
         user: approverSlackId,
         text: '❌ Solo managers pueden rechazar.'
+      });
+      return;
+    }
+
+    const req = getRequest(requestId);
+    if (req && req.requester_slack_id === approverSlackId) {
+      await client.chat.postEphemeral({
+        channel: (body as any).channel.id,
+        user: approverSlackId,
+        text: '❌ No puedes rechazar tu propia solicitud.'
       });
       return;
     }

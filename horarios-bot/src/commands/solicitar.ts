@@ -72,6 +72,8 @@ export function registerSolicitar(app: App) {
     // DM all managers with approve/reject buttons
     const targets: { slack_id: string; channel: string; ts: string }[] = [];
     for (const managerId of config.managerSlackIds) {
+      // If the requester is also a manager, don't send the approve buttons to themselves
+      if (managerId === slackId) continue;
       try {
         const im = await client.conversations.open({ users: managerId });
         const ch = im.channel?.id;
