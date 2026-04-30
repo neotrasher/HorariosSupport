@@ -148,6 +148,43 @@ export function findScheduleEntry(plannerId: number, date: string): ScheduleEntr
   `).get(plannerId, date) as ScheduleEntryRow | undefined;
 }
 
+/** Shifts for one agent across a date range (inclusive). Excludes day-off dates. */
+export function getShiftsForAgentRange(plannerId: number, startDate: string, endDate: string): ResolvedShift[] {
+  const rows = db.prepare(`
+    SELECT s.* FROM schedule_entries s
+    WHERE s.planner_id = ? AND s.date >= ? AND s.date <= ?
+      AND NOT EXISTS (
+        SELECT 1 FROM days_off_entries d
+        WHERE d.planner_id = s.planner_id AND d.date = s.date
+      )
+    ORDER BY s.date ASC
+  `).all(plannerId, startDate, endDate) as ScheduleEntryRow[];
+  return rows.map(resolve).filter((x): x is ResolvedShift => !!x);
+}
+
+/** Day-off dates for one agent across a range. */
+export function getDaysOffForAgentRange(plannerId: number, startDate: string, endDate: string): { date: string; reason: string | null }[] {
+  return db.prepare(`
+    SELECT date, reason FROM days_off_entries
+    WHERE planner_id = ? AND date >= ? AND date <= ?
+    ORDER BY date ASC
+  `).all(plannerId, startDate, endDate) as { date: string; reason: string | null }[];
+}
+
+/** All shifts for all agents in a range. */
+export function getAllShiftsForRange(startDate: string, endDate: string): ResolvedShift[] {
+  const rows = db.prepare(`
+    SELECT s.* FROM schedule_entries s
+    WHERE s.date >= ? AND s.date <= ?
+      AND NOT EXISTS (
+        SELECT 1 FROM days_off_entries d
+        WHERE d.planner_id = s.planner_id AND d.date = s.date
+      )
+    ORDER BY s.date ASC
+  `).all(startDate, endDate) as ScheduleEntryRow[];
+  return rows.map(resolve).filter((x): x is ResolvedShift => !!x);
+}
+
 export function countScheduleEntries(plannerId: number, date: string): number {
   const r = db.prepare('SELECT COUNT(*) AS c FROM schedule_entries WHERE planner_id = ? AND date = ?')
     .get(plannerId, date) as { c: number };

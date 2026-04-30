@@ -1,0 +1,75 @@
+<%- include('partials/head') %>
+<%- include('partials/nav', { user }) %>
+
+<main class="max-w-6xl mx-auto px-4 py-6">
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+    <div>
+      <h2 class="text-xl font-semibold text-gray-900">Mi horario</h2>
+      <% if (agent) { %>
+        <p class="text-sm text-gray-500"><%= agent.name %> · <%= agent.dept %></p>
+      <% } else { %>
+        <p class="text-sm text-yellow-600">Tu cuenta no esta vinculada a un agente.</p>
+      <% } %>
+    </div>
+    <div class="flex items-center gap-2 text-sm">
+      <a href="/mi-horario?month=<%= prevMonth %>" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">&larr;</a>
+      <span class="px-3 py-1.5 font-medium capitalize"><%= monthLabel %></span>
+      <a href="/mi-horario?month=<%= nextMonth %>" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">&rarr;</a>
+    </div>
+  </div>
+
+  <% if (agent) { %>
+    <div class="grid grid-cols-3 gap-3 mb-6">
+      <div class="bg-white rounded-lg border border-gray-200 p-4">
+        <div class="text-2xl font-bold text-gray-900"><%= totalShifts %></div>
+        <div class="text-xs text-gray-500 mt-1">Turnos en el mes</div>
+      </div>
+      <div class="bg-white rounded-lg border border-gray-200 p-4">
+        <div class="text-2xl font-bold text-gray-600"><%= totalDaysOff %></div>
+        <div class="text-xs text-gray-500 mt-1">Dias libres</div>
+      </div>
+      <div class="bg-white rounded-lg border border-gray-200 p-4">
+        <div class="text-2xl font-bold text-gray-400"><%= displayTimezone %></div>
+        <div class="text-xs text-gray-500 mt-1">Zona display</div>
+      </div>
+    </div>
+  <% } %>
+
+  <% if (isEmpty) { %>
+    <div class="bg-white rounded-lg border border-gray-200 p-12 text-center">
+      <div class="text-gray-400 text-sm">Sin horario cargado para <span class="capitalize"><%= monthLabel %></span></div>
+    </div>
+  <% } else { %>
+    <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div class="grid grid-cols-7 bg-gray-50 border-b border-gray-200 text-xs font-medium text-gray-600">
+        <% ['Lun','Mar','Mie','Jue','Vie','Sab','Dom'].forEach(d => { %>
+          <div class="px-2 py-2 text-center"><%= d %></div>
+        <% }) %>
+      </div>
+      <% weeks.forEach(w => { %>
+        <div class="grid grid-cols-7 border-b border-gray-100 last:border-b-0">
+          <% w.forEach(c => { %>
+            <div class="min-h-[90px] p-2 border-r border-gray-100 last:border-r-0
+              <%= c.inMonth ? 'bg-white' : 'bg-gray-50/50 text-gray-300' %>
+              <%= c.isToday ? 'ring-1 ring-inset ring-yellow-300' : '' %>">
+              <div class="text-xs font-semibold <%= c.isToday ? 'text-yellow-700' : c.inMonth ? 'text-gray-900' : 'text-gray-300' %>"><%= c.dayNum %></div>
+              <% if (c.inMonth && c.shift) { %>
+                <div class="mt-1">
+                  <div class="text-xs font-semibold
+                    <%= c.shift.dept === 'L1' ? 'text-blue-700' : 'text-purple-700' %>">
+                    <%= c.shift.dept %>.<%= c.shift.shiftId %><%= c.shift.custom ? '*' : '' %>
+                  </div>
+                  <div class="text-[10px] text-gray-500"><%= c.shift.startUtc %>–<%= c.shift.endUtc %></div>
+                </div>
+              <% } else if (c.inMonth && c.dayOff) { %>
+                <div class="mt-1 text-xs text-gray-400">Libre</div>
+              <% } %>
+            </div>
+          <% }) %>
+        </div>
+      <% }) %>
+    </div>
+    <p class="text-xs text-gray-400 mt-2">Horas en UTC. <span class="font-mono">*</span> indica horas custom.</p>
+  <% } %>
+</main>
+<%- include('partials/foot') %>

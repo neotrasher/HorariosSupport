@@ -154,6 +154,15 @@ export function listInShiftAgents(): { slack_id: string; shift_date: string; shi
   `).all() as { slack_id: string; shift_date: string; shift_id: string; last_ts: string; last_type: string }[];
 }
 
+/** All punches scoped to a specific shift (slack, shift_date, shift_id). */
+export function getPunchesForShift(slackId: string, shiftDate: string, shiftId: string): Punch[] {
+  return db.prepare(`
+    SELECT * FROM punches
+    WHERE slack_id = ? AND shift_date = ? AND shift_id = ?
+    ORDER BY ts ASC
+  `).all(slackId, shiftDate, shiftId) as Punch[];
+}
+
 export function updatePunchNote(punchId: number, note: string) {
   db.prepare('UPDATE punches SET note = ? WHERE id = ?').run(note, punchId);
 }

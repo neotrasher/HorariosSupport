@@ -2,13 +2,16 @@
 <%- include('partials/nav', { user }) %>
 
 <main class="max-w-6xl mx-auto px-4 py-6">
-  <div class="flex items-center justify-between mb-6">
-    <h2 class="text-xl font-semibold text-gray-900">Horarios</h2>
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+    <div class="flex items-center gap-3">
+      <h2 class="text-xl font-semibold text-gray-900">Horarios</h2>
+      <%- include('partials/viewSwitch', { view }) %>
+    </div>
     <div class="flex items-center gap-2 text-sm">
-      <a href="/horarios?date=<%= prev %>" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">&larr;</a>
+      <a href="/horarios?view=day&date=<%= prev %>" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">&larr;</a>
       <span class="px-3 py-1.5 font-medium"><%= dateStr %> <span class="text-gray-400 font-normal">Sem <%= cycle %></span></span>
-      <a href="/horarios?date=<%= next %>" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">&rarr;</a>
-      <a href="/horarios" class="ml-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">Hoy</a>
+      <a href="/horarios?view=day&date=<%= next %>" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">&rarr;</a>
+      <a href="/horarios?view=day&date=<%= today %>" class="ml-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">Hoy</a>
     </div>
   </div>
 
@@ -28,8 +31,12 @@
             <span class="text-sm text-gray-500"><%= s.startUtc %>–<%= s.endUtc %> UTC</span>
           </div>
           <div class="flex flex-wrap gap-2">
-            <% s.agents.forEach(name => { %>
-              <span class="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-700"><%= name %></span>
+            <% s.agents.forEach(a => { %>
+              <% if (isManager) { %>
+                <a href="/horarios/agente/<%= a.plannerId %>" class="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-700 hover:bg-gray-200"><%= a.name %></a>
+              <% } else { %>
+                <span class="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-700"><%= a.name %></span>
+              <% } %>
             <% }) %>
           </div>
         </div>

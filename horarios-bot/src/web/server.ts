@@ -7,6 +7,8 @@ import { config } from '../config';
 import { authRouter, requireAuth } from './routes/auth';
 import { dashboardRouter } from './routes/dashboard';
 import { horariosRouter } from './routes/horarios';
+import { miHorarioRouter } from './routes/miHorario';
+import { agenteRouter } from './routes/agente';
 
 const SQLiteStore = require('connect-sqlite3')(session);
 
@@ -50,8 +52,10 @@ export function startWeb() {
   });
   app.use('/auth', authLimiter, authRouter);
 
-  app.use('/', requireAuth, dashboardRouter);
+  app.use('/mi-horario', requireAuth, miHorarioRouter);
+  app.use('/horarios/agente', requireAuth, agenteRouter);
   app.use('/horarios', requireAuth, horariosRouter);
+  app.use('/', requireAuth, dashboardRouter);
 
   // Global error handler — must be last
   app.use((err: any, req: Request, res: Response, _next: NextFunction) => {

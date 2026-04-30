@@ -1,0 +1,51 @@
+<%- include('partials/head') %>
+<%- include('partials/nav', { user }) %>
+
+<main class="max-w-7xl mx-auto px-4 py-6">
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+    <div class="flex items-center gap-3">
+      <h2 class="text-xl font-semibold text-gray-900">Horarios</h2>
+      <%- include('partials/viewSwitch', { view }) %>
+    </div>
+    <div class="flex items-center gap-2 text-sm">
+      <a href="/horarios?view=month&month=<%= prevMonth %>" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">&larr;</a>
+      <span class="px-3 py-1.5 font-medium capitalize"><%= monthLabel %></span>
+      <a href="/horarios?view=month&month=<%= nextMonth %>" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">&rarr;</a>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <div class="grid grid-cols-7 bg-gray-50 border-b border-gray-200 text-xs font-medium text-gray-600">
+      <% ['Lun','Mar','Mie','Jue','Vie','Sab','Dom'].forEach(d => { %>
+        <div class="px-2 py-2 text-center"><%= d %></div>
+      <% }) %>
+    </div>
+    <% weeks.forEach(w => { %>
+      <div class="grid grid-cols-7 border-b border-gray-100 last:border-b-0">
+        <% w.forEach(c => { %>
+          <a href="/horarios?view=day&date=<%= c.date %>" class="block min-h-[90px] p-2 border-r border-gray-100 last:border-r-0
+            <%= c.inMonth ? 'bg-white hover:bg-gray-50' : 'bg-gray-50/50 text-gray-300' %>
+            <%= c.isToday ? 'ring-1 ring-inset ring-yellow-300' : '' %>">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold <%= c.isToday ? 'text-yellow-700' : c.inMonth ? 'text-gray-900' : 'text-gray-300' %>"><%= c.dayNum %></span>
+              <% if (c.total > 0) { %>
+                <span class="text-[10px] text-gray-400"><%= c.total %></span>
+              <% } %>
+            </div>
+            <% if (c.inMonth) { %>
+              <div class="mt-1 space-y-0.5">
+                <% c.groups.forEach(g => { %>
+                  <div class="text-[10px] leading-tight
+                    <%= g.key.startsWith('L1') ? 'text-blue-700' : 'text-purple-700' %>">
+                    <%= g.key %>·<%= g.count %>
+                  </div>
+                <% }) %>
+              </div>
+            <% } %>
+          </a>
+        <% }) %>
+      </div>
+    <% }) %>
+  </div>
+</main>
+<%- include('partials/foot') %>
