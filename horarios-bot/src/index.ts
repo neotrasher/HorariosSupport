@@ -10,8 +10,10 @@ import { registerPunchFix } from './commands/punchFix';
 import { registerPunchTest } from './commands/punchTest';
 import { registerPunchReset } from './commands/punchReset';
 import { registerHorarioSwap } from './commands/horarioSwap';
+import { registerSolicitar } from './commands/solicitar';
 import { registerPunchButtons } from './actions/punchButtons';
 import { registerSwapButtons } from './actions/swapButtons';
+import { registerTimeOffButtons } from './actions/timeOffButtons';
 import { runShiftReminder } from './jobs/shiftReminder';
 import { runLateChecker } from './jobs/lateChecker';
 import { runBreakOverdueChecker } from './jobs/breakOverdueChecker';
@@ -38,10 +40,12 @@ async function main() {
   registerPunchTest(app);
   registerPunchReset(app);
   registerHorarioSwap(app);
+  registerSolicitar(app);
 
   // Button actions
   registerPunchButtons(app);
   registerSwapButtons(app);
+  registerTimeOffButtons(app);
 
   // Health DM (mention the bot anywhere)
   app.event('app_mention', async ({ event, say }) => {
@@ -68,7 +72,7 @@ async function main() {
 
   // Web platform
   if (config.web.slackClientId) {
-    startWeb();
+    startWeb(app);
   } else {
     console.log('Web: SLACK_WEB_CLIENT_ID not set — web platform disabled');
   }

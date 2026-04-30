@@ -3,16 +3,18 @@ import session from 'express-session';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
 import fs from 'fs';
+import type { App as SlackApp } from '@slack/bolt';
 import { config } from '../config';
 import { authRouter, requireAuth } from './routes/auth';
 import { dashboardRouter } from './routes/dashboard';
 import { horariosRouter } from './routes/horarios';
 import { miHorarioRouter } from './routes/miHorario';
 import { agenteRouter } from './routes/agente';
+import { buildSolicitudesRouter } from './routes/solicitudes';
 
 const SQLiteStore = require('connect-sqlite3')(session);
 
-export function startWeb() {
+export function startWeb(slackApp: SlackApp | null = null) {
   const app = express();
 
   // Behind Caddy reverse proxy — trust X-Forwarded-* so secure cookies work
@@ -55,6 +57,7 @@ export function startWeb() {
   app.use('/mi-horario', requireAuth, miHorarioRouter);
   app.use('/horarios/agente', requireAuth, agenteRouter);
   app.use('/horarios', requireAuth, horariosRouter);
+  app.use('/solicitudes', requireAuth, buildSolicitudesRouter(slackApp));
   app.use('/', requireAuth, dashboardRouter);
 
   // Global error handler — must be last

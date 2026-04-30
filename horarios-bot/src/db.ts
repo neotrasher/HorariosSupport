@@ -80,6 +80,26 @@ export function migrate() {
     );
     CREATE INDEX IF NOT EXISTS idx_doe_date ON days_off_entries(date);
 
+    CREATE TABLE IF NOT EXISTS time_off_requests (
+      id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+      requester_slack_id  TEXT NOT NULL,
+      type                TEXT NOT NULL,            -- 'permiso' | 'vacaciones'
+      start_date          TEXT NOT NULL,            -- YYYY-MM-DD inclusive
+      end_date            TEXT NOT NULL,            -- YYYY-MM-DD inclusive
+      reason              TEXT,
+      status              TEXT NOT NULL,            -- 'pending' | 'approved' | 'rejected' | 'cancelled'
+      approver_slack_id   TEXT,
+      approval_at         TEXT,
+      rejection_reason    TEXT,
+      approval_dm_targets TEXT,                     -- JSON array of {slack_id, channel, ts}
+      requester_dm_channel TEXT,
+      requester_dm_ts     TEXT,
+      created_at          TEXT NOT NULL DEFAULT (datetime('now')),
+      source              TEXT NOT NULL DEFAULT 'web' -- 'web' | 'bot'
+    );
+    CREATE INDEX IF NOT EXISTS idx_tor_requester ON time_off_requests(requester_slack_id, status);
+    CREATE INDEX IF NOT EXISTS idx_tor_status ON time_off_requests(status);
+
     CREATE TABLE IF NOT EXISTS swap_requests (
       id                 INTEGER PRIMARY KEY AUTOINCREMENT,
       requester_slack_id TEXT NOT NULL,
