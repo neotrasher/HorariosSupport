@@ -1,0 +1,40 @@
+<%- include('partials/head') %>
+<%- include('partials/nav', { user }) %>
+
+<main class="max-w-6xl mx-auto px-4 py-6">
+  <div class="flex items-center justify-between mb-6">
+    <h2 class="text-xl font-semibold text-gray-900">Horarios</h2>
+    <div class="flex items-center gap-2 text-sm">
+      <a href="/horarios?date=<%= prev %>" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">&larr;</a>
+      <span class="px-3 py-1.5 font-medium"><%= dateStr %> <span class="text-gray-400 font-normal">Sem <%= cycle %></span></span>
+      <a href="/horarios?date=<%= next %>" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">&rarr;</a>
+      <a href="/horarios" class="ml-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">Hoy</a>
+    </div>
+  </div>
+
+  <% if (shiftRows.length === 0) { %>
+    <div class="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-400">
+      Sin turnos cargados para esta fecha
+    </div>
+  <% } else { %>
+    <div class="grid gap-4">
+      <% shiftRows.forEach(s => { %>
+        <div class="bg-white rounded-lg border border-gray-200 p-4">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <span class="font-semibold text-gray-900"><%= s.dept %> <%= s.shiftId %></span>
+              <span class="text-gray-500 text-sm"><%= s.label %></span>
+            </div>
+            <span class="text-sm text-gray-500"><%= s.startUtc %>–<%= s.endUtc %> UTC</span>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <% s.agents.forEach(name => { %>
+              <span class="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-700"><%= name %></span>
+            <% }) %>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</main>
+<%- include('partials/foot') %>

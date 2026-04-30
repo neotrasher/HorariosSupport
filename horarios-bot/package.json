@@ -12,12 +12,18 @@
   "dependencies": {
     "@slack/bolt": "^3.21.4",
     "better-sqlite3": "^11.3.0",
+    "connect-sqlite3": "^0.9.16",
     "dotenv": "^16.4.5",
+    "ejs": "^5.0.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.4.1",
+    "express-session": "^1.19.0",
     "luxon": "^3.5.0",
     "node-cron": "^3.0.3"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.11",
+    "@types/express-session": "^1.19.0",
     "@types/luxon": "^3.4.2",
     "@types/node": "^22.7.4",
     "@types/node-cron": "^3.0.11",

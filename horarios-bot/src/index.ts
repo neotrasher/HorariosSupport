@@ -16,6 +16,7 @@ import { runShiftReminder } from './jobs/shiftReminder';
 import { runLateChecker } from './jobs/lateChecker';
 import { runBreakOverdueChecker } from './jobs/breakOverdueChecker';
 import { runForgotClockoutChecker } from './jobs/forgotClockoutChecker';
+import { startWeb } from './web/server';
 
 async function main() {
   migrate();
@@ -64,6 +65,13 @@ async function main() {
   }
   console.log(`Managers: ${config.managerSlackIds.join(', ') || '(none configured)'}`);
   console.log(`Attendance channel: ${config.attendanceChannelId || '(none — DM only)'}`);
+
+  // Web platform
+  if (config.web.slackClientId) {
+    startWeb();
+  } else {
+    console.log('Web: SLACK_WEB_CLIENT_ID not set — web platform disabled');
+  }
 }
 
 main().catch(e => {

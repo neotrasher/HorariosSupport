@@ -1,0 +1,22 @@
+<nav class="bg-white border-b border-gray-200 px-4 py-3">
+  <div class="max-w-6xl mx-auto flex items-center justify-between">
+    <div class="flex items-center gap-6">
+      <a href="/" class="text-lg font-semibold text-gray-900">Horarios Support</a>
+      <div class="hidden sm:flex items-center gap-4 text-sm">
+        <a href="/" class="text-gray-600 hover:text-gray-900">Dashboard</a>
+        <a href="/horarios" class="text-gray-600 hover:text-gray-900">Horarios</a>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <% if (user.avatar) { %>
+        <img src="<%= user.avatar %>" alt="" class="w-8 h-8 rounded-full">
+      <% } %>
+      <span class="text-sm text-gray-700"><%= user.name %></span>
+      <span class="text-xs px-2 py-0.5 rounded-full
+        <%= user.role === 'manager' ? 'bg-purple-100 text-purple-700' : user.role === 'agent' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600' %>">
+        <%= user.role %>
+      </span>
+      <a href="/auth/logout" class="text-sm text-gray-400 hover:text-gray-600 ml-2">Salir</a>
+    </div>
+  </div>
+</nav>

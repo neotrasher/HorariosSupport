@@ -27,6 +27,14 @@ export const config = {
   autoClockoutGraceMin: parseInt(process.env.AUTO_CLOCKOUT_GRACE_MIN || '30', 10),
   // Window after shift end during which auto-clockout will fire (don't fire after this)
   autoClockoutWindowMin: parseInt(process.env.AUTO_CLOCKOUT_WINDOW_MIN || '120', 10),
+  web: {
+    port: parseInt(process.env.WEB_PORT || '3000', 10),
+    slackClientId: process.env.SLACK_WEB_CLIENT_ID || '',
+    slackClientSecret: process.env.SLACK_WEB_CLIENT_SECRET || '',
+    slackRedirectUri: process.env.SLACK_WEB_REDIRECT_URI || 'https://localhost:3000/auth/slack/callback',
+    sessionSecret: process.env.WEB_SESSION_SECRET || 'horarios-dev-secret-change-me',
+    secureCookies: (process.env.WEB_SECURE_COOKIES || 'true').toLowerCase() === 'true'
+  },
   dbPath: process.env.DB_PATH || './data/bot.db',
   anchorDate: process.env.ANCHOR_DATE || '2026-04-27',
   anchorCycle: (process.env.ANCHOR_CYCLE || 'A') as 'A' | 'B' | 'C' | 'D',
