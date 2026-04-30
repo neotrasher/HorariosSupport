@@ -16,18 +16,24 @@ export async function runShiftReminder(app: App) {
   const now = DateTime.utc();
   const today = now.startOf('day');
   const yesterday = today.minus({ days: 1 });
+  const tomorrow = today.plus({ days: 1 });
 
   const candidates = [
     ...getAllShiftsForDate(today).map(s => ({ ...s, baseDate: today })),
     ...getAllShiftsForDate(yesterday)
       .filter(s => s.endHour > 24)
-      .map(s => ({ ...s, baseDate: yesterday }))
+      .map(s => ({ ...s, baseDate: yesterday })),
+    // Tomorrow's shifts starting just past midnight need to be considered when
+    // the cron runs in the last minutes of TODAY (e.g. 23:55 → tomorrow 00:00).
+    ...getAllShiftsForDate(tomorrow).map(s => ({ ...s, baseDate: tomorrow }))
   ];
 
   for (const c of candidates) {
     const w = shiftWindow(c.baseDate, c);
     const minsUntilStart = w.start.diff(now, 'minutes').minutes;
-    if (minsUntilStart < 0 || minsUntilStart > config.reminderLeadMin + 1) continue;
+    // Fire if shift starts within next reminderLeadMin minutes; allow 1 min of
+    // overshoot to recover from a missed cron tick (idempotency prevents dupes).
+    if (minsUntilStart < -1 || minsUntilStart > config.reminderLeadMin + 1) continue;
 
     const agent = getAgentByPlannerId(c.planner_id);
     if (!agent) continue;
