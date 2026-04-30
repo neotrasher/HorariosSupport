@@ -346,50 +346,57 @@ function buildDeptCard(dept) {
   // Header
   const hdr = document.createElement('div');
   hdr.className = 'dept-hdr';
-  hdr.innerHTML = `
-    <span class="dept-badge badge-${dept.id}">${dept.id}</span>
-    <span class="dept-title">${dept.label}</span>
-    <div class="shift-times">
-      ${dept.shifts.map(s=>`<span class="shift-lbl" style="background:${s.color}">${s.label} ${s.time}</span>`).join('')}
-    </div>`;
+  hdr.innerHTML = `<span class="dept-badge badge-${dept.id}">${dept.id}</span>
+    <span class="dept-title">${dept.label}</span>`;
   card.appendChild(hdr);
 
-  // Grid
+  // Grid: COLUMNS = days, ROWS = shifts
   const wrap = document.createElement('div');
   wrap.className = 'grid-wrap';
-  const cols = `48px repeat(${dept.shifts.length}, 1fr)`;
   const grid = document.createElement('div');
   grid.className = 'sgrid';
-  grid.style.gridTemplateColumns = cols;
+  // 88px for shift label + equal width for each day
+  grid.style.gridTemplateColumns = `88px repeat(${DAYS.length}, 1fr)`;
 
-  // Column headers
+  // ── Row 0: column headers (corner + day names) ──
   const corner = document.createElement('div');
   corner.className = 'gh';
+  corner.style.borderLeft = '3px solid transparent';
   grid.appendChild(corner);
-  for (const sh of dept.shifts) {
+
+  for (const day of DAYS) {
     const h = document.createElement('div');
-    h.className = 'gh' + (sh.id==='E' ? ' gh-E' : '');
-    h.innerHTML = `<span style="font-size:13px;font-weight:800">${sh.id}</span><br><span style="font-size:9px;color:#a0aec0;font-weight:400">${sh.time}</span>`;
+    h.className = 'gh';
+    h.title = DAY_FULL[day];
+    h.innerHTML = `<span style="font-size:14px;font-weight:800">${day}</span>
+      <br><span style="font-size:9px;color:#a0aec0;font-weight:500">${DAY_FULL[day].slice(0,3)}</span>`;
     grid.appendChild(h);
   }
 
-  // Day rows
-  for (const day of DAYS) {
-    const rowDiv = document.createElement('div');
-    rowDiv.className = 'grow';
+  // ── Rows 1+: one row per shift ──
+  for (let si = 0; si < dept.shifts.length; si++) {
+    const sh = dept.shifts[si];
+    const isLastRow = si === dept.shifts.length - 1;
 
-    const dl = document.createElement('div');
-    dl.className = 'gday';
-    dl.title = DAY_FULL[day];
-    dl.textContent = day;
-    dl.style.gridColumn = '1';
-    rowDiv.appendChild(dl);
+    // Shift label cell (left column)
+    const shLbl = document.createElement('div');
+    shLbl.className = 'gh' + (sh.id === 'E' ? ' gh-E' : '');
+    shLbl.style.cssText = `text-align:left;padding:7px 10px;
+      border-left:3px solid ${sh.color};
+      ${isLastRow ? 'border-bottom:none;' : ''}`;
+    shLbl.innerHTML = `<span style="font-size:13px;font-weight:800;color:${sh.color}">${sh.id}</span>
+      <span style="font-size:9px;color:#a0aec0;margin-left:4px">${sh.time}</span>
+      <br><span style="font-size:9px;color:#718096;font-weight:500">${sh.label}</span>`;
+    grid.appendChild(shLbl);
 
-    for (const sh of dept.shifts) {
+    // One cell per day
+    for (let di = 0; di < DAYS.length; di++) {
+      const day = DAYS[di];
       const cell = buildCell(dept.id, day, sh.id);
-      rowDiv.appendChild(cell);
+      if (di === DAYS.length - 1) cell.style.borderRight = 'none';
+      if (isLastRow) cell.style.borderBottom = 'none';
+      grid.appendChild(cell);
     }
-    grid.appendChild(rowDiv);
   }
 
   wrap.appendChild(grid);
