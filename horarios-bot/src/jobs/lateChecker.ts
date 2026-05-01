@@ -3,7 +3,7 @@ import { DateTime } from 'luxon';
 import { config } from '../config';
 import { getAllShiftsForDate, shiftWindow } from '../services/schedule';
 import { getAgentByPlannerId } from '../services/agents';
-import { hasClockInOnDate, alertAlreadySent, markAlertSent } from '../services/punches';
+import { getShiftState, alertAlreadySent, markAlertSent } from '../services/punches';
 
 /**
  * Runs every minute. If an agent's shift started more than `LATE_THRESHOLD_MIN`
@@ -30,11 +30,12 @@ export async function runLateChecker(app: App) {
     const agent = getAgentByPlannerId(c.planner_id);
     if (!agent) continue;
 
-    // Check both base date and today (in case agent punched after midnight)
-    if (hasClockInOnDate(agent.slack_id, c.baseDate)) continue;
-    if (hasClockInOnDate(agent.slack_id, today)) continue;
-
     const shiftDate = c.baseDate.toFormat('yyyy-LL-dd');
+    // Shift-scoped state — robust to clock-ins recorded a few minutes BEFORE midnight
+    // (00:00 UTC shifts often have ts in the previous UTC day).
+    const state = getShiftState(agent.slack_id, shiftDate, c.shift.id);
+    if (state !== 'off') continue;
+
     if (alertAlreadySent(agent.slack_id, shiftDate, c.shift.id, 'late')) continue;
 
     const startStr = w.start.toFormat('HH:mm');
