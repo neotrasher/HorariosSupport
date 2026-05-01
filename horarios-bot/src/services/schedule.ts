@@ -45,6 +45,7 @@ export type ResolvedShift = {
   cycle: string;
   day: string;
   note: string | null;
+  source: string;
 };
 
 function resolve(row: ScheduleEntryRow): ResolvedShift | null {
@@ -61,7 +62,8 @@ function resolve(row: ScheduleEntryRow): ResolvedShift | null {
     date: row.date,
     cycle: cycleForDate(date),
     day: dayCodeFromDate(date),
-    note: row.note
+    note: row.note,
+    source: row.source
   };
 }
 

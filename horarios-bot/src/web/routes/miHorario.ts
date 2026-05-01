@@ -39,7 +39,7 @@ miHorarioRouter.get('/', (req, res) => {
     dayNum: number;
     inMonth: boolean;
     isToday: boolean;
-    shift?: { dept: string; shiftId: string; label: string; startUtc: string; endUtc: string; custom: boolean };
+    shift?: { dept: string; shiftId: string; label: string; startUtc: string; endUtc: string; custom: boolean; swapped: boolean };
     dayOff?: { reason: string | null };
   };
 
@@ -65,7 +65,8 @@ miHorarioRouter.get('/', (req, res) => {
           label: sh.shift.label,
           startUtc: w.start.toFormat('HH:mm'),
           endUtc: w.end.toFormat('HH:mm'),
-          custom: sh.startHour !== sh.shift.startHour || sh.endHour !== sh.shift.endHour
+          custom: sh.startHour !== sh.shift.startHour || sh.endHour !== sh.shift.endHour,
+          swapped: sh.source === 'swap'
         };
       } else if (dayOffSet.has(dateStr)) {
         const d = daysOff.find(x => x.date === dateStr)!;

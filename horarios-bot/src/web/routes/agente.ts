@@ -49,7 +49,7 @@ agenteRouter.get('/:plannerId', requireManager, (req, res) => {
     kind: 'shift' | 'off' | 'empty';
     shift?: {
       dept: string; shiftId: string; label: string;
-      startUtc: string; endUtc: string; custom: boolean;
+      startUtc: string; endUtc: string; custom: boolean; swapped: boolean;
       status: string; statusClass: string;
       punches: { type: string; ts: string; source: string; note: string | null }[];
       lateMin: number | null;
@@ -125,6 +125,7 @@ agenteRouter.get('/:plannerId', requireManager, (req, res) => {
           startUtc: w.start.toFormat('HH:mm'),
           endUtc: w.end.toFormat('HH:mm'),
           custom: sh.startHour !== sh.shift.startHour || sh.endHour !== sh.shift.endHour,
+          swapped: sh.source === 'swap',
           status, statusClass,
           punches: punches.map(p => ({
             type: p.type,

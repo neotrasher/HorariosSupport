@@ -14,30 +14,45 @@
     </div>
   </div>
 
+  <!-- Leyenda dept -->
+  <div class="flex items-center gap-3 text-xs text-gray-500 mb-3">
+    <div class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-blue-500 inline-block"></span> L1 (nativos)</div>
+    <div class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-purple-500 inline-block"></span> L2 (nativos)</div>
+    <span class="text-gray-300">·</span>
+    <span>Conteo por dept nativo del agente, no por dept del turno. Click en un dia abre el detalle.</span>
+  </div>
+
   <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
-    <div class="grid grid-cols-7 bg-gray-50 border-b border-gray-200 text-xs font-medium text-gray-600">
-      <% ['Lun','Mar','Mie','Jue','Vie','Sab','Dom'].forEach(d => { %>
-        <div class="px-2 py-2 text-center"><%= d %></div>
+    <div class="grid grid-cols-7 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-600">
+      <% ['Lunes','Martes','Miercoles','Jueves','Viernes','Sabado','Domingo'].forEach((d, i) => { %>
+        <div class="px-2 py-2 text-center <%= i >= 5 ? 'text-gray-400' : '' %>"><%= d %></div>
       <% }) %>
     </div>
     <% weeks.forEach(w => { %>
       <div class="grid grid-cols-7 border-b border-gray-100 last:border-b-0">
         <% w.forEach(c => { %>
-          <a href="/horarios?view=day&date=<%= c.date %>" class="block min-h-[90px] p-2 border-r border-gray-100 last:border-r-0
-            <%= c.inMonth ? 'bg-white hover:bg-gray-50' : 'bg-gray-50/50 text-gray-300' %>
-            <%= c.isToday ? 'ring-1 ring-inset ring-yellow-300' : '' %>">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold <%= c.isToday ? 'text-yellow-700' : c.inMonth ? 'text-gray-900' : 'text-gray-300' %>"><%= c.dayNum %></span>
+          <a href="/horarios?view=day&date=<%= c.date %>"
+             class="block min-h-[110px] p-2 border-r border-gray-100 last:border-r-0 transition-colors
+            <%= c.inMonth ? 'bg-white hover:bg-blue-50/40' : 'bg-gray-50/40 text-gray-300' %>
+            <%= c.isToday ? 'ring-2 ring-inset ring-yellow-400' : '' %>">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-sm font-bold <%= c.isToday ? 'text-yellow-700' : c.inMonth ? 'text-gray-900' : 'text-gray-300' %>"><%= c.dayNum %></span>
               <% if (c.total > 0) { %>
-                <span class="text-[10px] text-gray-400"><%= c.total %></span>
+                <span class="text-[10px] text-gray-400 font-medium"><%= c.total %></span>
               <% } %>
             </div>
-            <% if (c.inMonth) { %>
-              <div class="mt-1 space-y-0.5">
-                <% c.groups.forEach(g => { %>
-                  <div class="text-[10px] leading-tight
-                    <%= g.key.startsWith('L1') ? 'text-blue-700' : 'text-purple-700' %>">
-                    <%= g.key %>·<%= g.count %>
+            <% if (c.inMonth && c.total > 0) { %>
+              <div class="space-y-1">
+                <% c.depts.forEach(d => {
+                  const isL1 = d.dept === 'L1';
+                  const badgeBg = isL1 ? 'bg-blue-500' : (d.dept === 'L2' ? 'bg-purple-500' : 'bg-gray-500');
+                  const txtCls = isL1 ? 'text-blue-700' : (d.dept === 'L2' ? 'text-purple-700' : 'text-gray-700');
+                %>
+                  <div class="flex items-center gap-1 text-[10px]">
+                    <span class="px-1 rounded text-white <%= badgeBg %> font-bold"><%= d.dept %>·<%= d.total %></span>
+                    <% d.shifts.forEach(sh => { %>
+                      <span class="<%= txtCls %>"><%= sh.id %><span class="text-gray-400">·<%= sh.count %></span></span>
+                    <% }) %>
                   </div>
                 <% }) %>
               </div>

@@ -12,6 +12,7 @@ import { miHorarioRouter } from './routes/miHorario';
 import { agenteRouter } from './routes/agente';
 import { agentesRouter } from './routes/agentes';
 import { reportesRouter } from './routes/reportes';
+import { plannerRouter } from './routes/planner';
 import { buildSolicitudesRouter } from './routes/solicitudes';
 
 const SQLiteStore = require('connect-sqlite3')(session);
@@ -62,6 +63,7 @@ export function startWeb(slackApp: SlackApp | null = null) {
   app.use('/solicitudes', requireAuth, buildSolicitudesRouter(slackApp));
   app.use('/agentes', requireAuth, agentesRouter);
   app.use('/reportes', requireAuth, reportesRouter);
+  app.use('/planner', requireAuth, plannerRouter);
   app.use('/', requireAuth, dashboardRouter);
 
   // Global error handler — must be last

@@ -1,7 +1,24 @@
 <%- include('partials/head') %>
 <%- include('partials/nav', { user }) %>
 
-<main class="max-w-6xl mx-auto px-4 py-6">
+<%
+  const CHIP_COLORS = [
+    'bg-emerald-100 text-emerald-800 ring-emerald-300',
+    'bg-blue-100 text-blue-800 ring-blue-300',
+    'bg-rose-100 text-rose-800 ring-rose-300',
+    'bg-amber-100 text-amber-800 ring-amber-300',
+    'bg-purple-100 text-purple-800 ring-purple-300',
+    'bg-cyan-100 text-cyan-800 ring-cyan-300',
+    'bg-pink-100 text-pink-800 ring-pink-300',
+    'bg-lime-100 text-lime-800 ring-lime-300',
+    'bg-orange-100 text-orange-800 ring-orange-300',
+    'bg-teal-100 text-teal-800 ring-teal-300',
+    'bg-violet-100 text-violet-800 ring-violet-300',
+    'bg-fuchsia-100 text-fuchsia-800 ring-fuchsia-300'
+  ];
+%>
+
+<main class="max-w-5xl mx-auto px-4 py-6">
   <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
     <div class="flex items-center gap-3">
       <h2 class="text-xl font-semibold text-gray-900">Horarios</h2>
@@ -9,39 +26,58 @@
     </div>
     <div class="flex items-center gap-2 text-sm">
       <a href="/horarios?view=day&date=<%= prev %>" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">&larr;</a>
-      <span class="px-3 py-1.5 font-medium"><%= dateStr %> <span class="text-gray-400 font-normal">Sem <%= cycle %></span></span>
+      <span class="px-3 py-1.5 font-medium capitalize"><%= dateLabelLocal %> <span class="text-gray-400 font-normal">Sem <%= cycle %></span></span>
       <a href="/horarios?view=day&date=<%= next %>" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">&rarr;</a>
       <a href="/horarios?view=day&date=<%= today %>" class="ml-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">Hoy</a>
     </div>
   </div>
 
-  <% if (shiftRows.length === 0) { %>
-    <div class="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-400">
-      Sin turnos cargados para esta fecha
-    </div>
-  <% } else { %>
-    <div class="grid gap-4">
-      <% shiftRows.forEach(s => { %>
-        <div class="bg-white rounded-lg border border-gray-200 p-4">
-          <div class="flex items-center justify-between mb-2">
-            <div class="flex items-center gap-2">
-              <span class="font-semibold text-gray-900"><%= s.dept %> <%= s.shiftId %></span>
-              <span class="text-gray-500 text-sm"><%= s.label %></span>
+  <% blocks.forEach(block => { %>
+    <section class="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
+      <header class="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-200">
+        <span class="inline-block px-2 py-0.5 rounded text-xs font-bold
+          <%= block.dept === 'L1' ? 'bg-blue-600 text-white' : 'bg-purple-600 text-white' %>">
+          <%= block.dept %>
+        </span>
+        <h3 class="font-semibold text-gray-900">Horario <%= block.dept %></h3>
+      </header>
+
+      <div class="divide-y divide-gray-100">
+        <% block.rows.forEach(row => { %>
+          <div class="flex items-start gap-4 px-4 py-3">
+            <div class="w-28 shrink-0">
+              <div class="font-bold text-gray-900 text-base"><%= row.id %> <span class="text-gray-400 font-normal text-xs"><%= row.label %></span></div>
+              <div class="text-xs text-gray-500"><%= row.startHour.toString().padStart(2,'0') %>:00–<%= (row.endHour % 24).toString().padStart(2,'0') %>:00 UTC</div>
             </div>
-            <span class="text-sm text-gray-500"><%= s.startUtc %>–<%= s.endUtc %> UTC</span>
-          </div>
-          <div class="flex flex-wrap gap-2">
-            <% s.agents.forEach(a => { %>
-              <% if (isManager) { %>
-                <a href="/horarios/agente/<%= a.plannerId %>" class="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-700 hover:bg-gray-200"><%= a.name %></a>
-              <% } else { %>
-                <span class="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-100 text-sm text-gray-700"><%= a.name %></span>
+            <div class="flex-1 flex flex-wrap gap-1.5">
+              <% if (row.agents.length === 0) { %>
+                <span class="text-xs text-gray-300 italic">sin agentes</span>
               <% } %>
-            <% }) %>
+              <% row.agents.forEach(a => { %>
+                <% const cls = CHIP_COLORS[a.colorIdx]; %>
+                <% const tip = a.name + (a.custom ? ' · custom hours' : '') + (!a.native ? ' · presta de ' + a.nativeDept : '') + (a.swapped ? ' · cambio aprobado' : ''); %>
+                <% if (isManager) { %>
+                  <a href="/horarios/agente/<%= a.plannerId %>"
+                     class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ring-1 hover:ring-2 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
+                     title="<%= tip %>">
+                    <% if (!a.native) { %><span class="px-1 rounded bg-white/60 text-[9px] font-bold"><%= a.nativeDept %></span><% } %>
+                    <%= a.name %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
+                    <% if (a.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
+                  </a>
+                <% } else { %>
+                  <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ring-1 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
+                        title="<%= tip %>">
+                    <% if (!a.native) { %><span class="px-1 rounded bg-white/60 text-[9px] font-bold"><%= a.nativeDept %></span><% } %>
+                    <%= a.name %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
+                    <% if (a.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
+                  </span>
+                <% } %>
+              <% }) %>
+            </div>
           </div>
-        </div>
-      <% }) %>
-    </div>
-  <% } %>
+        <% }) %>
+      </div>
+    </section>
+  <% }) %>
 </main>
 <%- include('partials/foot') %>

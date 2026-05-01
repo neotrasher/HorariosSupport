@@ -71,6 +71,9 @@
                   <%= r.shift.dept %>.<%= r.shift.shiftId %><%= r.shift.custom ? '*' : '' %>
                 </span>
                 <span class="text-gray-500 ml-1"><%= r.shift.startUtc %>–<%= r.shift.endUtc %></span>
+                <% if (r.shift.swapped) { %>
+                  <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold ring-1 ring-amber-300" title="Cambio aprobado">↔ cambio</span>
+                <% } %>
               <% } else if (r.kind === 'off') { %>
                 <span class="text-gray-400">Libre<% if (r.offReason) { %> · <%= r.offReason %><% } %></span>
               <% } else { %>
@@ -125,6 +128,6 @@
       </tbody>
     </table>
   </div>
-  <p class="text-xs text-gray-400 mt-2">Todos los timestamps en UTC. Source <span class="font-mono">[manual/auto/test]</span> indica origen no-boton.</p>
+  <p class="text-xs text-gray-400 mt-2">Todos los timestamps en UTC. Source <span class="font-mono">[manual/auto/test]</span> indica origen no-boton. <span class="px-1 rounded bg-amber-100 text-amber-800 text-[10px] font-bold ring-1 ring-amber-300">↔ cambio</span> = turno cambiado por aprobación de swap.</p>
 </main>
 <%- include('partials/foot') %>

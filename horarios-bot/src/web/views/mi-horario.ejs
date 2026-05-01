@@ -54,10 +54,11 @@
               <%= c.isToday ? 'ring-1 ring-inset ring-yellow-300' : '' %>">
               <div class="text-xs font-semibold <%= c.isToday ? 'text-yellow-700' : c.inMonth ? 'text-gray-900' : 'text-gray-300' %>"><%= c.dayNum %></div>
               <% if (c.inMonth && c.shift) { %>
-                <div class="mt-1">
+                <div class="mt-1 <%= c.shift.swapped ? 'ring-2 ring-amber-400 rounded px-1 -mx-1' : '' %>" <% if (c.shift.swapped) { %>title="Cambio aprobado"<% } %>>
                   <div class="text-xs font-semibold
                     <%= c.shift.dept === 'L1' ? 'text-blue-700' : 'text-purple-700' %>">
                     <%= c.shift.dept %>.<%= c.shift.shiftId %><%= c.shift.custom ? '*' : '' %>
+                    <% if (c.shift.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
                   </div>
                   <div class="text-[10px] text-gray-500"><%= c.shift.startUtc %>–<%= c.shift.endUtc %></div>
                 </div>
@@ -69,7 +70,7 @@
         </div>
       <% }) %>
     </div>
-    <p class="text-xs text-gray-400 mt-2">Horas en UTC. <span class="font-mono">*</span> indica horas custom.</p>
+    <p class="text-xs text-gray-400 mt-2">Horas en UTC. <span class="font-mono">*</span> = horas custom · <span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span> = cambio aprobado.</p>
   <% } %>
 </main>
 <%- include('partials/foot') %>
