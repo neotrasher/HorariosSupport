@@ -32,6 +32,7 @@
               <th class="text-left px-3 py-2 font-medium text-gray-600">Ingreso</th>
             <% } else { %>
               <th class="text-left px-3 py-2 font-medium text-gray-600">Ingreso</th>
+              <th class="text-right px-3 py-2 font-medium text-gray-600">Sal. anterior</th>
               <th class="text-right px-3 py-2 font-medium text-gray-600">Salario</th>
               <th class="text-right px-3 py-2 font-medium text-gray-600">% aum</th>
               <th class="text-right px-3 py-2 font-medium text-gray-600">Sal. nuevo</th>
@@ -52,7 +53,9 @@
               <td class="px-3 py-2 text-gray-700 text-xs"><%= a.position || '—' %></td>
               <td class="px-3 py-2 text-xs">
                 <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold
-                  <%= a.dept === 'L1' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700' %>">
+                  <% if (a.dept === 'L1') { %>bg-blue-100 text-blue-700
+                  <% } else if (a.dept === 'L2') { %>bg-purple-100 text-purple-700
+                  <% } else { %>bg-gray-100 text-gray-600<% } %>">
                   <%= a.dept %>
                 </span>
                 <% if (a.role === 'manager') { %>
@@ -67,6 +70,10 @@
               <% } else { %>
                 <!-- Fecha ingreso (read-only en la tabla; editable desde el detalle) -->
                 <td class="px-3 py-2 text-gray-600 text-xs"><%= a.start_date || '—' %></td>
+                <!-- Salario anterior (historico, read-only) -->
+                <td class="px-3 py-2 text-right text-xs font-mono text-gray-500">
+                  <%= a.salary_previous != null ? Number(a.salary_previous).toLocaleString() : '—' %>
+                </td>
                 <!-- Salario actual: inline editable, autosave -->
                 <td class="px-2 py-1 text-right">
                   <input type="number" step="0.01"
@@ -120,6 +127,30 @@
   <% } %>
 
   <% if (isAdmin) { %>
+    <!-- Modal de confirmacion de aumento -->
+    <div id="raise-modal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center px-4">
+      <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Aplicar aumento</h3>
+        <p class="text-sm text-gray-600 mb-4">A <strong id="raise-name"></strong>:</p>
+        <dl class="grid grid-cols-2 gap-y-2 text-sm bg-gray-50 rounded-lg p-4 mb-6">
+          <dt class="text-gray-500">Salario actual</dt>
+          <dd class="font-mono text-right text-gray-900" id="raise-current">—</dd>
+          <dt class="text-gray-500">Aumento</dt>
+          <dd class="font-mono text-right text-rose-700" id="raise-pct">—</dd>
+          <dt class="text-gray-500">Salario nuevo</dt>
+          <dd class="font-mono text-right text-rose-700 font-semibold" id="raise-new">—</dd>
+          <dt class="text-gray-500">Festivo (= sal/23)</dt>
+          <dd class="font-mono text-right text-gray-700" id="raise-holiday">—</dd>
+        </dl>
+        <div class="flex justify-end gap-2">
+          <button type="button" id="raise-cancel"
+            class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancelar</button>
+          <button type="button" id="raise-confirm"
+            class="px-4 py-2 text-sm bg-rose-600 text-white rounded-lg hover:bg-rose-700">Aplicar aumento</button>
+        </div>
+      </div>
+    </div>
+
     <script>
       (() => {
         const HOLIDAY_DIVISOR = 23;
@@ -188,17 +219,43 @@
           if (sal) sal.addEventListener('input', () => updateRowCalc(row));
         });
 
-        // Confirm before applying raise
+        // Custom confirmation modal for applying raise
+        const modal = document.getElementById('raise-modal');
+        const nameEl = document.getElementById('raise-name');
+        const currentEl = document.getElementById('raise-current');
+        const pctEl = document.getElementById('raise-pct');
+        const newEl = document.getElementById('raise-new');
+        const holidayEl = document.getElementById('raise-holiday');
+        const confirmBtn = document.getElementById('raise-confirm');
+        const cancelBtn = document.getElementById('raise-cancel');
+        let pendingForm = null;
+
+        const closeModal = () => {
+          modal.classList.add('hidden');
+          pendingForm = null;
+        };
+        cancelBtn.addEventListener('click', closeModal);
+        modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeModal(); });
+        confirmBtn.addEventListener('click', () => {
+          if (pendingForm) pendingForm.submit();
+        });
+
         document.querySelectorAll('form.raise-form').forEach(form => {
           form.addEventListener('submit', e => {
             const row = form.closest('tr');
             const sal = parseFloat(row.querySelector('.salary-input').value);
             const pct = parseFloat(row.querySelector('.pct-input').value);
+            if (!isFinite(sal) || !isFinite(pct) || pct === 0) return;
+            e.preventDefault();
             const nuevo = sal * (1 + pct / 100);
-            const name = row.querySelector('a').textContent.trim();
-            if (!confirm(`Aplicar aumento a ${name}?\n\nActual: ${fmt(sal)}\n+${pct}%\nNuevo: ${fmt(nuevo)}`)) {
-              e.preventDefault();
-            }
+            nameEl.textContent = row.querySelector('a').textContent.trim();
+            currentEl.textContent = fmt(sal);
+            pctEl.textContent = `+${pct}%`;
+            newEl.textContent = fmt(nuevo);
+            holidayEl.textContent = fmt(nuevo / HOLIDAY_DIVISOR);
+            pendingForm = form;
+            modal.classList.remove('hidden');
           });
         });
       })();

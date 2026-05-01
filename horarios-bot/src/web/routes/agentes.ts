@@ -46,7 +46,7 @@ agentesRouter.post('/nuevo', (req, res) => {
   const plannerId = parseInt(plannerIdRaw, 10);
   if (isNaN(plannerId)) return renderError('planner_id debe ser numero.');
   if (!name) return renderError('Nombre es obligatorio.');
-  if (!['L1', 'L2'].includes(dept)) return renderError('Dept debe ser L1 o L2.');
+  if (!['L1', 'L2', 'MGMT'].includes(dept)) return renderError('Dept debe ser L1, L2 o MGMT.');
 
   if (getAgentBySlackId(slackId)) return renderError('Ya existe un agente con ese slack_id.');
 
@@ -95,8 +95,8 @@ agentesRouter.post('/:slackId', (req, res) => {
   // Operational fields — both managers and admin can edit
   const opFields = pickFields(req.body, [...OPERATIONAL_FIELDS, 'role']);
   // dept must be L1/L2; role agent/manager (whitelist)
-  if (opFields.dept && !['L1', 'L2'].includes(opFields.dept as string)) {
-    res.status(400).render('error', { message: 'Dept debe ser L1 o L2.', user });
+  if (opFields.dept && !['L1', 'L2', 'MGMT'].includes(opFields.dept as string)) {
+    res.status(400).render('error', { message: 'Dept debe ser L1, L2 o MGMT.', user });
     return;
   }
   if (opFields.role && !['agent', 'manager'].includes(opFields.role as string)) {
@@ -122,7 +122,7 @@ agentesRouter.post('/:slackId', (req, res) => {
     if (Object.keys(sensFields).length) updateAgentFields(slackId, sensFields);
   }
 
-  res.redirect(`/agentes/${slackId}`);
+  res.redirect('/agentes');
 });
 
 /**
