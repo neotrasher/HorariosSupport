@@ -5,7 +5,7 @@ import {
   updateAgentFields, setActive,
   OPERATIONAL_FIELDS, SENSITIVE_FIELDS
 } from '../../services/agents';
-import { requireManager } from './auth';
+import { requireManager, requireAdmin } from './auth';
 
 export const agentesRouter = Router();
 
@@ -123,6 +123,76 @@ agentesRouter.post('/:slackId', (req, res) => {
   }
 
   res.redirect(`/agentes/${slackId}`);
+});
+
+/**
+ * Inline update of a single sensitive field (admin only). Used by the editable
+ * cells in the agents list. JSON in / JSON out so the JS can update the UI
+ * without a full reload.
+ */
+agentesRouter.post('/:slackId/inline-update', requireAdmin, (req, res) => {
+  const slackId = req.params.slackId;
+  const agent = getAgentBySlackId(slackId);
+  if (!agent) {
+    res.status(404).json({ ok: false, error: 'agent not found' });
+    return;
+  }
+
+  const field = req.body.field as string;
+  const allowedInline = ['id_number', 'salary_current'];
+  if (!allowedInline.includes(field)) {
+    res.status(400).json({ ok: false, error: 'field not allowed' });
+    return;
+  }
+
+  let value: any = req.body.value;
+  if (field === 'salary_current') {
+    if (value === '' || value === null || value === undefined) value = null;
+    else {
+      const n = parseFloat(String(value));
+      value = isNaN(n) ? null : n;
+    }
+  } else {
+    value = (typeof value === 'string' && value.trim() === '') ? null : value;
+  }
+
+  updateAgentFields(slackId, { [field]: value });
+  res.json({ ok: true });
+});
+
+/**
+ * Apply a salary raise: snapshots current as previous, sets new = current * (1+pct/100),
+ * records pct and date. Admin only.
+ */
+agentesRouter.post('/:slackId/apply-raise', requireAdmin, (req, res) => {
+  const slackId = req.params.slackId;
+  const agent = getAgentBySlackId(slackId);
+  if (!agent) {
+    res.status(404).render('error', { message: 'Agente no encontrado.', user: (req.session as any).user });
+    return;
+  }
+
+  const pct = parseFloat(String(req.body.pct || ''));
+  if (isNaN(pct) || pct === 0) {
+    res.redirect('/agentes');
+    return;
+  }
+  const current = agent.salary_current;
+  if (current == null) {
+    res.status(400).render('error', { message: 'No se puede aplicar aumento: el agente no tiene salario actual.', user: (req.session as any).user });
+    return;
+  }
+  const newSalary = +(current * (1 + pct / 100)).toFixed(2);
+
+  updateAgentFields(slackId, {
+    salary_previous: current,
+    salary_current: newSalary,
+    salary_new: newSalary,
+    last_adjustment_pct: pct,
+    last_salary_adjustment_date: DateTime.utc().toFormat('yyyy-LL-dd')
+  });
+
+  res.redirect('/agentes');
 });
 
 agentesRouter.post('/:slackId/toggle-active', (req, res) => {

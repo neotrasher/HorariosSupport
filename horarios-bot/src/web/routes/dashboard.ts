@@ -12,12 +12,14 @@ dashboardRouter.get('/', (req, res) => {
   const now = DateTime.utc();
   const today = now.startOf('day');
   const yesterday = today.minus({ days: 1 });
+  const tomorrow = today.plus({ days: 1 });
 
   const agents = listAgents();
   const agentByPid = new Map(agents.map(a => [a.planner_id, a]));
 
   const shiftsToday = getAllShiftsForDate(today);
   const shiftsYesterday = getAllShiftsForDate(yesterday);
+  const shiftsTomorrow = getAllShiftsForDate(tomorrow);
 
   type Row = {
     agent: string; dept: string; shiftLabel: string;
@@ -38,11 +40,22 @@ dashboardRouter.get('/', (req, res) => {
 
     if (now < w.start) {
       const mins = Math.round(w.start.diff(now, 'minutes').minutes);
-      if (mins > 60) return;
-      status = `Inicia en ${mins}m`;
+      if (mins > 8 * 60) return;
+      if (mins >= 60) {
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        status = m ? `Inicia en ${h}h${m}m` : `Inicia en ${h}h`;
+      } else {
+        status = `Inicia en ${mins}m`;
+      }
       statusClass = 'upcoming';
     } else if (now > w.end) {
-      if (state === 'completed') { status = 'Finalizado'; statusClass = 'completed'; }
+      const hoursAgo = now.diff(w.end, 'hours').hours;
+      if (state === 'completed') {
+        if (hoursAgo > 8) return;
+        status = 'Finalizado';
+        statusClass = 'completed';
+      }
       else if (state === 'in' || state === 'on_break') {
         const over = Math.round(now.diff(w.end, 'minutes').minutes);
         status = `Sin clock out (+${over}m)`;
@@ -67,11 +80,15 @@ dashboardRouter.get('/', (req, res) => {
   };
 
   for (const s of shiftsToday) processShift(s, today);
-  for (const s of shiftsYesterday) {
-    if (s.endHour > 24) processShift(s, yesterday);
-  }
+  // Process all of yesterday's shifts so we catch:
+  //  - overnight shifts still active (e.g., L2.N 19→27)
+  //  - regular shifts that finished within the last 8h (Finalizados window)
+  for (const s of shiftsYesterday) processShift(s, yesterday);
+  // Tomorrow's shifts that might be within the 8h upcoming window
+  // (e.g., L1.M at 00:00 UTC seen from 22:00 UTC today).
+  for (const s of shiftsTomorrow) processShift(s, tomorrow);
 
-  const statusOrder: Record<string, number> = { alert: 0, warning: 1, active: 2, break: 3, upcoming: 4, completed: 5 };
+  const statusOrder: Record<string, number> = { alert: 0, warning: 1, completed: 2, active: 3, break: 4, upcoming: 5 };
   rows.sort((a, b) => (statusOrder[a.statusClass] ?? 9) - (statusOrder[b.statusClass] ?? 9));
 
   const counts = {
