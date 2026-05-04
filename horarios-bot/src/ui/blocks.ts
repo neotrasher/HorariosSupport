@@ -9,8 +9,9 @@ export function punchButtonsBlocks(opts: {
   shiftDate: string;
   startISO: string;
   endISO: string;
+  lastPunch?: { type: string; ts: string; lateMin?: number; excessMin?: number } | null;
 }) {
-  const { state, dept, shift, shiftDate, startISO, endISO } = opts;
+  const { state, dept, shift, shiftDate, startISO, endISO, lastPunch } = opts;
   const startEpoch = Math.floor(new Date(startISO).getTime() / 1000);
   const endEpoch = Math.floor(new Date(endISO).getTime() / 1000);
 
@@ -57,6 +58,26 @@ export function punchButtonsBlocks(opts: {
   }
   // state === 'completed' → no buttons; message frozen as "Turno finalizado"
 
+  // Compose "última marca" line if we have a recent punch
+  let lastLine = '';
+  if (lastPunch) {
+    const lpEpoch = Math.floor(new Date(lastPunch.ts).getTime() / 1000);
+    const lpLabel: Record<string, string> = {
+      clock_in: 'Clock In',
+      break_in: 'Break In',
+      break_out: 'Break Out',
+      clock_out: 'Clock Out'
+    };
+    const action = lpLabel[lastPunch.type] || lastPunch.type;
+    let suffix = '';
+    if (lastPunch.lateMin && lastPunch.lateMin > 0) {
+      suffix = ` · ⚠️ *+${lastPunch.lateMin} min de retraso*`;
+    } else if (lastPunch.excessMin && lastPunch.excessMin > 0) {
+      suffix = ` · ⚠️ *+${lastPunch.excessMin} min de exceso*`;
+    }
+    lastLine = `\n✓ Última marca: *${action}* · <!date^${lpEpoch}^{time}|${lastPunch.ts} UTC>${suffix}`;
+  }
+
   return [
     {
       type: 'section',
@@ -64,7 +85,7 @@ export function punchButtonsBlocks(opts: {
         type: 'mrkdwn',
         text: `*Tu turno de hoy* — ${dept} ${shift.label}\n` +
               `🕐 <!date^${startEpoch}^{time}|${shift.startHour}:00 UTC> → <!date^${endEpoch}^{time}|${shift.endHour}:00 UTC>\n` +
-              `Estado: ${stateLabel}`
+              `Estado: ${stateLabel}` + lastLine
       }
     },
     ...(buttons.length ? [{ type: 'actions', elements: buttons }] : []),
@@ -358,6 +379,7 @@ export function timeOffModalView() {
 export function attendancePostBlocks(opts: {
   agentName: string; type: string; ts: string; dept: string; shiftId: string;
   excessMin?: number;
+  lateMin?: number;
 }) {
   const emoji = {
     clock_in: '🟢',
@@ -372,12 +394,14 @@ export function attendancePostBlocks(opts: {
     break_out: 'regresó del break'
   }[opts.type] || opts.type;
   const epoch = Math.floor(new Date(opts.ts).getTime() / 1000);
-  const excess = opts.excessMin && opts.excessMin > 0 ? ` · ⚠️ *+${opts.excessMin} min extra*` : '';
+  let suffix = '';
+  if (opts.lateMin && opts.lateMin > 0) suffix = ` · ⚠️ *+${opts.lateMin} min de retraso*`;
+  else if (opts.excessMin && opts.excessMin > 0) suffix = ` · ⚠️ *+${opts.excessMin} min de exceso*`;
   return [{
     type: 'context',
     elements: [{
       type: 'mrkdwn',
-      text: `${emoji} *${opts.agentName}* ${action} · ${opts.dept} ${opts.shiftId} · <!date^${epoch}^{time}|${opts.ts} UTC>${excess}`
+      text: `${emoji} *${opts.agentName}* ${action} · ${opts.dept} ${opts.shiftId} · <!date^${epoch}^{time}|${opts.ts} UTC>${suffix}`
     }]
   }];
 }

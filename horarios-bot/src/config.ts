@@ -27,6 +27,8 @@ export const config = {
   breakInLockoutMin: parseInt(process.env.BREAK_IN_LOCKOUT_MIN || '60', 10),
   // Maximum allowed break duration; reminder fires past this and excess is logged
   breakMaxMin: parseInt(process.env.BREAK_MAX_MIN || '60', 10),
+  // Grace period (minutes) before clock-in or break-out is reported as late
+  gracePeriodMin: parseInt(process.env.GRACE_PERIOD_MIN || '5', 10),
   // Grace period after shift end before auto-clockout fires (agent forgot to mark out)
   autoClockoutGraceMin: parseInt(process.env.AUTO_CLOCKOUT_GRACE_MIN || '30', 10),
   // Window after shift end during which auto-clockout will fire (don't fire after this)

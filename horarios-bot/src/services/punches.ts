@@ -110,6 +110,16 @@ export function setShiftMessage(
   `).run(slackId, shiftDate, shiftId, channelId, ts);
 }
 
+/** Most recent punch (any type) for a specific shift, or null. */
+export function lastPunchForShift(slackId: string, shiftDate: string, shiftId: string): Punch | null {
+  const r = db.prepare(`
+    SELECT * FROM punches
+    WHERE slack_id = ? AND shift_date = ? AND shift_id = ?
+    ORDER BY ts DESC LIMIT 1
+  `).get(slackId, shiftDate, shiftId) as Punch | undefined;
+  return r || null;
+}
+
 /** Most recent break_in punch ts (UTC ISO) for a specific shift, or null. */
 export function lastBreakInTs(slackId: string, shiftDate: string, shiftId: string): string | null {
   const r = db.prepare(`
