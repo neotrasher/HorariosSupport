@@ -130,10 +130,24 @@ export function lastBreakInTs(slackId: string, shiftDate: string, shiftId: strin
   return r?.ts || null;
 }
 
+/** Most recent break_in with its chosen duration (parsed from note, default 60). */
+export function lastBreakInWithDur(slackId: string, shiftDate: string, shiftId: string): { ts: string; durMin: number } | null {
+  const r = db.prepare(`
+    SELECT ts, note FROM punches
+    WHERE slack_id = ? AND shift_date = ? AND shift_id = ? AND type = 'break_in'
+    ORDER BY ts DESC LIMIT 1
+  `).get(slackId, shiftDate, shiftId) as { ts: string; note: string | null } | undefined;
+  if (!r) return null;
+  // Note format: "dur=30" or "dur=60"; missing = legacy 60-min break
+  const m = (r.note || '').match(/dur=(\d+)/);
+  const durMin = m ? parseInt(m[1], 10) : 60;
+  return { ts: r.ts, durMin };
+}
+
 /** Agents currently on break: latest punch in their (slack, shift) is a break_in within last 18h. */
-export function listAgentsOnBreak(): { slack_id: string; shift_date: string; shift_id: string; break_in_ts: string }[] {
-  return db.prepare(`
-    SELECT p.slack_id, p.shift_date, p.shift_id, p.ts AS break_in_ts FROM punches p
+export function listAgentsOnBreak(): { slack_id: string; shift_date: string; shift_id: string; break_in_ts: string; dur_min: number }[] {
+  const rows = db.prepare(`
+    SELECT p.slack_id, p.shift_date, p.shift_id, p.ts AS break_in_ts, p.note FROM punches p
     WHERE p.type = 'break_in'
       AND p.shift_date IS NOT NULL AND p.shift_id IS NOT NULL
       AND p.ts >= datetime('now', '-18 hours')
@@ -144,7 +158,12 @@ export function listAgentsOnBreak(): { slack_id: string; shift_date: string; shi
           AND p2.shift_id = p.shift_id
           AND p2.ts > p.ts
       )
-  `).all() as { slack_id: string; shift_date: string; shift_id: string; break_in_ts: string }[];
+  `).all() as { slack_id: string; shift_date: string; shift_id: string; break_in_ts: string; note: string | null }[];
+  return rows.map(r => {
+    const m = (r.note || '').match(/dur=(\d+)/);
+    const dur_min = m ? parseInt(m[1], 10) : 60;
+    return { slack_id: r.slack_id, shift_date: r.shift_date, shift_id: r.shift_id, break_in_ts: r.break_in_ts, dur_min };
+  });
 }
 
 /** Agents whose latest shift-scoped punch is clock_in or break_out (state='in'). */

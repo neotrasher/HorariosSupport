@@ -35,8 +35,13 @@ export function punchButtonsBlocks(opts: {
   if (state === 'in') {
     buttons.push({
       type: 'button',
-      text: { type: 'plain_text', text: 'Break In' },
-      action_id: 'punch_break_in', value
+      text: { type: 'plain_text', text: 'Break 30 min' },
+      action_id: 'punch_break_in_30', value
+    });
+    buttons.push({
+      type: 'button',
+      text: { type: 'plain_text', text: 'Break 1h' },
+      action_id: 'punch_break_in_60', value
     });
     buttons.push({
       type: 'button', style: 'danger',

@@ -17,11 +17,13 @@ export async function runBreakOverdueChecker(app: App) {
   for (const b of onBreak) {
     const breakIn = DateTime.fromISO(b.break_in_ts, { zone: 'utc' });
     const elapsed = now.diff(breakIn, 'minutes').minutes;
-    if (elapsed < config.breakMaxMin) continue;
+    const limit = b.dur_min || 60; // duration chosen at break-in time
+    if (elapsed < limit) continue;
     if (alertAlreadySent(b.slack_id, b.shift_date, b.shift_id, 'break_overdue')) continue;
 
     const agent = getAgentBySlackId(b.slack_id);
-    const overMin = Math.round(elapsed - config.breakMaxMin);
+    const overMin = Math.round(elapsed - limit);
+    const durLbl = limit === 30 ? '30 min' : '1h';
 
     // DM agent
     try {
@@ -30,16 +32,20 @@ export async function runBreakOverdueChecker(app: App) {
       if (ch) {
         await app.client.chat.postMessage({
           channel: ch,
-          text: `⏰ Llevas más de ${config.breakMaxMin} min en break (${overMin} min de exceso). Marca *Break Out* cuando regreses.`
+          text: `⏰ Llevas más de ${durLbl} en break (${overMin} min de exceso). Marca *Break Out* cuando regreses.`
         });
       }
     } catch (e) {
       console.error('break overdue agent DM failed:', e);
     }
 
-    // DM managers
-    const mgrText = `⚠️ *${agent?.name || `<@${b.slack_id}>`}* lleva *${Math.round(elapsed)} min* en break (límite ${config.breakMaxMin} min · ${overMin} min de exceso) · turno ${b.shift_date} ${b.shift_id}`;
-    for (const mgrId of config.managerSlackIds) {
+    // DM managers + admins
+    const notifyTargets = Array.from(new Set([
+      ...config.managerSlackIds,
+      ...config.adminSlackIds
+    ]));
+    const mgrText = `⚠️ *${agent?.name || `<@${b.slack_id}>`}* lleva *${Math.round(elapsed)} min* en break (eligió ${durLbl} · ${overMin} min de exceso) · turno ${b.shift_date} ${b.shift_id}`;
+    for (const mgrId of notifyTargets) {
       try {
         const im = await app.client.conversations.open({ users: mgrId });
         const ch = (im as any).channel?.id;

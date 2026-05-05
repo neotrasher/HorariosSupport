@@ -3,7 +3,7 @@ import { DateTime } from 'luxon';
 import { config, SHIFTS } from '../config';
 import {
   recordPunch, getShiftState, PunchType,
-  lastBreakInTs, lastPunchId, updatePunchNote, lastPunchForShift
+  lastBreakInWithDur, lastPunchId, updatePunchNote, lastPunchForShift
 } from '../services/punches';
 import { getAgentBySlackId } from '../services/agents';
 import { punchButtonsBlocks, attendancePostBlocks } from '../ui/blocks';
@@ -11,9 +11,18 @@ import { punchButtonsBlocks, attendancePostBlocks } from '../ui/blocks';
 const ACTION_TO_TYPE: Record<string, PunchType> = {
   punch_clock_in: 'clock_in',
   punch_clock_out: 'clock_out',
-  punch_break_in: 'break_in',
+  punch_break_in_30: 'break_in',
+  punch_break_in_60: 'break_in',
+  punch_break_in: 'break_in', // legacy fallback for any older DM message
   punch_break_out: 'break_out'
 };
+
+/** Extract the chosen break duration from the action_id. Default 60 for legacy. */
+function durMinFromActionId(actionId: string): number {
+  if (actionId === 'punch_break_in_30') return 30;
+  if (actionId === 'punch_break_in_60') return 60;
+  return 60; // legacy `punch_break_in`
+}
 
 export function registerPunchButtons(app: App) {
   for (const actionId of Object.keys(ACTION_TO_TYPE)) {
@@ -33,45 +42,51 @@ export function registerPunchButtons(app: App) {
       const start = date.startOf('day').plus({ hours: shift.startHour });
       const end = date.startOf('day').plus({ hours: shift.endHour });
 
-      // Rule 1: block Break In within last hour of shift
+      // Determine break duration if it's a break_in (30 or 60). 0 otherwise.
+      const breakDur = type === 'break_in' ? durMinFromActionId(actionId) : 0;
+
+      // Rule 1: block Break In if not enough time left for the chosen duration
       if (type === 'break_in') {
         const minsToEnd = end.diff(now, 'minutes').minutes;
-        if (minsToEnd <= config.breakInLockoutMin) {
+        if (minsToEnd <= breakDur) {
+          const msg = `❌ No alcanza para un break de ${breakDur} min: faltan ${Math.max(0, Math.round(minsToEnd))} min para terminar el turno.`;
           try {
             await client.chat.postEphemeral({
               channel: (body as any).channel?.id || slackId,
               user: slackId,
-              text: `❌ No se permite Break In en la última hora del turno (faltan ${Math.max(0, Math.round(minsToEnd))} min para terminar).`
+              text: msg
             });
           } catch {
             try {
-              await client.chat.postMessage({
-                channel: slackId,
-                text: `❌ No se permite Break In en la última hora del turno (faltan ${Math.max(0, Math.round(minsToEnd))} min).`
-              });
+              await client.chat.postMessage({ channel: slackId, text: msg });
             } catch { /* ignore */ }
           }
           return;
         }
       }
 
-      // Record punch
-      recordPunch(slackId, type, { source: 'button', ts: now, shiftDate, shiftId });
+      // Record punch (encode break duration in note for break_in)
+      recordPunch(slackId, type, {
+        source: 'button', ts: now, shiftDate, shiftId,
+        note: type === 'break_in' ? `dur=${breakDur}` : undefined
+      });
 
       const grace = config.gracePeriodMin;
 
-      // Rule 2: on Break Out, compute excess vs last break_in (apply grace period)
+      // Rule 2: on Break Out, compute excess vs last break_in's chosen duration (apply grace)
       let excessMin = 0; // raw excess used internally for note
       let reportedExcessMin = 0; // what we surface to UI/manager (after grace)
+      let breakDurUsed = 0; // duration of the break being closed (for messages)
       if (type === 'break_out') {
-        const biTs = lastBreakInTs(slackId, shiftDate, shiftId);
-        if (biTs) {
-          const bi = DateTime.fromISO(biTs, { zone: 'utc' });
+        const last = lastBreakInWithDur(slackId, shiftDate, shiftId);
+        if (last) {
+          const bi = DateTime.fromISO(last.ts, { zone: 'utc' });
           const elapsed = now.diff(bi, 'minutes').minutes;
-          if (elapsed > config.breakMaxMin) {
-            excessMin = Math.round(elapsed - config.breakMaxMin);
+          breakDurUsed = last.durMin;
+          if (elapsed > last.durMin) {
+            excessMin = Math.round(elapsed - last.durMin);
             const punchId = lastPunchId(slackId, shiftDate, shiftId, 'break_out');
-            if (punchId) updatePunchNote(punchId, `exceso ${excessMin}m`);
+            if (punchId) updatePunchNote(punchId, `exceso ${excessMin}m sobre ${last.durMin}m`);
             if (excessMin > grace) reportedExcessMin = excessMin;
           }
         }
@@ -141,7 +156,8 @@ export function registerPunchButtons(app: App) {
       ]));
 
       if (reportedExcessMin > 0) {
-        const text = `⚠️ *${agent?.name || `<@${slackId}>`}* regresó del break con *${reportedExcessMin} min de exceso* · ${dept} ${shift.label} · ${shiftDate}`;
+        const durLbl = breakDurUsed === 30 ? '30 min' : '1h';
+        const text = `⚠️ *${agent?.name || `<@${slackId}>`}* regresó del break (${durLbl}) con *${reportedExcessMin} min de exceso* · ${dept} ${shift.label} · ${shiftDate}`;
         for (const mgrId of notifyTargets) {
           try {
             const im = await client.conversations.open({ users: mgrId });
