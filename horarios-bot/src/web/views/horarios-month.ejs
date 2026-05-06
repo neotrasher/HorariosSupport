@@ -10,9 +10,9 @@
       </div>
       <%- include('partials/viewSwitch', { view, currentDate }) %>
     </div>
-    <div class="flex flex-wrap items-center gap-2 text-sm">
+    <div class="flex items-center gap-1.5 sm:gap-2 text-sm">
       <a href="/horarios?view=month&month=<%= prevMonth %>" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card shrink-0">&larr;</a>
-      <label class="relative flex-1 sm:flex-none min-w-0 px-3 py-1.5 font-medium capitalize bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card cursor-pointer inline-flex items-center gap-2"
+      <label class="relative flex-1 min-w-0 px-2 sm:px-3 py-1.5 font-medium capitalize bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card cursor-pointer inline-flex items-center justify-center gap-1.5 sm:gap-2"
              onclick="const i=this.querySelector('input');if(i.showPicker)i.showPicker();else i.focus();">
         <span class="pointer-events-none truncate"><%= monthLabel %></span>
         <span class="text-slate-300 text-xs pointer-events-none">📅</span>

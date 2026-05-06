@@ -79,6 +79,30 @@ authRouter.get('/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/auth/login'));
 });
 
+/**
+ * Recompute the user's role from current state (config env + agents.role
+ * column) on every request so changes (linking, role bumps) take effect
+ * immediately without forcing the user to logout/login.
+ */
+export function refreshSessionRole(req: Request, _res: Response, next: NextFunction) {
+  const user = (req.session as any)?.user;
+  if (!user || !user.slack_id) return next();
+  const slackId = user.slack_id;
+  const agent = getAgentBySlackId(slackId);
+  const isAdmin = config.adminSlackIds.includes(slackId) || agent?.role === 'admin';
+  const isManager = config.managerSlackIds.includes(slackId) || agent?.role === 'manager';
+  let role: 'admin' | 'manager' | 'agent' | 'viewer' = 'viewer';
+  if (isAdmin) role = 'admin';
+  else if (isManager) role = 'manager';
+  else if (agent) role = 'agent';
+  if (user.role !== role || user.dept !== agent?.dept) {
+    user.role = role;
+    user.dept = agent?.dept;
+    (req.session as any).user = user;
+  }
+  next();
+}
+
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
   if ((req.session as any)?.user) return next();
   res.redirect('/auth/login');

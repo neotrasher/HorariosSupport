@@ -28,12 +28,13 @@
       </div>
       <%- include('partials/viewSwitch', { view, currentDate }) %>
     </div>
-    <div class="flex flex-wrap items-center gap-2 text-sm">
+    <div class="flex items-center gap-1.5 sm:gap-2 text-sm">
       <a href="/horarios?view=week&date=<%= prev %>" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card shrink-0">&larr;</a>
-      <label class="relative flex-1 sm:flex-none min-w-0 px-3 py-1.5 font-medium bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card cursor-pointer inline-flex items-center gap-2"
+      <label class="relative flex-1 min-w-0 px-2 sm:px-3 py-1.5 font-medium bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card cursor-pointer inline-flex items-center justify-center gap-1.5 sm:gap-2"
              onclick="const i=this.querySelector('input');if(i.showPicker)i.showPicker();else i.focus();">
         <span class="pointer-events-none truncate"><%= weekLabel %></span>
-        <span class="text-slate-400 font-normal text-xs pointer-events-none whitespace-nowrap">Sem <%= cycle %></span>
+        <span class="text-slate-400 font-normal text-xs pointer-events-none whitespace-nowrap hidden sm:inline">Sem <%= cycle %></span>
+        <span class="text-slate-400 font-normal text-[10px] pointer-events-none whitespace-nowrap sm:hidden"><%= cycle %></span>
         <span class="text-slate-300 text-xs pointer-events-none">📅</span>
         <input type="date" value="<%= currentDate %>"
                onchange="if(this.value) location.href='/horarios?view=week&date='+this.value"
@@ -41,7 +42,7 @@
                class="absolute right-2 top-1/2 -translate-y-1/2 w-1 h-1 opacity-0 pointer-events-none">
       </label>
       <a href="/horarios?view=week&date=<%= next %>" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card shrink-0">&rarr;</a>
-      <a href="/horarios?view=week&date=<%= today %>" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card text-slate-600 shrink-0">Hoy</a>
+      <a href="/horarios?view=week&date=<%= today %>" class="px-2.5 sm:px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card text-slate-600 shrink-0 text-xs sm:text-sm">Hoy</a>
     </div>
   </div>
 
@@ -54,6 +55,95 @@
     </div>
   </div>
 
+  <!-- ───────────────── Mobile: stacked by day ───────────────── -->
+  <div class="md:hidden space-y-4">
+    <% days.forEach((d, dayIdx) => { %>
+      <% const dayHasShifts = blocks.some(b => b.rows.some(r => r.cells[dayIdx].agents.length > 0)); %>
+      <% const dayHasOff = offRow && offRow[dayIdx] && offRow[dayIdx].agents.length > 0; %>
+      <section class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden <%= d.isToday ? 'ring-2 ring-yellow-400' : '' %>">
+        <header class="px-4 py-3 bg-slate-50/60 border-b border-slate-200 flex items-baseline gap-2">
+          <span class="text-2xl font-extrabold text-slate-900"><%= d.dayCode %></span>
+          <span class="text-sm font-semibold text-slate-600 capitalize"><%= d.dayName %> <%= d.dayNum %></span>
+          <% if (d.isToday) { %><span class="ml-auto text-[10px] uppercase font-bold text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded">Hoy</span><% } %>
+        </header>
+        <div class="divide-y divide-slate-100">
+          <% if (!dayHasShifts && !dayHasOff) { %>
+            <div class="px-4 py-3 text-xs text-slate-300 italic">Sin turnos asignados</div>
+          <% } %>
+          <% blocks.forEach(block => { %>
+            <% block.rows.forEach(row => { %>
+              <% const cell = row.cells[dayIdx]; %>
+              <% if (cell.agents.length > 0) { %>
+                <div class="px-4 py-3 flex items-start gap-3">
+                  <div class="w-16 shrink-0">
+                    <div class="flex items-center gap-1">
+                      <span class="text-[10px] font-bold uppercase tracking-wide
+                        <%= block.dept === 'L1' ? 'text-blue-700' : 'text-violet-700' %>"><%= block.dept %></span>
+                      <span class="text-base font-bold text-slate-900"><%= row.id %></span>
+                    </div>
+                    <div class="text-[10px] text-slate-500 font-mono"
+                         data-utc="<%= row.startUtcStr %>–<%= row.endUtcStr %>"
+                         data-local="<%= row.startLocalStr %>–<%= row.endLocalStr %>"><%= row.startUtcStr %>–<%= row.endUtcStr %></div>
+                  </div>
+                  <div class="flex-1 flex flex-wrap gap-1.5 min-w-0">
+                    <% cell.agents.forEach(a => { %>
+                      <% const cls = CHIP_COLORS[a.colorIdx]; %>
+                      <% const tip = a.name + (a.custom ? ' · custom' : '') + (!a.native ? ' · presta de ' + a.nativeDept : '') + (a.swapped ? ' · cambio' : ''); %>
+                      <% if (isManager) { %>
+                        <a href="/horarios/agente/<%= a.plannerId %>"
+                           class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
+                           title="<%= tip %>">
+                          <% if (!a.native) { %><span class="px-1 rounded bg-white/60 text-[9px] font-bold"><%= a.nativeDept %></span><% } %>
+                          <%= a.name.split(' ')[0] %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
+                          <% if (a.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
+                        </a>
+                      <% } else { %>
+                        <span class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
+                              title="<%= tip %>">
+                          <% if (!a.native) { %><span class="px-1 rounded bg-white/60 text-[9px] font-bold"><%= a.nativeDept %></span><% } %>
+                          <%= a.name.split(' ')[0] %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
+                          <% if (a.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
+                        </span>
+                      <% } %>
+                    <% }) %>
+                  </div>
+                </div>
+              <% } %>
+            <% }) %>
+          <% }) %>
+          <% if (dayHasOff) { %>
+            <div class="px-4 py-3 flex items-start gap-3 bg-cyan-50/30">
+              <div class="w-16 shrink-0">
+                <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-600 text-white">OFF</span>
+              </div>
+              <div class="flex-1 flex flex-wrap gap-1.5 min-w-0">
+                <% offRow[dayIdx].agents.forEach(o => { %>
+                  <% const cls = o.isVac ? 'bg-cyan-50 text-cyan-800 ring-cyan-300' : 'bg-amber-50 text-amber-800 ring-amber-300'; %>
+                  <% const ico = o.isVac ? '🏖️' : '📝'; %>
+                  <% if (isManager) { %>
+                    <a href="/horarios/agente/<%= o.plannerId %>"
+                       class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= cls %>"
+                       title="<%= o.name %> · <%= o.reason || 'time off' %>">
+                      <span class="text-[9px]"><%= ico %></span>
+                      <span class="line-through opacity-80"><%= o.name.split(' ')[0] %></span>
+                    </a>
+                  <% } else { %>
+                    <span class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= cls %>">
+                      <span class="text-[9px]"><%= ico %></span>
+                      <span class="line-through opacity-80"><%= o.name.split(' ')[0] %></span>
+                    </span>
+                  <% } %>
+                <% }) %>
+              </div>
+            </div>
+          <% } %>
+        </div>
+      </section>
+    <% }) %>
+  </div>
+
+  <!-- ───────────────── Desktop: full week grid ───────────────── -->
+  <div class="hidden md:block">
   <% blocks.forEach(block => { %>
     <section class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden mb-5">
       <header class="flex items-center gap-3 px-5 py-3 bg-slate-50/60 border-b border-slate-200">
@@ -65,13 +155,13 @@
       </header>
 
       <div class="overflow-x-auto">
-        <table class="w-full text-xs table-fixed">
+        <table class="w-full text-xs table-fixed min-w-[760px]">
           <colgroup>
-            <col style="width: 6rem">
-            <% days.forEach(() => { %><col style="width: calc((100% - 6rem) / 7)"><% }) %>
+            <col style="width: 5.5rem">
+            <% days.forEach(() => { %><col style="width: calc((100% - 5.5rem) / 7)"><% }) %>
           </colgroup>
           <thead>
-            <tr class="bg-slate-50 border-b border-slate-200">
+            <tr class="bg-slate-50 border-b border-slate-200 sticky top-0 z-[1]">
               <th class="px-3 py-2"></th>
               <% days.forEach(d => { %>
                 <th class="px-2 py-2 text-center font-medium <%= d.isToday ? 'bg-yellow-50' : '' %>">
@@ -102,14 +192,14 @@
                              class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 hover:ring-2 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
                              title="<%= tip %>">
                             <% if (!a.native) { %><span class="px-1 rounded bg-white/60 text-[9px] font-bold"><%= a.nativeDept %></span><% } %>
-                            <%= a.name %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
+                            <%= a.name.split(' ')[0] %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
                             <% if (a.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
                           </a>
                         <% } else { %>
                           <span class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
                                 title="<%= tip %>">
                             <% if (!a.native) { %><span class="px-1 rounded bg-white/60 text-[9px] font-bold"><%= a.nativeDept %></span><% } %>
-                            <%= a.name %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
+                            <%= a.name.split(' ')[0] %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
                             <% if (a.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
                           </span>
                         <% } %>
@@ -133,10 +223,10 @@
         <h3 class="font-semibold text-slate-900">Tiempo libre</h3>
       </header>
       <div class="overflow-x-auto">
-        <table class="w-full text-xs table-fixed">
+        <table class="w-full text-xs table-fixed min-w-[760px]">
           <colgroup>
-            <col style="width: 6rem">
-            <% offRow.forEach(() => { %><col style="width: calc((100% - 6rem) / 7)"><% }) %>
+            <col style="width: 5.5rem">
+            <% offRow.forEach(() => { %><col style="width: calc((100% - 5.5rem) / 7)"><% }) %>
           </colgroup>
           <tbody>
             <tr>
@@ -152,13 +242,13 @@
                            class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 hover:ring-2 <%= cls %>"
                            title="<%= o.name %> · <%= o.reason || 'time off' %>">
                           <span class="text-[9px]"><%= ico %></span>
-                          <span class="line-through opacity-80"><%= o.name %></span>
+                          <span class="line-through opacity-80"><%= o.name.split(' ')[0] %></span>
                         </a>
                       <% } else { %>
                         <span class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= cls %>"
                               title="<%= o.name %> · <%= o.reason || 'time off' %>">
                           <span class="text-[9px]"><%= ico %></span>
-                          <span class="line-through opacity-80"><%= o.name %></span>
+                          <span class="line-through opacity-80"><%= o.name.split(' ')[0] %></span>
                         </span>
                       <% } %>
                     <% }) %>
@@ -172,7 +262,9 @@
     </section>
   <% } %>
 
-  <p class="text-xs text-slate-400">Cada agente tiene un color consistente. <span class="font-mono">*</span> = horas custom · <span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span> = turno cambiado (cambio aprobado). Click en el chip (managers) abre el drill-down.</p>
+  </div><!-- /.hidden md:block (desktop grid) -->
+
+  <p class="text-xs text-slate-400 mt-3 hidden md:block">Cada agente tiene un color consistente. <span class="font-mono">*</span> = horas custom · <span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span> = turno cambiado (cambio aprobado). Click en el chip (managers) abre el drill-down.</p>
 </main>
 <script>
 (function() {

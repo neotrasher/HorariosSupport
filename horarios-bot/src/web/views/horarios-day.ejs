@@ -27,12 +27,13 @@
       </div>
       <%- include('partials/viewSwitch', { view, currentDate }) %>
     </div>
-    <div class="flex flex-wrap items-center gap-2 text-sm">
+    <div class="flex items-center gap-1.5 sm:gap-2 text-sm flex-wrap">
       <a href="/horarios?view=day&date=<%= prev %>" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card shrink-0">&larr;</a>
-      <label class="relative flex-1 sm:flex-none min-w-0 px-3 py-1.5 font-medium capitalize bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card cursor-pointer inline-flex items-center gap-2"
+      <label class="relative flex-1 min-w-0 px-2 sm:px-3 py-1.5 font-medium capitalize bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card cursor-pointer inline-flex items-center justify-center gap-1.5 sm:gap-2"
              onclick="const i=this.querySelector('input');if(i.showPicker)i.showPicker();else i.focus();">
         <span class="pointer-events-none truncate"><%= dateLabelLocal %></span>
-        <span class="text-slate-400 font-normal text-xs pointer-events-none whitespace-nowrap">Sem <%= cycle %></span>
+        <span class="text-slate-400 font-normal text-xs pointer-events-none whitespace-nowrap hidden sm:inline">Sem <%= cycle %></span>
+        <span class="text-slate-400 font-normal text-[10px] pointer-events-none whitespace-nowrap sm:hidden"><%= cycle %></span>
         <span class="text-slate-300 text-xs pointer-events-none">📅</span>
         <input type="date" value="<%= dateStr %>"
                onchange="if(this.value) location.href='/horarios?view=day&date='+this.value"
@@ -40,10 +41,10 @@
                class="absolute right-2 top-1/2 -translate-y-1/2 w-1 h-1 opacity-0 pointer-events-none">
       </label>
       <a href="/horarios?view=day&date=<%= next %>" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card shrink-0">&rarr;</a>
-      <a href="/horarios?view=day&date=<%= today %>" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card text-slate-600 shrink-0">Hoy</a>
+      <a href="/horarios?view=day&date=<%= today %>" class="px-2.5 sm:px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card text-slate-600 shrink-0 text-xs sm:text-sm">Hoy</a>
       <% if (isManager) { %>
         <button id="editToggle" type="button"
-                class="px-3 py-1.5 border rounded-lg text-sm border-slate-200 bg-white hover:bg-slate-50 shadow-card shrink-0">
+                class="px-2.5 sm:px-3 py-1.5 border rounded-lg text-xs sm:text-sm border-slate-200 bg-white hover:bg-slate-50 shadow-card shrink-0">
           ✏️ Editar
         </button>
       <% } %>
@@ -78,12 +79,13 @@
 
       <div class="divide-y divide-slate-100">
         <% block.rows.forEach(row => { %>
-          <div class="flex items-start gap-4 px-4 py-3">
-            <div class="w-28 shrink-0">
-              <div class="font-bold text-slate-900 text-base"><%= row.id %> <span class="text-slate-400 font-normal text-xs"><%= row.label %></span></div>
-              <div class="text-xs text-slate-500 font-mono"
+          <div class="flex items-start gap-3 sm:gap-4 px-3 sm:px-4 py-3">
+            <div class="w-20 sm:w-28 shrink-0">
+              <div class="font-bold text-slate-900 text-base"><%= row.id %> <span class="text-slate-400 font-normal text-xs hidden sm:inline"><%= row.label %></span></div>
+              <div class="text-[10px] sm:text-xs text-slate-500 font-mono"
                    data-utc="<%= row.startUtcStr %>–<%= row.endUtcStr %>"
                    data-local="<%= row.startLocalStr %>–<%= row.endLocalStr %>"><%= row.startUtcStr %>–<%= row.endUtcStr %></div>
+              <div class="text-[10px] text-slate-400 sm:hidden"><%= row.label %></div>
             </div>
             <div class="flex-1 flex flex-wrap gap-1.5 items-center">
               <% if (row.agents.length === 0) { %>
@@ -98,14 +100,14 @@
                        class="chip-link pill inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ring-1 hover:ring-2 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
                        title="<%= tip %>">
                       <% if (!a.native) { %><span class="px-1 rounded bg-white/70 text-[9px] font-bold tracking-wide"><%= a.nativeDept %></span><% } %>
-                      <%= a.name %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
+                      <%= a.name.split(' ')[0] %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
                       <% if (a.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
                     </a>
                   <% } else { %>
                     <span class="pill inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ring-1 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
                           title="<%= tip %>">
                       <% if (!a.native) { %><span class="px-1 rounded bg-white/70 text-[9px] font-bold tracking-wide"><%= a.nativeDept %></span><% } %>
-                      <%= a.name %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
+                      <%= a.name.split(' ')[0] %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
                       <% if (a.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
                     </span>
                   <% } %>
@@ -147,14 +149,14 @@
                title="<%= o.name %> · <%= o.reason || 'time off' %>">
               <span class="text-[10px]"><%= ico %></span>
               <span class="px-1 rounded bg-white/70 text-[9px] font-bold tracking-wide"><%= o.dept %></span>
-              <span class="line-through opacity-80"><%= o.name %></span>
+              <span class="line-through opacity-80"><%= o.name.split(' ')[0] %></span>
             </a>
           <% } else { %>
             <span class="pill inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ring-1 <%= cls %>"
                   title="<%= o.name %> · <%= o.reason || 'time off' %>">
               <span class="text-[10px]"><%= ico %></span>
               <span class="px-1 rounded bg-white/70 text-[9px] font-bold tracking-wide"><%= o.dept %></span>
-              <span class="line-through opacity-80"><%= o.name %></span>
+              <span class="line-through opacity-80"><%= o.name.split(' ')[0] %></span>
             </span>
           <% } %>
         <% }) %>

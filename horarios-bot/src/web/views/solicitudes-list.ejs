@@ -35,12 +35,12 @@
   </div>
 
   <% if (isManager) { %>
-    <div class="flex items-center gap-2 mb-5 text-sm overflow-x-auto pb-1">
+    <div class="flex items-center gap-2 mb-5 text-sm flex-wrap">
       <span class="text-slate-500 shrink-0">Filtrar:</span>
       <% const filters = [['','Todas'],['pending','Pendientes'],['approved','Aprobadas'],['rejected','Rechazadas'],['cancelled','Canceladas']] %>
       <% filters.forEach(([val, lbl]) => { %>
         <a href="/solicitudes<%= val ? '?status=' + val : '' %>"
-           class="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 <%= filterStatus === val ? 'bg-ink-800 text-white shadow-card' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50' %>">
+           class="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap <%= filterStatus === val ? 'bg-ink-800 text-white shadow-card' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50' %>">
           <%= lbl %>
         </a>
       <% }) %>

@@ -100,6 +100,116 @@
 .planner-shell .gcell { border-color: #e6eaf0; }
 .planner-shell .gcell:hover { background: #f1f5f9; }
 
+/* ── Modales del planner: re-skin con ink palette + sombras layered ── */
+.planner-shell .overlay { background: rgba(15, 24, 37, 0.50); backdrop-filter: blur(2px); }
+.planner-shell .modal {
+  border-radius: 14px;
+  border: 1px solid #e6eaf0;
+  box-shadow:
+    0 1px 0 0 rgb(255 255 255 / 0.6) inset,
+    0 24px 48px -8px rgb(15 24 37 / 0.30),
+    0 8px 16px -4px rgb(15 24 37 / 0.18);
+}
+.planner-shell .modal-hdr { background: linear-gradient(to bottom, #ffffff 0%, #fafbfc 100%); border-bottom: 1px solid #e6eaf0; padding: 14px 18px; }
+.planner-shell .modal-title { color: #0f1825; font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+.planner-shell .modal-sub { color: #5b6f88; }
+.planner-shell .modal-body { padding: 14px 18px; }
+.planner-shell .modal-section-lbl {
+  color: #5b6f88; font-weight: 700; font-size: 10px;
+  border-bottom: 1px solid #e6eaf0; padding: 6px 0 4px; margin: 8px 0 4px;
+  letter-spacing: 0.06em;
+}
+.planner-shell .modal-section-lbl:first-child { margin-top: 0; }
+.planner-shell .memp { padding: 7px 8px; border-radius: 8px; transition: background .12s; }
+.planner-shell .memp:hover { background: #f1f5f9; }
+.planner-shell .memp.sel { background: #e9eef4; }
+.planner-shell .mcheck {
+  width: 17px; height: 17px; border-radius: 5px;
+  border: 2px solid #cfd8e3; transition: all .12s;
+}
+.planner-shell .memp.sel .mcheck {
+  background: linear-gradient(to bottom, #2d3e54 0%, #1f2c3d 100%);
+  border-color: #1f2c3d;
+  box-shadow: 0 1px 0 0 rgb(255 255 255 / 0.12) inset, 0 1px 2px 0 rgb(15 24 37 / 0.20);
+}
+.planner-shell .mname { font-size: 13px; font-weight: 600; color: #1f2c3d; }
+.planner-shell .mdept-tag {
+  background: #e9eef4; color: #5b6f88;
+  font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px;
+  letter-spacing: 0.04em;
+}
+.planner-shell .modal-note-row label { color: #5b6f88; font-weight: 600; }
+.planner-shell .modal-note-input {
+  border: 1px solid #cfd8e3; border-radius: 7px;
+  padding: 7px 10px; font-size: 13px;
+  background: #fff;
+}
+.planner-shell .modal-note-input:focus { border-color: #2d3e54; outline: 2px solid rgba(45, 62, 84, 0.15); }
+.planner-shell .modal-ftr { padding: 12px 18px; border-top: 1px solid #e6eaf0; background: #fafbfc; gap: 10px; }
+
+/* Copy cycle modal grid */
+.planner-shell .ccbtn {
+  border: 2px solid #e6eaf0; border-radius: 10px; padding: 16px;
+  font-weight: 700; color: #5b6f88; font-size: 16px;
+  transition: all .15s ease;
+  background: #fff;
+}
+.planner-shell .ccbtn:hover {
+  border-color: #2d3e54; color: #1f2c3d; background: #f1f5f9;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px 0 rgb(15 24 37 / 0.08);
+}
+
+/* Quick-shift modal pills */
+.planner-shell .qs-lbl { color: #5b6f88; font-weight: 700; font-size: 10px; letter-spacing: 0.06em; margin-bottom: 7px; }
+.planner-shell .qs-pill {
+  border: 2px solid #e6eaf0; border-radius: 9px;
+  background: #fff; transition: all .12s ease;
+  font-weight: 600;
+}
+.planner-shell .qs-pill:hover { transform: translateY(-1px); box-shadow: 0 2px 4px 0 rgb(15 24 37 / 0.08); }
+.planner-shell .qs-pill.sel {
+  box-shadow: 0 2px 6px 0 rgb(15 24 37 / 0.18), 0 1px 0 0 rgb(255 255 255 / 0.20) inset;
+}
+.planner-shell .qs-daybtn {
+  border: 2px solid #e6eaf0; border-radius: 9px;
+  background: #fff; color: #5b6f88; font-weight: 700;
+  transition: all .12s ease;
+}
+.planner-shell .qs-daybtn:hover:not(.disabled) { border-color: #cfd8e3; background: #f1f5f9; }
+.planner-shell .qs-daybtn.sel {
+  background: linear-gradient(to bottom, #2d3e54 0%, #1f2c3d 100%);
+  border-color: #1f2c3d; color: #fff;
+  box-shadow: 0 1px 0 0 rgb(255 255 255 / 0.12) inset, 0 1px 2px 0 rgb(15 24 37 / 0.20);
+}
+.planner-shell .qs-cyc-row { color: #1f2c3d; font-size: 12px; }
+.planner-shell .qs-radio input[type="radio"] { accent-color: #2d3e54; }
+.planner-shell .qs-note-inp {
+  border: 1px solid #cfd8e3; border-radius: 7px; padding: 8px 11px;
+  background: #fff; font-size: 13px;
+}
+.planner-shell .qs-note-inp:focus { border-color: #2d3e54; outline: 2px solid rgba(45, 62, 84, 0.15); }
+
+/* Days-off modal */
+.planner-shell .do-cy-lbl { color: #5b6f88; font-weight: 700; font-size: 11px; }
+.planner-shell .do-daybtn {
+  border: 2px solid #e6eaf0; background: #fff;
+  font-weight: 700; color: #5b6f88;
+  transition: all .12s ease;
+}
+.planner-shell .do-daybtn:hover { border-color: #cfd8e3; background: #f1f5f9; }
+.planner-shell .do-daybtn.off {
+  background: #fed7aa; border-color: #f6ad55; color: #7b341e;
+}
+
+/* Toast del planner */
+.planner-shell .toast {
+  background: linear-gradient(to bottom, #2d3e54 0%, #1f2c3d 100%);
+  color: #fff; border-radius: 9px; font-weight: 600;
+  box-shadow: 0 1px 0 0 rgb(255 255 255 / 0.12) inset, 0 8px 16px -4px rgb(15 24 37 / 0.30);
+  padding: 10px 18px;
+}
+
 /* HEADER */
 .hdr{background:var(--hdr);color:#fff;display:flex;align-items:center;padding:0 16px;height:50px;gap:10px;flex-shrink:0}
 .hdr-logo{font-size:15px;font-weight:800;color:#63b3ed;letter-spacing:-.02em;white-space:nowrap}

@@ -5,7 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import type { App as SlackApp } from '@slack/bolt';
 import { config } from '../config';
-import { authRouter, requireAuth } from './routes/auth';
+import { authRouter, requireAuth, refreshSessionRole } from './routes/auth';
 import { dashboardRouter } from './routes/dashboard';
 import { horariosRouter } from './routes/horarios';
 import { miHorarioRouter } from './routes/miHorario';
@@ -64,15 +64,15 @@ export function startWeb(slackApp: SlackApp | null = null) {
   });
   app.use('/auth', authLimiter, authRouter);
 
-  app.use('/mi-horario', requireAuth, miHorarioRouter);
-  app.use('/horarios/agente', requireAuth, agenteRouter);
-  app.use('/horarios', requireAuth, horariosRouter);
-  app.use('/solicitudes', requireAuth, buildSolicitudesRouter(slackApp));
-  app.use('/agentes', requireAuth, agentesRouter);
-  app.use('/reportes', requireAuth, reportesRouter);
-  app.use('/planner', requireAuth, plannerRouter);
-  app.use('/settings', requireAuth, settingsRouter);
-  app.use('/', requireAuth, dashboardRouter);
+  app.use('/mi-horario', requireAuth, refreshSessionRole, miHorarioRouter);
+  app.use('/horarios/agente', requireAuth, refreshSessionRole, agenteRouter);
+  app.use('/horarios', requireAuth, refreshSessionRole, horariosRouter);
+  app.use('/solicitudes', requireAuth, refreshSessionRole, buildSolicitudesRouter(slackApp));
+  app.use('/agentes', requireAuth, refreshSessionRole, agentesRouter);
+  app.use('/reportes', requireAuth, refreshSessionRole, reportesRouter);
+  app.use('/planner', requireAuth, refreshSessionRole, plannerRouter);
+  app.use('/settings', requireAuth, refreshSessionRole, settingsRouter);
+  app.use('/', requireAuth, refreshSessionRole, dashboardRouter);
 
   // Global error handler — must be last
   app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
