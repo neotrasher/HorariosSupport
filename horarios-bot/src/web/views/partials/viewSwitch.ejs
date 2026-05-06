@@ -1,5 +1,13 @@
-<div class="inline-flex rounded-lg border border-gray-200 bg-white text-sm overflow-hidden">
-  <a href="/horarios?view=day" class="px-3 py-1.5 <%= view === 'day' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-50' %>">Dia</a>
-  <a href="/horarios?view=week" class="px-3 py-1.5 border-l border-gray-200 <%= view === 'week' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-50' %>">Semana</a>
-  <a href="/horarios?view=month" class="px-3 py-1.5 border-l border-gray-200 <%= view === 'month' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-50' %>">Mes</a>
+<%
+  // currentDate is yyyy-LL-dd. For month view we send only YYYY-MM.
+  const cd = (typeof currentDate !== 'undefined' && currentDate) ? currentDate : '';
+  const month = cd ? cd.slice(0, 7) : '';
+  const dayHref   = '/horarios?view=day'   + (cd ? '&date=' + cd : '');
+  const weekHref  = '/horarios?view=week'  + (cd ? '&date=' + cd : '');
+  const monthHref = '/horarios?view=month' + (month ? '&month=' + month : '');
+%>
+<div class="inline-flex rounded-lg border border-slate-200 bg-white text-sm overflow-hidden shadow-card">
+  <a href="<%= dayHref %>" class="px-3 py-1.5 font-medium <%= view === 'day' ? 'bg-ink-800 text-white' : 'text-slate-600 hover:bg-slate-50' %>">Dia</a>
+  <a href="<%= weekHref %>" class="px-3 py-1.5 font-medium border-l border-slate-200 <%= view === 'week' ? 'bg-ink-800 text-white' : 'text-slate-600 hover:bg-slate-50' %>">Semana</a>
+  <a href="<%= monthHref %>" class="px-3 py-1.5 font-medium border-l border-slate-200 <%= view === 'month' ? 'bg-ink-800 text-white' : 'text-slate-600 hover:bg-slate-50' %>">Mes</a>
 </div>

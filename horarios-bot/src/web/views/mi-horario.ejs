@@ -1,76 +1,124 @@
 <%- include('partials/head') %>
 <%- include('partials/nav', { user }) %>
 
-<main class="max-w-6xl mx-auto px-4 py-6">
-  <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
-    <div>
-      <h2 class="text-xl font-semibold text-gray-900">Mi horario</h2>
+<main class="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+  <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
+    <div class="min-w-0">
+      <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Mi horario</h2>
       <% if (agent) { %>
-        <p class="text-sm text-gray-500"><%= agent.name %> · <%= agent.dept %></p>
+        <p class="text-sm text-slate-500 mt-1"><%= agent.name %> · <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide <%= agent.dept === 'L1' ? 'bg-blue-100 text-blue-700' : agent.dept === 'L2' ? 'bg-violet-100 text-violet-700' : 'bg-slate-100 text-slate-600' %>"><%= agent.dept %></span></p>
       <% } else { %>
-        <p class="text-sm text-yellow-600">Tu cuenta no esta vinculada a un agente.</p>
+        <p class="text-sm text-amber-600 mt-1">⚠ Tu cuenta no esta vinculada a un agente.</p>
       <% } %>
     </div>
     <div class="flex items-center gap-2 text-sm">
-      <a href="/mi-horario?month=<%= prevMonth %>" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">&larr;</a>
-      <span class="px-3 py-1.5 font-medium capitalize"><%= monthLabel %></span>
-      <a href="/mi-horario?month=<%= nextMonth %>" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">&rarr;</a>
+      <a href="/mi-horario?month=<%= prevMonth %>" class="px-3 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card">&larr;</a>
+      <span class="px-4 py-2 font-semibold capitalize bg-white border border-slate-200 rounded-lg shadow-card text-slate-900"><%= monthLabel %></span>
+      <a href="/mi-horario?month=<%= nextMonth %>" class="px-3 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card">&rarr;</a>
     </div>
   </div>
 
   <% if (agent) { %>
-    <div class="grid grid-cols-3 gap-3 mb-6">
-      <div class="bg-white rounded-lg border border-gray-200 p-4">
-        <div class="text-2xl font-bold text-gray-900"><%= totalShifts %></div>
-        <div class="text-xs text-gray-500 mt-1">Turnos en el mes</div>
+    <div class="grid grid-cols-3 gap-3 mb-4">
+      <div class="relative bg-white rounded-xl border border-slate-200 shadow-card p-4 overflow-hidden">
+        <div class="absolute top-0 left-0 right-0 h-1 bg-emerald-500"></div>
+        <div class="text-[11px] uppercase tracking-wider font-bold text-slate-400">Turnos del mes</div>
+        <div class="text-3xl font-extrabold mt-1 text-emerald-700"><%= totalShifts %></div>
       </div>
-      <div class="bg-white rounded-lg border border-gray-200 p-4">
-        <div class="text-2xl font-bold text-gray-600"><%= totalDaysOff %></div>
-        <div class="text-xs text-gray-500 mt-1">Dias libres</div>
+      <div class="relative bg-white rounded-xl border border-slate-200 shadow-card p-4 overflow-hidden">
+        <div class="absolute top-0 left-0 right-0 h-1 bg-slate-400"></div>
+        <div class="text-[11px] uppercase tracking-wider font-bold text-slate-400">Dias libres</div>
+        <div class="text-3xl font-extrabold mt-1 text-slate-700"><%= totalDaysOff %></div>
       </div>
-      <div class="bg-white rounded-lg border border-gray-200 p-4">
-        <div class="text-2xl font-bold text-gray-400"><%= displayTimezone %></div>
-        <div class="text-xs text-gray-500 mt-1">Zona display</div>
+      <div class="relative bg-white rounded-xl border border-slate-200 shadow-card p-4 overflow-hidden">
+        <div class="absolute top-0 left-0 right-0 h-1 bg-sky-500"></div>
+        <div class="text-[11px] uppercase tracking-wider font-bold text-slate-400">Tu zona</div>
+        <div class="text-sm font-bold mt-2 text-sky-700 truncate" title="<%= localTz %>"><%= localTz %></div>
+      </div>
+    </div>
+
+    <!-- TZ toggle -->
+    <div class="flex items-center gap-2 mb-4">
+      <span class="text-xs text-slate-500 font-medium">Mostrar horas en:</span>
+      <div class="inline-flex rounded-lg border border-slate-200 bg-white text-xs overflow-hidden shadow-card" id="tzToggle">
+        <button type="button" data-tz="utc" class="tz-btn px-3 py-1.5 font-semibold bg-ink-800 text-white">UTC</button>
+        <button type="button" data-tz="local" class="tz-btn px-3 py-1.5 font-semibold border-l border-slate-200 text-slate-600 hover:bg-slate-50"><%= localTz %></button>
       </div>
     </div>
   <% } %>
 
   <% if (isEmpty) { %>
-    <div class="bg-white rounded-lg border border-gray-200 p-12 text-center">
-      <div class="text-gray-400 text-sm">Sin horario cargado para <span class="capitalize"><%= monthLabel %></span></div>
+    <div class="bg-white rounded-lg border border-slate-200 shadow-card p-12 text-center">
+      <div class="text-slate-400 text-sm">Sin horario cargado para <span class="capitalize"><%= monthLabel %></span></div>
     </div>
   <% } else { %>
-    <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
-      <div class="grid grid-cols-7 bg-gray-50 border-b border-gray-200 text-xs font-medium text-gray-600">
+    <div class="bg-white rounded-lg border border-slate-200 shadow-card overflow-hidden">
+      <div class="grid grid-cols-7 bg-slate-50 border-b border-slate-200 text-xs font-medium text-slate-600">
         <% ['Lun','Mar','Mie','Jue','Vie','Sab','Dom'].forEach(d => { %>
           <div class="px-2 py-2 text-center"><%= d %></div>
         <% }) %>
       </div>
       <% weeks.forEach(w => { %>
-        <div class="grid grid-cols-7 border-b border-gray-100 last:border-b-0">
+        <div class="grid grid-cols-7 border-b border-slate-100 last:border-b-0">
           <% w.forEach(c => { %>
-            <div class="min-h-[90px] p-2 border-r border-gray-100 last:border-r-0
-              <%= c.inMonth ? 'bg-white' : 'bg-gray-50/50 text-gray-300' %>
+            <div class="min-h-[90px] p-2 border-r border-slate-100 last:border-r-0
+              <%= c.inMonth ? 'bg-white' : 'bg-slate-50/50 text-slate-300' %>
               <%= c.isToday ? 'ring-1 ring-inset ring-yellow-300' : '' %>">
-              <div class="text-xs font-semibold <%= c.isToday ? 'text-yellow-700' : c.inMonth ? 'text-gray-900' : 'text-gray-300' %>"><%= c.dayNum %></div>
+              <div class="text-xs font-semibold <%= c.isToday ? 'text-yellow-700' : c.inMonth ? 'text-slate-900' : 'text-slate-300' %>"><%= c.dayNum %></div>
               <% if (c.inMonth && c.shift) { %>
                 <div class="mt-1 <%= c.shift.swapped ? 'ring-2 ring-amber-400 rounded px-1 -mx-1' : '' %>" <% if (c.shift.swapped) { %>title="Cambio aprobado"<% } %>>
                   <div class="text-xs font-semibold
-                    <%= c.shift.dept === 'L1' ? 'text-blue-700' : 'text-purple-700' %>">
-                    <%= c.shift.dept %>.<%= c.shift.shiftId %><%= c.shift.custom ? '*' : '' %>
+                    <%= c.shift.dept === 'L1' ? 'text-blue-700' : 'text-violet-700' %>">
+                    <%= c.shift.dept %>.<%= c.shift.shiftId %>
                     <% if (c.shift.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
                   </div>
-                  <div class="text-[10px] text-gray-500"><%= c.shift.startUtc %>–<%= c.shift.endUtc %></div>
+                  <div class="text-[10px] text-slate-500 font-mono"
+                       data-utc="<%= c.shift.startUtc %>–<%= c.shift.endUtc %>"
+                       data-local="<%= c.shift.startLocal %>–<%= c.shift.endLocal %>"><%= c.shift.startUtc %>–<%= c.shift.endUtc %></div>
                 </div>
               <% } else if (c.inMonth && c.dayOff) { %>
-                <div class="mt-1 text-xs text-gray-400">Libre</div>
+                <div class="mt-1 text-xs text-slate-400">Libre</div>
               <% } %>
             </div>
           <% }) %>
         </div>
       <% }) %>
     </div>
-    <p class="text-xs text-gray-400 mt-2">Horas en UTC. <span class="font-mono">*</span> = horas custom · <span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span> = cambio aprobado.</p>
+    <p class="text-xs text-slate-400 mt-3">
+      <span class="font-mono">↔</span> = cambio de turno aprobado · <span class="font-mono" id="tzNote">Horas en <%= localTz %></span>
+    </p>
   <% } %>
+
+  <script>
+  (function() {
+    const KEY = 'tzPref';
+    const toggle = document.getElementById('tzToggle');
+    if (!toggle) return;
+    const localTz = '<%= localTz %>';
+    function apply(pref) {
+      // Buttons
+      toggle.querySelectorAll('.tz-btn').forEach(b => {
+        const sel = b.dataset.tz === pref;
+        b.classList.toggle('bg-ink-800', sel);
+        b.classList.toggle('text-white', sel);
+        b.classList.toggle('text-slate-600', !sel);
+        b.classList.toggle('hover:bg-slate-50', !sel);
+      });
+      // All time cells
+      document.querySelectorAll('[data-utc][data-local]').forEach(el => {
+        el.textContent = pref === 'utc' ? el.dataset.utc : el.dataset.local;
+      });
+      // Note
+      const note = document.getElementById('tzNote');
+      if (note) note.textContent = 'Horas en ' + (pref === 'utc' ? 'UTC' : localTz);
+      try { localStorage.setItem(KEY, pref); } catch(e) {}
+    }
+    toggle.querySelectorAll('.tz-btn').forEach(b => {
+      b.addEventListener('click', () => apply(b.dataset.tz));
+    });
+    let saved = null; try { saved = localStorage.getItem(KEY); } catch(e) {}
+    apply(saved === 'local' ? 'local' : 'utc');
+  })();
+  </script>
 </main>
 <%- include('partials/foot') %>

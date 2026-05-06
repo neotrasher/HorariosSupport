@@ -1,101 +1,103 @@
 <%- include('partials/head') %>
 <%- include('partials/nav', { user }) %>
 
-<main class="max-w-7xl mx-auto px-4 py-6">
-  <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
-    <div>
-      <h2 class="text-xl font-semibold text-gray-900">Agentes</h2>
-      <p class="text-sm text-gray-500"><%= agents.length %> agente<%= agents.length === 1 ? '' : 's' %><%= includeInactive ? ' (incluye inactivos)' : '' %></p>
+<main class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+  <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
+    <div class="min-w-0">
+      <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Agentes</h2>
+      <p class="text-sm text-slate-500 mt-1"><%= agents.length %> agente<%= agents.length === 1 ? '' : 's' %><%= includeInactive ? ' · incluye inactivos' : '' %></p>
     </div>
-    <div class="flex items-center gap-2 text-sm">
+    <div class="flex items-center gap-2 text-sm flex-wrap">
       <a href="/agentes<%= includeInactive ? '' : '?inactive=1' %>"
-         class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
+         class="px-3 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card text-slate-600 font-medium shrink-0">
         <%= includeInactive ? 'Solo activos' : 'Ver inactivos' %>
       </a>
-      <a href="/agentes/nuevo" class="bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800">+ Nuevo</a>
+      <a href="/agentes/nuevo" class="btn-primary inline-flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-semibold shrink-0">
+        <span class="text-base leading-none">+</span> Nuevo
+      </a>
     </div>
   </div>
 
   <% if (agents.length === 0) { %>
-    <div class="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-400">Sin agentes</div>
+    <div class="bg-white rounded-lg border border-slate-200 shadow-card p-8 text-center text-slate-400">Sin agentes</div>
   <% } else { %>
-    <div class="bg-white rounded-lg border border-gray-200 overflow-x-auto">
+    <div class="bg-white rounded-lg border border-slate-200 shadow-card overflow-x-auto">
       <table class="w-full text-sm" id="agentes-table">
-        <thead class="bg-gray-50 border-b border-gray-200 text-xs">
+        <thead class="bg-slate-50 border-b border-slate-200 text-xs">
           <tr>
-            <th class="text-left px-3 py-2 font-medium text-gray-600">Nombre</th>
-            <th class="text-left px-3 py-2 font-medium text-gray-600">Cargo</th>
-            <th class="text-left px-3 py-2 font-medium text-gray-600">Dept</th>
+            <th class="text-left px-3 py-2 font-medium text-slate-600">Nombre</th>
+            <th class="text-left px-3 py-2 font-medium text-slate-600">Cargo</th>
+            <th class="text-left px-3 py-2 font-medium text-slate-600">Dept</th>
             <% if (!isAdmin) { %>
-              <th class="text-left px-3 py-2 font-medium text-gray-600">Email empresa</th>
-              <th class="text-left px-3 py-2 font-medium text-gray-600">Telefono</th>
-              <th class="text-left px-3 py-2 font-medium text-gray-600">Ingreso</th>
+              <th class="text-left px-3 py-2 font-medium text-slate-600">Email empresa</th>
+              <th class="text-left px-3 py-2 font-medium text-slate-600">Telefono</th>
+              <th class="text-left px-3 py-2 font-medium text-slate-600">Ingreso</th>
             <% } else { %>
-              <th class="text-left px-3 py-2 font-medium text-gray-600">Ingreso</th>
-              <th class="text-right px-3 py-2 font-medium text-gray-600">Sal. anterior</th>
-              <th class="text-right px-3 py-2 font-medium text-gray-600">Salario</th>
-              <th class="text-right px-3 py-2 font-medium text-gray-600">% aum</th>
-              <th class="text-right px-3 py-2 font-medium text-gray-600">Sal. nuevo</th>
-              <th class="text-right px-3 py-2 font-medium text-gray-600">Festivo</th>
-              <th class="text-right px-3 py-2 font-medium text-gray-600">Ult ajuste</th>
-              <th class="text-center px-3 py-2 font-medium text-gray-600"></th>
+              <th class="text-left px-3 py-2 font-medium text-slate-600">Ingreso</th>
+              <th class="text-right px-3 py-2 font-medium text-slate-600">Sal. anterior</th>
+              <th class="text-right px-3 py-2 font-medium text-slate-600">Salario</th>
+              <th class="text-right px-3 py-2 font-medium text-slate-600">% aum</th>
+              <th class="text-right px-3 py-2 font-medium text-slate-600">Sal. nuevo</th>
+              <th class="text-right px-3 py-2 font-medium text-slate-600">Festivo</th>
+              <th class="text-right px-3 py-2 font-medium text-slate-600">Ult ajuste</th>
+              <th class="text-center px-3 py-2 font-medium text-slate-600"></th>
             <% } %>
-            <th class="text-left px-3 py-2 font-medium text-gray-600">Estado</th>
+            <th class="text-left px-3 py-2 font-medium text-slate-600">Estado</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-gray-100">
+        <tbody class="divide-y divide-slate-100">
           <% agents.forEach(a => { %>
-            <tr class="hover:bg-gray-50 <%= a.active ? '' : 'opacity-50' %>" data-slack-id="<%= a.slack_id %>">
+            <tr class="hover:bg-slate-50 <%= a.active ? '' : 'opacity-50' %>" data-slack-id="<%= a.slack_id %>">
               <td class="px-3 py-2">
-                <a href="/agentes/<%= a.slack_id %>" class="font-medium text-gray-900 hover:underline"><%= a.name %></a>
-                <div class="text-[10px] text-gray-400"><%= a.slack_id %> · #<%= a.planner_id %></div>
+                <a href="/agentes/<%= a.slack_id %>" class="font-medium text-slate-900 hover:underline"><%= a.name %></a>
+                <div class="text-[10px] text-slate-400"><%= a.slack_id %> · #<%= a.planner_id %></div>
               </td>
-              <td class="px-3 py-2 text-gray-700 text-xs"><%= a.position || '—' %></td>
+              <td class="px-3 py-2 text-slate-700 text-xs"><%= a.position || '—' %></td>
               <td class="px-3 py-2 text-xs">
                 <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold
                   <% if (a.dept === 'L1') { %>bg-blue-100 text-blue-700
                   <% } else if (a.dept === 'L2') { %>bg-purple-100 text-purple-700
-                  <% } else { %>bg-gray-100 text-gray-600<% } %>">
+                  <% } else { %>bg-slate-100 text-slate-600<% } %>">
                   <%= a.dept %>
                 </span>
                 <% if (a.role === 'manager') { %>
-                  <span class="ml-1 text-[10px] text-gray-500">manager</span>
+                  <span class="ml-1 text-[10px] text-slate-500">manager</span>
                 <% } %>
               </td>
 
               <% if (!isAdmin) { %>
-                <td class="px-3 py-2 text-gray-600 text-xs"><%= a.email_company || '—' %></td>
-                <td class="px-3 py-2 text-gray-600 text-xs"><%= a.phone || '—' %></td>
-                <td class="px-3 py-2 text-gray-600 text-xs"><%= a.start_date || '—' %></td>
+                <td class="px-3 py-2 text-slate-600 text-xs"><%= a.email_company || '—' %></td>
+                <td class="px-3 py-2 text-slate-600 text-xs"><%= a.phone || '—' %></td>
+                <td class="px-3 py-2 text-slate-600 text-xs"><%= a.start_date || '—' %></td>
               <% } else { %>
                 <!-- Fecha ingreso (read-only en la tabla; editable desde el detalle) -->
-                <td class="px-3 py-2 text-gray-600 text-xs"><%= a.start_date || '—' %></td>
+                <td class="px-3 py-2 text-slate-600 text-xs"><%= a.start_date || '—' %></td>
                 <!-- Salario anterior (historico, read-only) -->
-                <td class="px-3 py-2 text-right text-xs font-mono text-gray-500">
+                <td class="px-3 py-2 text-right text-xs font-mono text-slate-500">
                   <%= a.salary_previous != null ? Number(a.salary_previous).toLocaleString() : '—' %>
                 </td>
                 <!-- Salario actual: inline editable, autosave -->
                 <td class="px-2 py-1 text-right">
                   <input type="number" step="0.01"
-                    class="w-24 text-right text-xs font-mono border border-gray-200 rounded px-2 py-1 inline-edit salary-input"
+                    class="w-24 text-right text-xs font-mono border border-slate-200 rounded px-2 py-1 inline-edit salary-input"
                     data-field="salary_current" value="<%= a.salary_current ?? '' %>" placeholder="—">
                 </td>
                 <!-- % aumento: live calc, applied via form -->
                 <form method="post" action="/agentes/<%= a.slack_id %>/apply-raise" class="contents raise-form">
                   <td class="px-2 py-1 text-right">
                     <input type="number" step="0.01" name="pct"
-                      class="w-16 text-right text-xs font-mono border border-gray-200 rounded px-2 py-1 pct-input"
+                      class="w-16 text-right text-xs font-mono border border-slate-200 rounded px-2 py-1 pct-input"
                       placeholder="0">
                   </td>
-                  <td class="px-2 py-1 text-right text-xs font-mono text-gray-700 sal-nuevo">—</td>
-                  <td class="px-2 py-1 text-right text-xs font-mono text-gray-500 festivo">
+                  <td class="px-2 py-1 text-right text-xs font-mono text-slate-700 sal-nuevo">—</td>
+                  <td class="px-2 py-1 text-right text-xs font-mono text-slate-500 festivo">
                     <%= a.salary_current != null ? (a.salary_current / 23).toFixed(2) : '—' %>
                   </td>
-                  <td class="px-2 py-1 text-right text-[10px] text-gray-500">
+                  <td class="px-2 py-1 text-right text-[10px] text-slate-500">
                     <% if (a.last_salary_adjustment_date) { %>
                       <%= a.last_salary_adjustment_date %>
                       <% if (a.last_adjustment_pct != null) { %>
-                        <div class="text-gray-400"><%= a.last_adjustment_pct %>%</div>
+                        <div class="text-slate-400"><%= a.last_adjustment_pct %>%</div>
                       <% } %>
                     <% } else { %>—<% } %>
                   </td>
@@ -108,8 +110,9 @@
               <% } %>
 
               <td class="px-3 py-2 text-xs">
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px]
-                  <%= a.active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500' %>">
+                <span class="pill inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold ring-1
+                  <%= a.active ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-slate-100 text-slate-500 ring-slate-200' %>">
+                  <span class="w-1.5 h-1.5 rounded-full <%= a.active ? 'bg-emerald-500' : 'bg-slate-400' %>"></span>
                   <%= a.active ? 'Activo' : 'Inactivo' %>
                 </span>
               </td>
@@ -120,7 +123,7 @@
     </div>
 
     <% if (isAdmin) { %>
-      <p class="text-xs text-gray-400 mt-3">
+      <p class="text-xs text-slate-400 mt-3">
         Salario se guarda al salir del campo. % aumento muestra previa de salario nuevo y festivo (= salario / 23). Boton "Aplicar" guarda el aumento como historico (snapshot del salario anterior, fecha y %).
       </p>
     <% } %>
@@ -130,21 +133,21 @@
     <!-- Modal de confirmacion de aumento -->
     <div id="raise-modal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center px-4">
       <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Aplicar aumento</h3>
-        <p class="text-sm text-gray-600 mb-4">A <strong id="raise-name"></strong>:</p>
-        <dl class="grid grid-cols-2 gap-y-2 text-sm bg-gray-50 rounded-lg p-4 mb-6">
-          <dt class="text-gray-500">Salario actual</dt>
-          <dd class="font-mono text-right text-gray-900" id="raise-current">—</dd>
-          <dt class="text-gray-500">Aumento</dt>
+        <h3 class="text-lg font-semibold text-slate-900 mb-4">Aplicar aumento</h3>
+        <p class="text-sm text-slate-600 mb-4">A <strong id="raise-name"></strong>:</p>
+        <dl class="grid grid-cols-2 gap-y-2 text-sm bg-slate-50 rounded-lg p-4 mb-6">
+          <dt class="text-slate-500">Salario actual</dt>
+          <dd class="font-mono text-right text-slate-900" id="raise-current">—</dd>
+          <dt class="text-slate-500">Aumento</dt>
           <dd class="font-mono text-right text-rose-700" id="raise-pct">—</dd>
-          <dt class="text-gray-500">Salario nuevo</dt>
+          <dt class="text-slate-500">Salario nuevo</dt>
           <dd class="font-mono text-right text-rose-700 font-semibold" id="raise-new">—</dd>
-          <dt class="text-gray-500">Festivo (= sal/23)</dt>
-          <dd class="font-mono text-right text-gray-700" id="raise-holiday">—</dd>
+          <dt class="text-slate-500">Festivo (= sal/23)</dt>
+          <dd class="font-mono text-right text-slate-700" id="raise-holiday">—</dd>
         </dl>
         <div class="flex justify-end gap-2">
           <button type="button" id="raise-cancel"
-            class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancelar</button>
+            class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
           <button type="button" id="raise-confirm"
             class="px-4 py-2 text-sm bg-rose-600 text-white rounded-lg hover:bg-rose-700">Aplicar aumento</button>
         </div>

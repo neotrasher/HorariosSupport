@@ -3,8 +3,8 @@
 
 <main class="max-w-4xl mx-auto px-4 py-6">
   <div class="mb-6">
-    <h2 class="text-xl font-semibold text-gray-900">Publicar horarios</h2>
-    <p class="text-sm text-gray-500">Convierte el JSON exportado del planner en turnos reales del bot para un rango de fechas.</p>
+    <h2 class="text-xl font-semibold text-slate-900">Publicar horarios</h2>
+    <p class="text-sm text-slate-500">Convierte el JSON exportado del planner en turnos reales del bot para un rango de fechas.</p>
   </div>
 
   <% if (error) { %>
@@ -12,30 +12,30 @@
   <% } %>
 
   <% if (mode === 'upload') { %>
-    <form method="post" action="/planner" class="bg-white rounded-lg border border-gray-200 p-6 space-y-5">
+    <form method="post" action="/planner" class="bg-white rounded-lg border border-slate-200 shadow-card p-6 space-y-5">
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">JSON del planner</label>
-        <p class="text-xs text-gray-500 mb-2">
+        <label class="block text-sm font-medium text-slate-700 mb-1">JSON del planner</label>
+        <p class="text-xs text-slate-500 mb-2">
           Exporta el horario desde <code>horarios-planner.html</code> (boton "📤 Exportar"), abri el archivo y pega el contenido aqui.
           O usa el boton para cargar un archivo .json.
         </p>
         <input type="file" id="fileInput" accept=".json" class="text-sm mb-2 block">
         <textarea name="json" id="jsonTextarea" required rows="8"
-                  class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-xs font-mono"
+                  class="block w-full border border-slate-300 rounded-lg px-3 py-2 text-xs font-mono"
                   placeholder='{"schedule":{...},"daysOff":{...},"version":3}'></textarea>
       </div>
 
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Fecha inicio</label>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Fecha inicio</label>
           <input type="date" name="start_date" required value="<%= defaultStart %>"
-                 class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-          <p class="text-[11px] text-gray-400 mt-1">Lunes recomendado para que coincida con cycle inicial.</p>
+                 class="block w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+          <p class="text-[11px] text-slate-400 mt-1">Lunes recomendado para que coincida con cycle inicial.</p>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Fecha fin</label>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Fecha fin</label>
           <input type="date" name="end_date" required value="<%= defaultEnd %>"
-                 class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                 class="block w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
         </div>
       </div>
 
@@ -44,7 +44,7 @@
       </div>
 
       <div class="flex justify-end">
-        <button type="submit" class="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-800">
+        <button type="submit" class="bg-ink-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-ink-700">
           Generar preview →
         </button>
       </div>
@@ -64,9 +64,9 @@
     </script>
 
   <% } else if (mode === 'preview') { %>
-    <div class="bg-white rounded-lg border border-gray-200 p-6 mb-4">
-      <h3 class="font-semibold text-gray-900 mb-1">Preview · <%= exp.rangeStart %> → <%= exp.rangeEnd %></h3>
-      <p class="text-xs text-gray-500 mb-4"><%= exp.daysCount %> dias en el rango</p>
+    <div class="bg-white rounded-lg border border-slate-200 shadow-card p-6 mb-4">
+      <h3 class="font-semibold text-slate-900 mb-1">Preview · <%= exp.rangeStart %> → <%= exp.rangeEnd %></h3>
+      <p class="text-xs text-slate-500 mb-4"><%= exp.daysCount %> dias en el rango</p>
 
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
@@ -78,9 +78,9 @@
           <div class="text-xs text-purple-600 mt-0.5">Dias libres a crear</div>
         </div>
         <% Object.entries(byDept).forEach(([d, n]) => { %>
-          <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
-            <div class="text-xl font-bold text-gray-700"><%= n %></div>
-            <div class="text-xs text-gray-600 mt-0.5">Turnos <%= d %></div>
+          <div class="bg-slate-50 border border-slate-200 rounded-lg p-3">
+            <div class="text-xl font-bold text-slate-700"><%= n %></div>
+            <div class="text-xs text-slate-600 mt-0.5">Turnos <%= d %></div>
           </div>
         <% }) %>
       </div>
@@ -97,7 +97,7 @@
 
       <div class="flex justify-between gap-2">
         <form method="post" action="/planner/cancelar">
-          <button type="submit" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg">Cancelar</button>
+          <button type="submit" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg">Cancelar</button>
         </form>
         <form method="post" action="/planner/aplicar">
           <button type="submit" class="bg-rose-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-rose-700">
@@ -116,7 +116,7 @@
       <p class="text-xs text-green-700 mb-4">El bot ya esta usando estos horarios. Los recordatorios y alertas funcionan inmediatamente.</p>
       <div class="flex gap-2">
         <a href="/horarios?view=week&date=<%= rangeStart %>" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700">Ver primera semana</a>
-        <a href="/planner" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg">Publicar otro</a>
+        <a href="/planner" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg">Publicar otro</a>
       </div>
     </div>
   <% } %>

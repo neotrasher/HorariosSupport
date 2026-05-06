@@ -18,66 +18,264 @@
   ];
 %>
 
-<main class="max-w-5xl mx-auto px-4 py-6">
-  <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
-    <div class="flex items-center gap-3">
-      <h2 class="text-xl font-semibold text-gray-900">Horarios</h2>
-      <%- include('partials/viewSwitch', { view }) %>
+<main class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+  <div class="mb-5">
+    <div class="flex items-end justify-between gap-3 mb-3 flex-wrap">
+      <div class="min-w-0">
+        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Horarios</h2>
+        <p class="text-sm text-slate-500 mt-1">Vista diaria · turnos por dept</p>
+      </div>
+      <%- include('partials/viewSwitch', { view, currentDate }) %>
     </div>
-    <div class="flex items-center gap-2 text-sm">
-      <a href="/horarios?view=day&date=<%= prev %>" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">&larr;</a>
-      <span class="px-3 py-1.5 font-medium capitalize"><%= dateLabelLocal %> <span class="text-gray-400 font-normal">Sem <%= cycle %></span></span>
-      <a href="/horarios?view=day&date=<%= next %>" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">&rarr;</a>
-      <a href="/horarios?view=day&date=<%= today %>" class="ml-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">Hoy</a>
+    <div class="flex flex-wrap items-center gap-2 text-sm">
+      <a href="/horarios?view=day&date=<%= prev %>" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card shrink-0">&larr;</a>
+      <label class="relative flex-1 sm:flex-none min-w-0 px-3 py-1.5 font-medium capitalize bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card cursor-pointer inline-flex items-center gap-2"
+             onclick="const i=this.querySelector('input');if(i.showPicker)i.showPicker();else i.focus();">
+        <span class="pointer-events-none truncate"><%= dateLabelLocal %></span>
+        <span class="text-slate-400 font-normal text-xs pointer-events-none whitespace-nowrap">Sem <%= cycle %></span>
+        <span class="text-slate-300 text-xs pointer-events-none">📅</span>
+        <input type="date" value="<%= dateStr %>"
+               onchange="if(this.value) location.href='/horarios?view=day&date='+this.value"
+               onclick="event.stopPropagation()"
+               class="absolute right-2 top-1/2 -translate-y-1/2 w-1 h-1 opacity-0 pointer-events-none">
+      </label>
+      <a href="/horarios?view=day&date=<%= next %>" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card shrink-0">&rarr;</a>
+      <a href="/horarios?view=day&date=<%= today %>" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card text-slate-600 shrink-0">Hoy</a>
+      <% if (isManager) { %>
+        <button id="editToggle" type="button"
+                class="px-3 py-1.5 border rounded-lg text-sm border-slate-200 bg-white hover:bg-slate-50 shadow-card shrink-0">
+          ✏️ Editar
+        </button>
+      <% } %>
+    </div>
+  </div>
+
+  <% if (isManager) { %>
+    <div id="editBanner" class="hidden mb-4 px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+      <span class="font-medium">Modo edición activo</span> · click <span class="font-mono">×</span> en un chip para quitarlo · click <span class="font-mono">+</span> en una fila para agregar agente.
+    </div>
+  <% } %>
+
+  <!-- TZ toggle -->
+  <div class="flex items-center gap-2 mb-4">
+    <span class="text-xs text-slate-500 font-medium">Mostrar horas en:</span>
+    <div class="inline-flex rounded-lg border border-slate-200 bg-white text-xs overflow-hidden shadow-card" id="tzToggle">
+      <button type="button" data-tz="utc" class="tz-btn px-3 py-1.5 font-semibold bg-ink-800 text-white">UTC</button>
+      <button type="button" data-tz="local" class="tz-btn px-3 py-1.5 font-semibold border-l border-slate-200 text-slate-600 hover:bg-slate-50"><%= localTz %></button>
     </div>
   </div>
 
   <% blocks.forEach(block => { %>
-    <section class="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
-      <header class="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-200">
-        <span class="inline-block px-2 py-0.5 rounded text-xs font-bold
-          <%= block.dept === 'L1' ? 'bg-blue-600 text-white' : 'bg-purple-600 text-white' %>">
+    <section class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden mb-5">
+      <header class="flex items-center gap-3 px-5 py-3 bg-slate-50/60 border-b border-slate-200">
+        <span class="inline-block px-2.5 py-0.5 rounded text-xs font-bold tracking-wide shadow-card
+          <%= block.dept === 'L1' ? 'bg-blue-600 text-white' : 'bg-violet-600 text-white' %>">
           <%= block.dept %>
         </span>
-        <h3 class="font-semibold text-gray-900">Horario <%= block.dept %></h3>
+        <h3 class="font-semibold text-slate-900 text-sm">Horario <%= block.dept %></h3>
+        <span class="ml-auto text-[11px] text-slate-400"><%= block.rows.reduce((acc, r) => acc + r.agents.length, 0) %> turnos</span>
       </header>
 
-      <div class="divide-y divide-gray-100">
+      <div class="divide-y divide-slate-100">
         <% block.rows.forEach(row => { %>
           <div class="flex items-start gap-4 px-4 py-3">
             <div class="w-28 shrink-0">
-              <div class="font-bold text-gray-900 text-base"><%= row.id %> <span class="text-gray-400 font-normal text-xs"><%= row.label %></span></div>
-              <div class="text-xs text-gray-500"><%= row.startHour.toString().padStart(2,'0') %>:00–<%= (row.endHour % 24).toString().padStart(2,'0') %>:00 UTC</div>
+              <div class="font-bold text-slate-900 text-base"><%= row.id %> <span class="text-slate-400 font-normal text-xs"><%= row.label %></span></div>
+              <div class="text-xs text-slate-500 font-mono"
+                   data-utc="<%= row.startUtcStr %>–<%= row.endUtcStr %>"
+                   data-local="<%= row.startLocalStr %>–<%= row.endLocalStr %>"><%= row.startUtcStr %>–<%= row.endUtcStr %></div>
             </div>
-            <div class="flex-1 flex flex-wrap gap-1.5">
+            <div class="flex-1 flex flex-wrap gap-1.5 items-center">
               <% if (row.agents.length === 0) { %>
-                <span class="text-xs text-gray-300 italic">sin agentes</span>
+                <span class="text-xs text-slate-300 italic edit-hide">sin agentes</span>
               <% } %>
               <% row.agents.forEach(a => { %>
                 <% const cls = CHIP_COLORS[a.colorIdx]; %>
                 <% const tip = a.name + (a.custom ? ' · custom hours' : '') + (!a.native ? ' · presta de ' + a.nativeDept : '') + (a.swapped ? ' · cambio aprobado' : ''); %>
-                <% if (isManager) { %>
-                  <a href="/horarios/agente/<%= a.plannerId %>"
-                     class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ring-1 hover:ring-2 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
-                     title="<%= tip %>">
-                    <% if (!a.native) { %><span class="px-1 rounded bg-white/60 text-[9px] font-bold"><%= a.nativeDept %></span><% } %>
-                    <%= a.name %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
-                    <% if (a.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
-                  </a>
-                <% } else { %>
-                  <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ring-1 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
-                        title="<%= tip %>">
-                    <% if (!a.native) { %><span class="px-1 rounded bg-white/60 text-[9px] font-bold"><%= a.nativeDept %></span><% } %>
-                    <%= a.name %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
-                    <% if (a.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
-                  </span>
-                <% } %>
+                <span class="relative inline-flex items-center group" data-chip data-pid="<%= a.plannerId %>" data-shift="<%= block.dept %>:<%= row.id %>">
+                  <% if (isManager) { %>
+                    <a href="/horarios/agente/<%= a.plannerId %>"
+                       class="chip-link pill inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ring-1 hover:ring-2 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
+                       title="<%= tip %>">
+                      <% if (!a.native) { %><span class="px-1 rounded bg-white/70 text-[9px] font-bold tracking-wide"><%= a.nativeDept %></span><% } %>
+                      <%= a.name %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
+                      <% if (a.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
+                    </a>
+                  <% } else { %>
+                    <span class="pill inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ring-1 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
+                          title="<%= tip %>">
+                      <% if (!a.native) { %><span class="px-1 rounded bg-white/70 text-[9px] font-bold tracking-wide"><%= a.nativeDept %></span><% } %>
+                      <%= a.name %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
+                      <% if (a.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
+                    </span>
+                  <% } %>
+                  <% if (isManager) { %>
+                    <button type="button"
+                            class="edit-only hidden absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] leading-none font-bold shadow hover:bg-red-600"
+                            data-action="remove" data-name="<%= a.name %>" data-shift-id="<%= row.id %>" data-dept="<%= block.dept %>" data-pid="<%= a.plannerId %>"
+                            title="Quitar de este turno">×</button>
+                  <% } %>
+                </span>
               <% }) %>
+              <% if (isManager) { %>
+                <button type="button"
+                        class="edit-only hidden inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border border-dashed border-slate-300 text-slate-500 hover:bg-slate-50 hover:border-gray-400"
+                        data-action="add" data-shift-id="<%= row.id %>" data-dept="<%= block.dept %>">
+                  + Agregar
+                </button>
+              <% } %>
             </div>
           </div>
         <% }) %>
       </div>
     </section>
   <% }) %>
+
+  <% if (offAgents && offAgents.length > 0) { %>
+    <section class="bg-white rounded-lg border border-slate-200 shadow-card overflow-hidden mb-6">
+      <header class="flex items-center gap-3 px-4 py-3 bg-slate-50 border-b border-slate-200">
+        <span class="inline-block px-2 py-0.5 rounded text-xs font-bold bg-cyan-600 text-white">OFF</span>
+        <h3 class="font-semibold text-slate-900">Tiempo libre <span class="text-slate-400 font-normal text-sm">(<%= offAgents.length %>)</span></h3>
+      </header>
+      <div class="px-4 py-3 flex flex-wrap gap-1.5">
+        <% offAgents.forEach(o => { %>
+          <% const cls = o.isVac ? 'bg-cyan-50 text-cyan-800 ring-cyan-300' : 'bg-amber-50 text-amber-800 ring-amber-300'; %>
+          <% const ico = o.isVac ? '🏖️' : '📝'; %>
+          <% if (isManager) { %>
+            <a href="/horarios/agente/<%= o.plannerId %>"
+               class="pill inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ring-1 hover:ring-2 <%= cls %>"
+               title="<%= o.name %> · <%= o.reason || 'time off' %>">
+              <span class="text-[10px]"><%= ico %></span>
+              <span class="px-1 rounded bg-white/70 text-[9px] font-bold tracking-wide"><%= o.dept %></span>
+              <span class="line-through opacity-80"><%= o.name %></span>
+            </a>
+          <% } else { %>
+            <span class="pill inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ring-1 <%= cls %>"
+                  title="<%= o.name %> · <%= o.reason || 'time off' %>">
+              <span class="text-[10px]"><%= ico %></span>
+              <span class="px-1 rounded bg-white/70 text-[9px] font-bold tracking-wide"><%= o.dept %></span>
+              <span class="line-through opacity-80"><%= o.name %></span>
+            </span>
+          <% } %>
+        <% }) %>
+      </div>
+    </section>
+  <% } %>
 </main>
+<% if (isManager) { %>
+  <!-- Add-agent modal -->
+  <div id="addModal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-5">
+      <h3 class="text-lg font-semibold text-slate-900 mb-1">Agregar agente al turno</h3>
+      <p class="text-xs text-slate-500 mb-4" id="addModalSubtitle"></p>
+      <label class="block text-sm font-medium text-slate-700 mb-1">Agente</label>
+      <select id="addAgentSel" class="block w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-4">
+        <% allAgents.forEach(a => { %>
+          <option value="<%= a.plannerId %>"><%= a.name %> · <%= a.dept %></option>
+        <% }) %>
+      </select>
+      <div class="flex justify-end gap-2">
+        <button type="button" id="addCancel" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg">Cancelar</button>
+        <button type="button" id="addConfirm" class="px-4 py-2 bg-ink-800 text-white text-sm rounded-lg hover:bg-ink-700">Agregar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    const KEY = 'horarios.editMode';
+    const banner = document.getElementById('editBanner');
+    const toggle = document.getElementById('editToggle');
+    const modal  = document.getElementById('addModal');
+    const sel    = document.getElementById('addAgentSel');
+    const sub    = document.getElementById('addModalSubtitle');
+    const dateStr = '<%= dateStr %>';
+    let pending = null; // { dept, shiftId }
+
+    function setEditMode(on) {
+      document.body.classList.toggle('edit-mode', on);
+      banner.classList.toggle('hidden', !on);
+      document.querySelectorAll('.edit-only').forEach(el => el.classList.toggle('hidden', !on));
+      document.querySelectorAll('.chip-link').forEach(el => {
+        // disable chip links during edit so × clicks don't navigate
+        if (on) { el.dataset.href = el.getAttribute('href'); el.removeAttribute('href'); el.style.cursor = 'default'; }
+        else if (el.dataset.href) { el.setAttribute('href', el.dataset.href); el.style.cursor = ''; }
+      });
+      toggle.classList.toggle('bg-amber-500', on);
+      toggle.classList.toggle('text-white', on);
+      toggle.classList.toggle('border-amber-500', on);
+      toggle.textContent = on ? '✕ Salir de edición' : '✏️ Editar';
+      try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+    }
+
+    toggle.addEventListener('click', () => setEditMode(!document.body.classList.contains('edit-mode')));
+    try { if (localStorage.getItem(KEY) === '1') setEditMode(true); } catch(e) {}
+
+    async function postEdit(payload) {
+      const r = await fetch('/horarios/edit', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.ok) { alert('Error: ' + (j.error || r.status)); return false; }
+      return true;
+    }
+
+    // Remove (× on chip)
+    document.addEventListener('click', async (ev) => {
+      const btn = ev.target.closest('[data-action="remove"]');
+      if (!btn) return;
+      ev.preventDefault(); ev.stopPropagation();
+      const name = btn.dataset.name, shiftId = btn.dataset.shiftId, dept = btn.dataset.dept, pid = btn.dataset.pid;
+      if (!confirm('Quitar a ' + name + ' del turno ' + dept + ':' + shiftId + ' el ' + dateStr + '?')) return;
+      const ok = await postEdit({ action:'remove', plannerId: pid, date: dateStr, shiftId, dept });
+      if (ok) location.reload();
+    });
+
+    // Add (+ button on row)
+    document.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('[data-action="add"]');
+      if (!btn) return;
+      pending = { dept: btn.dataset.dept, shiftId: btn.dataset.shiftId };
+      sub.textContent = pending.dept + ':' + pending.shiftId + ' · ' + dateStr;
+      modal.classList.remove('hidden');
+    });
+    document.getElementById('addCancel').addEventListener('click', () => modal.classList.add('hidden'));
+    document.getElementById('addConfirm').addEventListener('click', async () => {
+      if (!pending) return;
+      const pid = sel.value;
+      const ok = await postEdit({ action:'add', plannerId: pid, date: dateStr, shiftId: pending.shiftId, dept: pending.dept });
+      if (ok) location.reload();
+    });
+    modal.addEventListener('click', (ev) => { if (ev.target === modal) modal.classList.add('hidden'); });
+  })();
+  </script>
+<% } %>
+
+<script>
+(function() {
+  const KEY = 'tzPref';
+  const toggle = document.getElementById('tzToggle');
+  if (!toggle) return;
+  const localTz = '<%= localTz %>';
+  function apply(pref) {
+    toggle.querySelectorAll('.tz-btn').forEach(b => {
+      const sel = b.dataset.tz === pref;
+      b.classList.toggle('bg-ink-800', sel);
+      b.classList.toggle('text-white', sel);
+      b.classList.toggle('text-slate-600', !sel);
+      b.classList.toggle('hover:bg-slate-50', !sel);
+    });
+    document.querySelectorAll('[data-utc][data-local]').forEach(el => {
+      el.textContent = pref === 'utc' ? el.dataset.utc : el.dataset.local;
+    });
+    try { localStorage.setItem(KEY, pref); } catch(e) {}
+  }
+  toggle.querySelectorAll('.tz-btn').forEach(b => {
+    b.addEventListener('click', () => apply(b.dataset.tz));
+  });
+  let saved = null; try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === 'local' ? 'local' : 'utc');
+})();
+</script>
 <%- include('partials/foot') %>

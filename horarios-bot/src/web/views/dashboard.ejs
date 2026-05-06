@@ -1,74 +1,145 @@
 <%- include('partials/head') %>
 <%- include('partials/nav', { user }) %>
 
-<main class="max-w-6xl mx-auto px-4 py-6">
-  <div class="flex items-center justify-between mb-6">
-    <h2 class="text-xl font-semibold text-gray-900">Dashboard</h2>
-    <span class="text-sm text-gray-500"><%= now %> UTC</span>
+<main class="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+  <!-- Page header -->
+  <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
+    <div class="min-w-0">
+      <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Hola, <%= (user.name || '').split(' ')[0] %></h2>
+      <p class="text-sm text-slate-500 mt-0.5">Resumen de turnos en vivo del equipo.</p>
+    </div>
+    <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg shadow-card self-start sm:self-auto shrink-0">
+      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+      <span class="text-xs font-mono text-slate-600"><%= now %> UTC</span>
+    </div>
   </div>
 
-  <!-- Stats -->
-  <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
-    <div class="bg-white rounded-lg border border-gray-200 p-4">
-      <div class="text-2xl font-bold text-green-600"><%= counts.active %></div>
-      <div class="text-xs text-gray-500 mt-1">En turno</div>
-    </div>
-    <div class="bg-white rounded-lg border border-gray-200 p-4">
-      <div class="text-2xl font-bold text-red-600"><%= counts.alert %></div>
-      <div class="text-xs text-gray-500 mt-1">Sin marcar</div>
-    </div>
-    <div class="bg-white rounded-lg border border-gray-200 p-4">
-      <div class="text-2xl font-bold text-yellow-600"><%= counts.warning %></div>
-      <div class="text-xs text-gray-500 mt-1">Sin clock out</div>
-    </div>
-    <div class="bg-white rounded-lg border border-gray-200 p-4">
-      <div class="text-2xl font-bold text-blue-600"><%= counts.upcoming %></div>
-      <div class="text-xs text-gray-500 mt-1">Proximos (8h)</div>
-    </div>
-    <div class="bg-white rounded-lg border border-gray-200 p-4">
-      <div class="text-2xl font-bold text-gray-600"><%= counts.completed %></div>
-      <div class="text-xs text-gray-500 mt-1">Finalizados (8h)</div>
-    </div>
+  <!-- Stats grid -->
+  <%
+    const stats = [
+      { key: 'active',    label: 'En turno',        value: counts.active,    accent: 'emerald', icon: '●' },
+      { key: 'alert',     label: 'Sin marcar',      value: counts.alert,     accent: 'rose',    icon: '!' },
+      { key: 'warning',   label: 'Sin clock out',   value: counts.warning,   accent: 'amber',   icon: '◷' },
+      { key: 'upcoming',  label: 'Proximos (8h)',   value: counts.upcoming,  accent: 'blue',    icon: '↗' },
+      { key: 'completed', label: 'Finalizados',     value: counts.completed, accent: 'slate',   icon: '✓' }
+    ];
+    const accentMap = {
+      emerald: { ring: 'ring-emerald-200', text: 'text-emerald-700', bg: 'bg-emerald-50',  border: 'border-emerald-200',  dot: 'bg-emerald-500' },
+      rose:    { ring: 'ring-rose-200',    text: 'text-rose-700',    bg: 'bg-rose-50',     border: 'border-rose-200',     dot: 'bg-rose-500'    },
+      amber:   { ring: 'ring-amber-200',   text: 'text-amber-700',   bg: 'bg-amber-50',    border: 'border-amber-200',    dot: 'bg-amber-500'   },
+      blue:    { ring: 'ring-sky-200',     text: 'text-sky-700',     bg: 'bg-sky-50',      border: 'border-sky-200',      dot: 'bg-sky-500'     },
+      slate:   { ring: 'ring-slate-200',   text: 'text-slate-700',   bg: 'bg-slate-100',   border: 'border-slate-200',    dot: 'bg-slate-400'   }
+    };
+  %>
+  <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-8">
+    <% stats.forEach(s => { const c = accentMap[s.accent]; %>
+      <div class="relative bg-white rounded-xl border border-slate-200 shadow-card p-4 overflow-hidden group transition-shadow hover:shadow-card-hover">
+        <!-- Accent strip on top -->
+        <div class="absolute top-0 left-0 right-0 h-1 <%= c.dot %>"></div>
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="text-[11px] uppercase tracking-wider font-bold text-slate-400"><%= s.label %></div>
+            <div class="text-3xl font-extrabold mt-1 <%= s.value > 0 ? c.text : 'text-slate-300' %>"><%= s.value %></div>
+          </div>
+          <div class="w-8 h-8 rounded-lg <%= c.bg %> <%= c.text %> flex items-center justify-center text-base font-bold ring-1 <%= c.ring %>">
+            <%= s.icon %>
+          </div>
+        </div>
+      </div>
+    <% }) %>
   </div>
 
   <!-- Shift table -->
-  <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
-    <table class="w-full text-sm">
-      <thead class="bg-gray-50 border-b border-gray-200">
-        <tr>
-          <th class="text-left px-4 py-3 font-medium text-gray-600">Agente</th>
-          <th class="text-left px-4 py-3 font-medium text-gray-600">Dept</th>
-          <th class="text-left px-4 py-3 font-medium text-gray-600">Turno</th>
-          <th class="text-left px-4 py-3 font-medium text-gray-600">Horario (UTC)</th>
-          <th class="text-left px-4 py-3 font-medium text-gray-600">Estado</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-gray-100">
-        <% if (rows.length === 0) { %>
-          <tr><td colspan="5" class="px-4 py-8 text-center text-gray-400">Sin turnos activos</td></tr>
-        <% } %>
+  <section class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
+    <header class="flex items-center justify-between px-5 py-3 border-b border-slate-200 bg-slate-50/50">
+      <h3 class="font-semibold text-slate-900 text-sm">Turnos en vivo</h3>
+      <span class="text-xs text-slate-500"><%= rows.length %> turno<%= rows.length === 1 ? '' : 's' %></span>
+    </header>
+
+    <% if (rows.length === 0) { %>
+      <div class="px-5 py-12 text-center">
+        <div class="text-4xl mb-2 opacity-30">◌</div>
+        <p class="text-sm text-slate-400">Sin turnos activos en este momento</p>
+      </div>
+    <% } else { %>
+      <!-- Desktop table -->
+      <div class="hidden md:block overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-slate-50/60 border-b border-slate-200 text-xs uppercase tracking-wider">
+            <tr>
+              <th class="text-left px-5 py-3 font-semibold text-slate-500">Agente</th>
+              <th class="text-left px-3 py-3 font-semibold text-slate-500">Dept</th>
+              <th class="text-left px-3 py-3 font-semibold text-slate-500">Turno</th>
+              <th class="text-left px-3 py-3 font-semibold text-slate-500">Horario (UTC)</th>
+              <th class="text-left px-3 py-3 font-semibold text-slate-500">Estado</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <% rows.forEach(r => { %>
+              <tr class="hover:bg-slate-50/60 transition-colors">
+                <td class="px-5 py-3 font-semibold text-slate-900"><%= r.agent %></td>
+                <td class="px-3 py-3">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold tracking-wide
+                    <%= r.dept === 'L1' ? 'bg-blue-100 text-blue-700' : 'bg-violet-100 text-violet-700' %>">
+                    <%= r.dept %>
+                  </span>
+                </td>
+                <td class="px-3 py-3 text-slate-600 text-xs"><%= r.shiftLabel %></td>
+                <td class="px-3 py-3 text-slate-500 text-xs font-mono"><%= r.startUtc %>–<%= r.endUtc %></td>
+                <td class="px-3 py-3">
+                  <span class="pill inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ring-1
+                    <% if (r.statusClass === 'active') { %>bg-emerald-50 text-emerald-700 ring-emerald-200
+                    <% } else if (r.statusClass === 'break') { %>bg-orange-50 text-orange-700 ring-orange-200
+                    <% } else if (r.statusClass === 'alert') { %>bg-rose-50 text-rose-700 ring-rose-200
+                    <% } else if (r.statusClass === 'warning') { %>bg-amber-50 text-amber-700 ring-amber-200
+                    <% } else if (r.statusClass === 'upcoming') { %>bg-sky-50 text-sky-700 ring-sky-200
+                    <% } else if (r.statusClass === 'completed') { %>bg-slate-100 text-slate-600 ring-slate-200
+                    <% } %>">
+                    <span class="w-1.5 h-1.5 rounded-full
+                      <% if (r.statusClass === 'active') { %>bg-emerald-500
+                      <% } else if (r.statusClass === 'break') { %>bg-orange-500
+                      <% } else if (r.statusClass === 'alert') { %>bg-rose-500
+                      <% } else if (r.statusClass === 'warning') { %>bg-amber-500
+                      <% } else if (r.statusClass === 'upcoming') { %>bg-sky-500
+                      <% } else { %>bg-slate-400<% } %>"></span>
+                    <%= r.status %>
+                  </span>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Mobile card list -->
+      <ul class="md:hidden divide-y divide-slate-100">
         <% rows.forEach(r => { %>
-          <tr class="hover:bg-gray-50">
-            <td class="px-4 py-3 font-medium text-gray-900"><%= r.agent %></td>
-            <td class="px-4 py-3 text-gray-600"><%= r.dept %></td>
-            <td class="px-4 py-3 text-gray-600"><%= r.shiftLabel %></td>
-            <td class="px-4 py-3 text-gray-600"><%= r.startUtc %>–<%= r.endUtc %></td>
-            <td class="px-4 py-3">
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
-                <% if (r.statusClass === 'active') { %>bg-green-100 text-green-700
-                <% } else if (r.statusClass === 'break') { %>bg-orange-100 text-orange-700
-                <% } else if (r.statusClass === 'alert') { %>bg-red-100 text-red-700
-                <% } else if (r.statusClass === 'warning') { %>bg-yellow-100 text-yellow-700
-                <% } else if (r.statusClass === 'upcoming') { %>bg-blue-100 text-blue-700
-                <% } else if (r.statusClass === 'completed') { %>bg-gray-100 text-gray-600
-                <% } %>">
-                <%= r.status %>
-              </span>
-            </td>
-          </tr>
+          <li class="px-4 py-3 flex items-start gap-3">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="font-semibold text-slate-900 text-sm truncate"><%= r.agent %></span>
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide
+                  <%= r.dept === 'L1' ? 'bg-blue-100 text-blue-700' : 'bg-violet-100 text-violet-700' %>">
+                  <%= r.dept %>
+                </span>
+              </div>
+              <div class="text-xs text-slate-500 mt-0.5">
+                <%= r.shiftLabel %> · <span class="font-mono"><%= r.startUtc %>–<%= r.endUtc %></span>
+              </div>
+            </div>
+            <span class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ring-1 shrink-0
+              <% if (r.statusClass === 'active') { %>bg-emerald-50 text-emerald-700 ring-emerald-200
+              <% } else if (r.statusClass === 'break') { %>bg-orange-50 text-orange-700 ring-orange-200
+              <% } else if (r.statusClass === 'alert') { %>bg-rose-50 text-rose-700 ring-rose-200
+              <% } else if (r.statusClass === 'warning') { %>bg-amber-50 text-amber-700 ring-amber-200
+              <% } else if (r.statusClass === 'upcoming') { %>bg-sky-50 text-sky-700 ring-sky-200
+              <% } else { %>bg-slate-100 text-slate-600 ring-slate-200<% } %>">
+              <%= r.status %>
+            </span>
+          </li>
         <% }) %>
-      </tbody>
-    </table>
-  </div>
+      </ul>
+    <% } %>
+  </section>
 </main>
 <%- include('partials/foot') %>

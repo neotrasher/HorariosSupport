@@ -2,51 +2,109 @@
 <%- include('partials/nav', { user }) %>
 
 <main class="max-w-2xl mx-auto px-4 py-6">
-  <a href="/solicitudes" class="text-xs text-gray-500 hover:underline">&larr; Volver a solicitudes</a>
-  <h2 class="text-xl font-semibold text-gray-900 mt-1 mb-6">Nueva solicitud</h2>
+  <a href="/solicitudes" class="text-xs text-slate-500 hover:underline">&larr; Volver a solicitudes</a>
+  <h2 class="text-xl font-semibold text-slate-900 mt-1 mb-6">Nueva solicitud</h2>
 
   <% if (error) { %>
     <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3 mb-4"><%= error %></div>
   <% } %>
 
-  <form method="post" action="/solicitudes/nueva" class="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
+  <form method="post" action="/solicitudes/nueva" class="bg-white rounded-lg border border-slate-200 shadow-card p-6 space-y-4">
+    <% if (isPriv) { %>
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
-      <select name="type" class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+      <label class="block text-sm font-medium text-slate-700 mb-1">Para <span class="text-slate-400 font-normal">(agente)</span></label>
+      <select name="target_slack_id" class="block w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+        <option value="">— A mi nombre —</option>
+        <% allAgents.forEach(function(a) { %>
+          <option value="<%= a.slack_id %>" <%= form.target_slack_id === a.slack_id ? 'selected' : '' %>><%= a.name %> · <%= a.dept %></option>
+        <% }) %>
+      </select>
+    </div>
+    <% } %>
+
+    <div>
+      <label class="block text-sm font-medium text-slate-700 mb-1">Tipo</label>
+      <select id="typeSel" name="type" class="block w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
         <option value="permiso" <%= form.type === 'permiso' ? 'selected' : '' %>>📝 Permiso</option>
         <option value="vacaciones" <%= form.type === 'vacaciones' ? 'selected' : '' %>>🏖️ Vacaciones</option>
       </select>
+      <div id="vacationBalance" class="mt-2 text-xs hidden"></div>
     </div>
 
     <div class="grid grid-cols-2 gap-4">
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Fecha inicio</label>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Fecha inicio</label>
         <input type="date" name="start_date" required value="<%= form.start_date %>"
-               class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+               class="block w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
       </div>
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Fecha fin</label>
+        <label class="block text-sm font-medium text-slate-700 mb-1">Fecha fin</label>
         <input type="date" name="end_date" required value="<%= form.end_date %>"
-               class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-        <p class="text-[11px] text-gray-400 mt-1">Igual al inicio si es un solo dia.</p>
+               class="block w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+        <p class="text-[11px] text-slate-400 mt-1">Igual al inicio si es un solo dia.</p>
       </div>
     </div>
 
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">Motivo <span class="text-gray-400 font-normal">(opcional)</span></label>
+      <label class="block text-sm font-medium text-slate-700 mb-1">Motivo <span class="text-slate-400 font-normal">(opcional)</span></label>
       <textarea name="reason" rows="3"
-                class="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                class="block w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
                 placeholder="Ej: cita medica, viaje familiar..."><%= form.reason %></textarea>
     </div>
 
     <div class="flex justify-end gap-2 pt-2">
-      <a href="/solicitudes" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg">Cancelar</a>
-      <button type="submit" class="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-800">
+      <a href="/solicitudes" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg">Cancelar</a>
+      <button type="submit" class="bg-ink-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-ink-700">
         Enviar solicitud
       </button>
     </div>
   </form>
 
-  <p class="text-xs text-gray-400 mt-4">Al enviar, los managers (<%= user.role === 'manager' ? 'incluyendote' : 'Diego y Cindy' %>) reciben un DM en Slack para aprobar o rechazar. Te avisamos cuando se resuelva.</p>
+  <p class="text-xs text-slate-400 mt-4">Al enviar, los managers (<%= user.role === 'manager' ? 'incluyendote' : 'Diego y Cindy' %>) reciben un DM en Slack para aprobar o rechazar. Te avisamos cuando se resuelva.</p>
+
+  <script>
+  (function() {
+    const myBalance = <%- JSON.stringify(myBalance || null) %>;
+    const balanceByAgent = <%- JSON.stringify(balanceByAgent || {}) %>;
+    const typeSel = document.getElementById('typeSel');
+    const targetSel = document.querySelector('select[name="target_slack_id"]');
+    const startInp = document.querySelector('input[name="start_date"]');
+    const endInp   = document.querySelector('input[name="end_date"]');
+    const box = document.getElementById('vacationBalance');
+
+    function dateDiff(a, b) {
+      if (!a || !b) return 0;
+      const ms = (new Date(b).getTime() - new Date(a).getTime());
+      return Math.max(0, Math.round(ms / 86400000) + 1);
+    }
+    function pickBalance() {
+      if (targetSel && targetSel.value) return balanceByAgent[targetSel.value] || null;
+      return myBalance;
+    }
+    function render() {
+      if (typeSel.value !== 'vacaciones') { box.classList.add('hidden'); return; }
+      const b = pickBalance();
+      if (!b) { box.classList.add('hidden'); return; }
+      const requesting = dateDiff(startInp.value, endInp.value);
+      const remaining = (b.entitled === null) ? null : (b.entitled - b.used - requesting);
+      const lines = [];
+      lines.push('Año ' + b.year + ' · usados ' + b.used + (b.entitled !== null ? ' / ' + b.entitled : ''));
+      if (requesting > 0) lines.push('Esta solicitud: ' + requesting + ' dia' + (requesting === 1 ? '' : 's'));
+      if (remaining !== null) {
+        const cls = remaining < 0 ? 'text-red-600 font-medium' : 'text-emerald-700';
+        lines.push('<span class="' + cls + '">Disponibles tras esta: ' + remaining + '</span>');
+      } else {
+        lines.push('<span class="text-slate-400">Sin entitlement configurado</span>');
+      }
+      box.innerHTML = lines.join(' · ');
+      box.classList.remove('hidden');
+    }
+    typeSel.addEventListener('change', render);
+    if (targetSel) targetSel.addEventListener('change', render);
+    startInp.addEventListener('change', render);
+    endInp.addEventListener('change', render);
+    render();
+  })();
+  </script>
 </main>
 <%- include('partials/foot') %>

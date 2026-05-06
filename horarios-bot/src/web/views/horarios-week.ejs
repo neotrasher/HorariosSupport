@@ -19,67 +19,94 @@
   ];
 %>
 
-<main class="max-w-7xl mx-auto px-4 py-6">
-  <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
-    <div class="flex items-center gap-3">
-      <h2 class="text-xl font-semibold text-gray-900">Horarios</h2>
-      <%- include('partials/viewSwitch', { view }) %>
+<main class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+  <div class="mb-5">
+    <div class="flex items-end justify-between gap-3 mb-3 flex-wrap">
+      <div class="min-w-0">
+        <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Horarios</h2>
+        <p class="text-sm text-slate-500 mt-1">Vista semanal · grilla 7 dias</p>
+      </div>
+      <%- include('partials/viewSwitch', { view, currentDate }) %>
     </div>
-    <div class="flex items-center gap-2 text-sm">
-      <a href="/horarios?view=week&date=<%= prev %>" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">&larr;</a>
-      <span class="px-3 py-1.5 font-medium"><%= weekLabel %> <span class="text-gray-400 font-normal">Sem <%= cycle %></span></span>
-      <a href="/horarios?view=week&date=<%= next %>" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">&rarr;</a>
-      <a href="/horarios?view=week&date=<%= today %>" class="ml-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">Hoy</a>
+    <div class="flex flex-wrap items-center gap-2 text-sm">
+      <a href="/horarios?view=week&date=<%= prev %>" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card shrink-0">&larr;</a>
+      <label class="relative flex-1 sm:flex-none min-w-0 px-3 py-1.5 font-medium bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card cursor-pointer inline-flex items-center gap-2"
+             onclick="const i=this.querySelector('input');if(i.showPicker)i.showPicker();else i.focus();">
+        <span class="pointer-events-none truncate"><%= weekLabel %></span>
+        <span class="text-slate-400 font-normal text-xs pointer-events-none whitespace-nowrap">Sem <%= cycle %></span>
+        <span class="text-slate-300 text-xs pointer-events-none">📅</span>
+        <input type="date" value="<%= currentDate %>"
+               onchange="if(this.value) location.href='/horarios?view=week&date='+this.value"
+               onclick="event.stopPropagation()"
+               class="absolute right-2 top-1/2 -translate-y-1/2 w-1 h-1 opacity-0 pointer-events-none">
+      </label>
+      <a href="/horarios?view=week&date=<%= next %>" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card shrink-0">&rarr;</a>
+      <a href="/horarios?view=week&date=<%= today %>" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card text-slate-600 shrink-0">Hoy</a>
+    </div>
+  </div>
+
+  <!-- TZ toggle -->
+  <div class="flex items-center gap-2 mb-4">
+    <span class="text-xs text-slate-500 font-medium">Mostrar horas en:</span>
+    <div class="inline-flex rounded-lg border border-slate-200 bg-white text-xs overflow-hidden shadow-card" id="tzToggle">
+      <button type="button" data-tz="utc" class="tz-btn px-3 py-1.5 font-semibold bg-ink-800 text-white">UTC</button>
+      <button type="button" data-tz="local" class="tz-btn px-3 py-1.5 font-semibold border-l border-slate-200 text-slate-600 hover:bg-slate-50"><%= localTz %></button>
     </div>
   </div>
 
   <% blocks.forEach(block => { %>
-    <section class="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
-      <header class="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-200">
-        <span class="inline-block px-2 py-0.5 rounded text-xs font-bold
-          <%= block.dept === 'L1' ? 'bg-blue-600 text-white' : 'bg-purple-600 text-white' %>">
+    <section class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden mb-5">
+      <header class="flex items-center gap-3 px-5 py-3 bg-slate-50/60 border-b border-slate-200">
+        <span class="inline-block px-2.5 py-0.5 rounded text-xs font-bold tracking-wide shadow-card
+          <%= block.dept === 'L1' ? 'bg-blue-600 text-white' : 'bg-violet-600 text-white' %>">
           <%= block.dept %>
         </span>
-        <h3 class="font-semibold text-gray-900">Horario <%= block.dept %></h3>
+        <h3 class="font-semibold text-slate-900 text-sm">Horario <%= block.dept %></h3>
       </header>
 
       <div class="overflow-x-auto">
-        <table class="w-full text-xs">
+        <table class="w-full text-xs table-fixed">
+          <colgroup>
+            <col style="width: 6rem">
+            <% days.forEach(() => { %><col style="width: calc((100% - 6rem) / 7)"><% }) %>
+          </colgroup>
           <thead>
-            <tr class="bg-gray-50 border-b border-gray-200">
-              <th class="px-3 py-2 w-24"></th>
+            <tr class="bg-slate-50 border-b border-slate-200">
+              <th class="px-3 py-2"></th>
               <% days.forEach(d => { %>
                 <th class="px-2 py-2 text-center font-medium <%= d.isToday ? 'bg-yellow-50' : '' %>">
-                  <div class="text-gray-900 font-bold capitalize"><%= d.dayCode %></div>
-                  <div class="text-[10px] text-gray-400 capitalize"><%= d.dayName %> <%= d.dayNum %></div>
+                  <div class="text-slate-900 font-bold capitalize"><%= d.dayCode %></div>
+                  <div class="text-[10px] text-slate-400 capitalize"><%= d.dayName %> <%= d.dayNum %></div>
                 </th>
               <% }) %>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-100">
+          <tbody class="divide-y divide-slate-100">
             <% block.rows.forEach(row => { %>
               <tr>
-                <th class="px-3 py-2 text-left bg-gray-50/40 align-top w-24">
-                  <div class="font-bold text-gray-900 text-sm"><%= row.id %></div>
-                  <div class="text-[10px] text-gray-500"><%= row.startHour.toString().padStart(2,'0') %>–<%= (row.endHour % 24).toString().padStart(2,'0') %></div>
-                  <div class="text-[10px] text-gray-400"><%= row.label %></div>
+                <th class="px-3 py-2 text-left bg-slate-50/40 align-top">
+                  <div class="font-bold text-slate-900 text-sm"><%= row.id %></div>
+                  <div class="text-[10px] text-slate-500 font-mono"
+                       data-utc="<%= row.startUtcStr %>–<%= row.endUtcStr %>"
+                       data-local="<%= row.startLocalStr %>–<%= row.endLocalStr %>"><%= row.startUtcStr %>–<%= row.endUtcStr %></div>
+                  <div class="text-[10px] text-slate-400"><%= row.label %></div>
                 </th>
                 <% row.cells.forEach(cell => { %>
-                  <td class="px-1.5 py-1.5 align-top min-w-[100px] <%= cell.isToday ? 'bg-yellow-50/40' : '' %>">
+                  <td class="px-1.5 py-1.5 align-top <%= cell.isToday ? 'bg-yellow-50/40' : '' %>">
                     <div class="flex flex-wrap gap-1">
                       <% cell.agents.forEach(a => { %>
                         <% const cls = CHIP_COLORS[a.colorIdx]; %>
                         <% const tip = a.name + (a.custom ? ' · custom hours' : '') + (!a.native ? ' · presta de ' + a.nativeDept : '') + (a.swapped ? ' · cambio aprobado' : ''); %>
                         <% if (isManager) { %>
                           <a href="/horarios/agente/<%= a.plannerId %>"
-                             class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ring-1 hover:ring-2 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
+                             class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 hover:ring-2 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
                              title="<%= tip %>">
                             <% if (!a.native) { %><span class="px-1 rounded bg-white/60 text-[9px] font-bold"><%= a.nativeDept %></span><% } %>
                             <%= a.name %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
                             <% if (a.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
                           </a>
                         <% } else { %>
-                          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ring-1 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
+                          <span class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
                                 title="<%= tip %>">
                             <% if (!a.native) { %><span class="px-1 rounded bg-white/60 text-[9px] font-bold"><%= a.nativeDept %></span><% } %>
                             <%= a.name %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
@@ -98,6 +125,78 @@
     </section>
   <% }) %>
 
-  <p class="text-xs text-gray-400">Cada agente tiene un color consistente. <span class="font-mono">*</span> = horas custom · <span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span> = turno cambiado (cambio aprobado). Click en el chip (managers) abre el drill-down.</p>
+  <% const hasOff = offRow && offRow.some(c => c.agents.length > 0); %>
+  <% if (hasOff) { %>
+    <section class="bg-white rounded-lg border border-slate-200 shadow-card overflow-hidden mb-6">
+      <header class="flex items-center gap-3 px-4 py-3 bg-slate-50 border-b border-slate-200">
+        <span class="inline-block px-2 py-0.5 rounded text-xs font-bold bg-cyan-600 text-white">OFF</span>
+        <h3 class="font-semibold text-slate-900">Tiempo libre</h3>
+      </header>
+      <div class="overflow-x-auto">
+        <table class="w-full text-xs table-fixed">
+          <colgroup>
+            <col style="width: 6rem">
+            <% offRow.forEach(() => { %><col style="width: calc((100% - 6rem) / 7)"><% }) %>
+          </colgroup>
+          <tbody>
+            <tr>
+              <th class="px-3 py-2 text-left bg-slate-50/40 align-top text-[10px] text-slate-500 uppercase">Off</th>
+              <% offRow.forEach(c => { %>
+                <td class="px-1.5 py-1.5 align-top <%= c.isToday ? 'bg-yellow-50/40' : '' %>">
+                  <div class="flex flex-wrap gap-1">
+                    <% c.agents.forEach(o => { %>
+                      <% const cls = o.isVac ? 'bg-cyan-50 text-cyan-800 ring-cyan-300' : 'bg-amber-50 text-amber-800 ring-amber-300'; %>
+                      <% const ico = o.isVac ? '🏖️' : '📝'; %>
+                      <% if (isManager) { %>
+                        <a href="/horarios/agente/<%= o.plannerId %>"
+                           class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 hover:ring-2 <%= cls %>"
+                           title="<%= o.name %> · <%= o.reason || 'time off' %>">
+                          <span class="text-[9px]"><%= ico %></span>
+                          <span class="line-through opacity-80"><%= o.name %></span>
+                        </a>
+                      <% } else { %>
+                        <span class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= cls %>"
+                              title="<%= o.name %> · <%= o.reason || 'time off' %>">
+                          <span class="text-[9px]"><%= ico %></span>
+                          <span class="line-through opacity-80"><%= o.name %></span>
+                        </span>
+                      <% } %>
+                    <% }) %>
+                  </div>
+                </td>
+              <% }) %>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  <% } %>
+
+  <p class="text-xs text-slate-400">Cada agente tiene un color consistente. <span class="font-mono">*</span> = horas custom · <span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span> = turno cambiado (cambio aprobado). Click en el chip (managers) abre el drill-down.</p>
 </main>
+<script>
+(function() {
+  const KEY = 'tzPref';
+  const toggle = document.getElementById('tzToggle');
+  if (!toggle) return;
+  function apply(pref) {
+    toggle.querySelectorAll('.tz-btn').forEach(b => {
+      const sel = b.dataset.tz === pref;
+      b.classList.toggle('bg-ink-800', sel);
+      b.classList.toggle('text-white', sel);
+      b.classList.toggle('text-slate-600', !sel);
+      b.classList.toggle('hover:bg-slate-50', !sel);
+    });
+    document.querySelectorAll('[data-utc][data-local]').forEach(el => {
+      el.textContent = pref === 'utc' ? el.dataset.utc : el.dataset.local;
+    });
+    try { localStorage.setItem(KEY, pref); } catch(e) {}
+  }
+  toggle.querySelectorAll('.tz-btn').forEach(b => {
+    b.addEventListener('click', () => apply(b.dataset.tz));
+  });
+  let saved = null; try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === 'local' ? 'local' : 'utc');
+})();
+</script>
 <%- include('partials/foot') %>

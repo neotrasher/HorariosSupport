@@ -2,12 +2,137 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0f1825">
   <title>Horarios Support</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif']
+          },
+          colors: {
+            ink: {
+              50:  '#f5f7fa', 100: '#e9eef4', 200: '#cfd8e3', 300: '#a7b6c8',
+              500: '#5b6f88', 700: '#2d3e54', 800: '#1f2c3d', 900: '#0f1825'
+            }
+          },
+          boxShadow: {
+            'card':       '0 1px 0 0 rgb(255 255 255 / 0.6) inset, 0 1px 2px 0 rgb(15 24 37 / 0.04), 0 1px 3px 0 rgb(15 24 37 / 0.05)',
+            'card-hover': '0 1px 0 0 rgb(255 255 255 / 0.7) inset, 0 4px 8px -2px rgb(15 24 37 / 0.06), 0 2px 4px 0 rgb(15 24 37 / 0.05)',
+            'chip':       '0 1px 0 0 rgb(255 255 255 / 0.8) inset, 0 1px 1px 0 rgb(15 24 37 / 0.08), 0 1px 2px 0 rgb(15 24 37 / 0.05)',
+            'sidebar':    '1px 0 0 0 rgb(15 24 37 / 0.06), 4px 0 12px -8px rgb(15 24 37 / 0.06)'
+          }
+        }
+      }
+    }
+  </script>
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   <style>
-    body { font-family: system-ui, -apple-system, sans-serif; }
+    html { -webkit-text-size-adjust: 100%; overflow-x: hidden; }
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; font-feature-settings: 'cv11', 'ss01'; overflow-x: hidden; }
+    .app-main { overflow-x: hidden; }
+    *:focus-visible { outline: 2px solid #2d3e54; outline-offset: 2px; border-radius: 4px; }
+    @media (max-width: 768px) {
+      button, a.btn, [role="button"] { min-height: 40px; }
+    }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-thumb { background: #cfd8e3; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a7b6c8; }
+    ::-webkit-scrollbar-track { background: transparent; }
+
+    /* Page background — subtle paper texture */
+    body {
+      background-color: #f5f7fa;
+      background-image: radial-gradient(circle at 1px 1px, rgba(15,24,37,0.045) 1px, transparent 0);
+      background-size: 22px 22px;
+      background-attachment: fixed;
+    }
+    /* Card */
+    .card {
+      background: linear-gradient(to bottom, #ffffff 0%, #fafbfc 100%);
+      border: 1px solid #e6eaf0;
+      border-radius: 0.625rem;
+      box-shadow: 0 1px 0 0 rgb(255 255 255 / 0.6) inset, 0 1px 2px 0 rgb(15 24 37 / 0.04), 0 1px 3px 0 rgb(15 24 37 / 0.05);
+    }
+    /* Pill / chip with raised feel */
+    .pill {
+      box-shadow: 0 1px 0 0 rgb(255 255 255 / 0.85) inset, 0 -1px 0 0 rgb(15 24 37 / 0.05) inset, 0 1px 1px 0 rgb(15 24 37 / 0.06);
+      transition: transform .12s ease, box-shadow .12s ease;
+    }
+    .pill:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 1px 0 0 rgb(255 255 255 / 0.95) inset, 0 -1px 0 0 rgb(15 24 37 / 0.05) inset, 0 2px 3px 0 rgb(15 24 37 / 0.10);
+    }
+    /* Primary button — deep ink with depth */
+    .btn-primary {
+      background: linear-gradient(to bottom, #2d3e54 0%, #1f2c3d 100%);
+      color: #fff;
+      border: 1px solid #1f2c3d;
+      box-shadow: 0 1px 0 0 rgb(255 255 255 / 0.12) inset, 0 1px 2px 0 rgb(15 24 37 / 0.20), 0 1px 1px 0 rgb(15 24 37 / 0.10);
+      transition: transform .1s ease, box-shadow .12s ease;
+    }
+    .btn-primary:hover {
+      background: linear-gradient(to bottom, #34475f 0%, #2a3a4f 100%);
+      box-shadow: 0 1px 0 0 rgb(255 255 255 / 0.15) inset, 0 2px 4px 0 rgb(15 24 37 / 0.25);
+    }
+    .btn-primary:active { transform: translateY(1px); }
+
+    /* ── App shell layout ─────────────────────────────────────────────── */
+    .app-shell { display: flex; min-height: 100vh; }
+    .app-sidebar {
+      width: 232px; flex-shrink: 0;
+      position: sticky; top: 0; height: 100vh;
+      background: linear-gradient(to bottom, #ffffff 0%, #f8fafc 100%);
+      border-right: 1px solid #e6eaf0;
+      box-shadow: 1px 0 0 0 rgb(15 24 37 / 0.04), 4px 0 12px -8px rgb(15 24 37 / 0.05);
+      display: flex; flex-direction: column;
+      z-index: 30;
+    }
+    .app-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .nav-mobile-bar { display: none; }
+    @media (max-width: 768px) {
+      .app-shell { flex-direction: column; }
+      .app-sidebar {
+        position: fixed; top: 0; left: 0; bottom: 0;
+        width: 280px; max-width: 85vw;
+        height: 100vh;
+        transform: translateX(-100%);
+        transition: transform 0.22s ease;
+        box-shadow: 0 0 32px 0 rgb(15 24 37 / 0.30);
+        z-index: 50;
+      }
+      .app-sidebar.open { transform: translateX(0); }
+      .app-main { width: 100%; }
+      #appOverlay { z-index: 40; }
+      .nav-mobile-bar {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 8px 14px; background: #ffffff; border-bottom: 1px solid #e6eaf0;
+        position: sticky; top: 0; z-index: 20;
+        box-shadow: 0 1px 2px 0 rgb(15 24 37 / 0.03);
+      }
+    }
+
+    /* Sidebar nav links */
+    .navlink {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 12px; border-radius: 8px;
+      font-size: 14px; font-weight: 500; color: #5b6f88;
+      transition: background .12s, color .12s, box-shadow .12s;
+    }
+    .navlink:hover { background: #f1f5f9; color: #1f2c3d; }
+    .navlink.active {
+      background: linear-gradient(to bottom, #2d3e54 0%, #1f2c3d 100%);
+      color: #fff;
+      box-shadow: 0 1px 0 0 rgb(255 255 255 / 0.10) inset, 0 1px 2px 0 rgb(15 24 37 / 0.20);
+    }
+    .navlink-icon { width: 18px; text-align: center; flex-shrink: 0; }
   </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="text-slate-900 antialiased">
+<div class="app-shell">

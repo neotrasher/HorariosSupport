@@ -1,32 +1,107 @@
-<nav class="bg-white border-b border-gray-200 px-4 py-3">
-  <div class="max-w-6xl mx-auto flex items-center justify-between">
-    <div class="flex items-center gap-6">
-      <a href="/" class="text-lg font-semibold text-gray-900">Horarios Support</a>
-      <div class="hidden sm:flex items-center gap-4 text-sm">
-        <a href="/" class="text-gray-600 hover:text-gray-900">Dashboard</a>
-        <a href="/mi-horario" class="text-gray-600 hover:text-gray-900">Mi horario</a>
-        <a href="/horarios" class="text-gray-600 hover:text-gray-900">Horarios</a>
-        <a href="/solicitudes" class="text-gray-600 hover:text-gray-900">Solicitudes</a>
-        <% if (user.role === 'manager' || user.role === 'admin') { %>
-          <a href="/agentes" class="text-gray-600 hover:text-gray-900">Agentes</a>
-          <a href="/reportes" class="text-gray-600 hover:text-gray-900">Reportes</a>
-          <a href="/planner" class="text-gray-600 hover:text-gray-900">Planner</a>
-        <% } %>
+<%
+  const path = (typeof currentPath !== 'undefined' && currentPath) ? currentPath : '';
+  const isActive = (prefix) => path === prefix || path.startsWith(prefix + '/');
+  function ncls(active) { return 'navlink' + (active ? ' active' : ''); }
+%>
+
+<!-- Mobile top bar (hidden on desktop) -->
+<div class="nav-mobile-bar md:hidden">
+  <button id="navMenuToggle" class="p-2 -ml-2 rounded-lg text-slate-700 hover:bg-slate-100" aria-label="Abrir menu">
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+  </button>
+  <a href="/" class="flex items-center gap-2 text-base font-bold text-slate-900">
+    <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-ink-800 text-white text-xs">⏱</span>
+    <span>Horarios</span>
+  </a>
+  <a href="/auth/logout" class="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-900 rounded-md hover:bg-slate-100" title="Salir">Salir</a>
+</div>
+
+<!-- Sidebar (desktop default, mobile drawer when .open) -->
+<aside id="appSidebar" class="app-sidebar">
+  <!-- Brand -->
+  <div class="px-5 py-4 border-b border-slate-200">
+    <a href="/" class="flex items-center gap-2.5">
+      <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-ink-800 text-white text-sm shadow-card">⏱</span>
+      <div class="leading-tight">
+        <div class="font-bold text-slate-900 text-sm">Horarios</div>
+        <div class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Support</div>
       </div>
-    </div>
-    <div class="flex items-center gap-3">
+    </a>
+  </div>
+
+  <!-- Nav links -->
+  <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+    <a href="/" class="<%= ncls(path === '/') %>">
+      <span class="navlink-icon">▦</span> Dashboard
+    </a>
+    <% if (user.role !== 'viewer') { %>
+      <a href="/mi-horario" class="<%= ncls(isActive('/mi-horario')) %>">
+        <span class="navlink-icon">◷</span> Mi horario
+      </a>
+      <a href="/horarios" class="<%= ncls(isActive('/horarios')) %>">
+        <span class="navlink-icon">▤</span> Horarios
+      </a>
+      <a href="/solicitudes" class="<%= ncls(isActive('/solicitudes')) %>">
+        <span class="navlink-icon">✎</span> Solicitudes
+      </a>
+    <% } %>
+    <% if (user.role === 'manager' || user.role === 'admin') { %>
+      <div class="pt-3 pb-1 px-3 text-[10px] uppercase tracking-wider font-bold text-slate-400">Gestion</div>
+      <a href="/agentes" class="<%= ncls(isActive('/agentes')) %>">
+        <span class="navlink-icon">◉</span> Agentes
+      </a>
+      <a href="/reportes" class="<%= ncls(isActive('/reportes')) %>">
+        <span class="navlink-icon">◧</span> Reportes
+      </a>
+      <a href="/planner" class="<%= ncls(isActive('/planner')) %>">
+        <span class="navlink-icon">▥</span> Planner
+      </a>
+    <% } %>
+    <% if (user.role === 'admin') { %>
+      <div class="pt-3 pb-1 px-3 text-[10px] uppercase tracking-wider font-bold text-slate-400">Sistema</div>
+      <a href="/settings" class="<%= ncls(isActive('/settings')) %>">
+        <span class="navlink-icon">⚙</span> Configuracion
+      </a>
+    <% } %>
+  </nav>
+
+  <!-- User card at bottom -->
+  <div class="px-3 py-3 border-t border-slate-200 bg-white/60">
+    <div class="flex items-center gap-2.5 px-2 py-1.5 rounded-lg">
       <% if (user.avatar) { %>
-        <img src="<%= user.avatar %>" alt="" class="w-8 h-8 rounded-full">
+        <img src="<%= user.avatar %>" alt="" class="w-8 h-8 rounded-full ring-2 ring-white shadow-card">
+      <% } else { %>
+        <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600"><%= (user.name || '?').charAt(0).toUpperCase() %></div>
       <% } %>
-      <span class="text-sm text-gray-700"><%= user.name %></span>
-      <span class="text-xs px-2 py-0.5 rounded-full
-        <% if (user.role === 'admin') { %>bg-rose-100 text-rose-700
-        <% } else if (user.role === 'manager') { %>bg-purple-100 text-purple-700
-        <% } else if (user.role === 'agent') { %>bg-blue-100 text-blue-700
-        <% } else { %>bg-gray-100 text-gray-600<% } %>">
-        <%= user.role %>
-      </span>
-      <a href="/auth/logout" class="text-sm text-gray-400 hover:text-gray-600 ml-2">Salir</a>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-semibold text-slate-900 truncate"><%= user.name %></div>
+        <div class="text-[10px] uppercase tracking-wide font-bold
+          <% if (user.role === 'admin') { %>text-rose-600
+          <% } else if (user.role === 'manager') { %>text-violet-600
+          <% } else if (user.role === 'agent') { %>text-blue-600
+          <% } else { %>text-slate-400<% } %>"><%= user.role %></div>
+      </div>
+      <a href="/auth/logout" title="Salir" class="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-slate-100" aria-label="Cerrar sesion">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+      </a>
     </div>
   </div>
-</nav>
+</aside>
+
+<!-- Mobile overlay -->
+<div id="appOverlay" class="hidden md:hidden fixed inset-0 bg-ink-900/40 z-20" onclick="document.getElementById('appSidebar').classList.remove('open');this.classList.add('hidden');"></div>
+
+<script>
+  (function() {
+    const t = document.getElementById('navMenuToggle');
+    const s = document.getElementById('appSidebar');
+    const o = document.getElementById('appOverlay');
+    if (!t) return;
+    t.addEventListener('click', () => {
+      s.classList.add('open');
+      o.classList.remove('hidden');
+    });
+  })();
+</script>
+
+<div class="app-main">

@@ -4,65 +4,65 @@
 <main class="max-w-6xl mx-auto px-4 py-6">
   <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
     <div>
-      <a href="/horarios?view=week" class="text-xs text-gray-500 hover:underline">&larr; Volver a horarios</a>
-      <h2 class="text-xl font-semibold text-gray-900 mt-1"><%= agent.name %></h2>
-      <p class="text-sm text-gray-500"><%= agent.dept %> · planner #<%= agent.planner_id %> · <%= agent.slack_id %></p>
+      <a href="/horarios?view=week" class="text-xs text-slate-500 hover:underline">&larr; Volver a horarios</a>
+      <h2 class="text-xl font-semibold text-slate-900 mt-1"><%= agent.name %></h2>
+      <p class="text-sm text-slate-500"><%= agent.dept %> · planner #<%= agent.planner_id %> · <%= agent.slack_id %></p>
     </div>
     <div class="flex items-center gap-2 text-sm">
-      <a href="/horarios/agente/<%= agent.planner_id %>?month=<%= prevMonth %>" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">&larr;</a>
+      <a href="/horarios/agente/<%= agent.planner_id %>?month=<%= prevMonth %>" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card">&larr;</a>
       <span class="px-3 py-1.5 font-medium capitalize"><%= monthLabel %></span>
-      <a href="/horarios/agente/<%= agent.planner_id %>?month=<%= nextMonth %>" class="px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">&rarr;</a>
+      <a href="/horarios/agente/<%= agent.planner_id %>?month=<%= nextMonth %>" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card">&rarr;</a>
     </div>
   </div>
 
   <div class="grid grid-cols-2 sm:grid-cols-7 gap-3 mb-6">
-    <div class="bg-white rounded-lg border border-gray-200 p-3">
-      <div class="text-xl font-bold text-gray-900"><%= stats.shifts %></div>
-      <div class="text-xs text-gray-500 mt-0.5">Turnos</div>
+    <div class="bg-white rounded-lg border border-slate-200 shadow-card p-3">
+      <div class="text-xl font-bold text-slate-900"><%= stats.shifts %></div>
+      <div class="text-xs text-slate-500 mt-0.5">Turnos</div>
     </div>
-    <div class="bg-white rounded-lg border border-gray-200 p-3">
-      <div class="text-xl font-bold text-gray-600"><%= stats.daysOff %></div>
-      <div class="text-xs text-gray-500 mt-0.5">Libres</div>
+    <div class="bg-white rounded-lg border border-slate-200 shadow-card p-3">
+      <div class="text-xl font-bold text-slate-600"><%= stats.daysOff %></div>
+      <div class="text-xs text-slate-500 mt-0.5">Libres</div>
     </div>
-    <div class="bg-white rounded-lg border border-gray-200 p-3">
+    <div class="bg-white rounded-lg border border-slate-200 shadow-card p-3">
       <div class="text-xl font-bold text-green-600"><%= stats.completed %></div>
-      <div class="text-xs text-gray-500 mt-0.5">Completos</div>
+      <div class="text-xs text-slate-500 mt-0.5">Completos</div>
     </div>
-    <div class="bg-white rounded-lg border border-gray-200 p-3">
+    <div class="bg-white rounded-lg border border-slate-200 shadow-card p-3">
       <div class="text-xl font-bold text-red-600"><%= stats.alerts %></div>
-      <div class="text-xs text-gray-500 mt-0.5">Sin marcar</div>
+      <div class="text-xs text-slate-500 mt-0.5">Sin marcar</div>
     </div>
-    <div class="bg-white rounded-lg border border-gray-200 p-3">
+    <div class="bg-white rounded-lg border border-slate-200 shadow-card p-3">
       <div class="text-xl font-bold text-yellow-600"><%= stats.late %></div>
-      <div class="text-xs text-gray-500 mt-0.5">Tarde</div>
+      <div class="text-xs text-slate-500 mt-0.5">Tarde</div>
     </div>
-    <div class="bg-white rounded-lg border border-gray-200 p-3">
+    <div class="bg-white rounded-lg border border-slate-200 shadow-card p-3">
       <div class="text-xl font-bold text-orange-600"><%= stats.breakExcess %></div>
-      <div class="text-xs text-gray-500 mt-0.5">Exceso break</div>
+      <div class="text-xs text-slate-500 mt-0.5">Exceso break</div>
     </div>
-    <div class="bg-white rounded-lg border border-gray-200 p-3">
+    <div class="bg-white rounded-lg border border-slate-200 shadow-card p-3">
       <div class="text-xl font-bold text-yellow-600"><%= stats.forgotClockOut %></div>
-      <div class="text-xs text-gray-500 mt-0.5">Sin clock out</div>
+      <div class="text-xs text-slate-500 mt-0.5">Sin clock out</div>
     </div>
   </div>
 
-  <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+  <div class="bg-white rounded-lg border border-slate-200 shadow-card overflow-hidden">
     <table class="w-full text-sm">
-      <thead class="bg-gray-50 border-b border-gray-200 text-xs">
+      <thead class="bg-slate-50 border-b border-slate-200 text-xs">
         <tr>
-          <th class="text-left px-3 py-2 font-medium text-gray-600">Dia</th>
-          <th class="text-left px-3 py-2 font-medium text-gray-600">Turno</th>
-          <th class="text-left px-3 py-2 font-medium text-gray-600">Estado</th>
-          <th class="text-left px-3 py-2 font-medium text-gray-600">Punches</th>
-          <th class="text-left px-3 py-2 font-medium text-gray-600">Notas</th>
+          <th class="text-left px-3 py-2 font-medium text-slate-600">Dia</th>
+          <th class="text-left px-3 py-2 font-medium text-slate-600">Turno</th>
+          <th class="text-left px-3 py-2 font-medium text-slate-600">Estado</th>
+          <th class="text-left px-3 py-2 font-medium text-slate-600">Punches</th>
+          <th class="text-left px-3 py-2 font-medium text-slate-600">Notas</th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-gray-100">
+      <tbody class="divide-y divide-slate-100">
         <% rows.forEach(r => { %>
           <tr class="<%= r.isToday ? 'bg-yellow-50/50' : '' %>">
             <td class="px-3 py-2 text-xs">
-              <span class="capitalize <%= r.isToday ? 'font-bold text-yellow-800' : 'text-gray-700' %>"><%= r.dayName %></span>
-              <div class="text-[10px] text-gray-400"><%= r.date %></div>
+              <span class="capitalize <%= r.isToday ? 'font-bold text-yellow-800' : 'text-slate-700' %>"><%= r.dayName %></span>
+              <div class="text-[10px] text-slate-400"><%= r.date %></div>
             </td>
             <td class="px-3 py-2 text-xs">
               <% if (r.kind === 'shift') { %>
@@ -70,14 +70,20 @@
                   <%= r.shift.dept === 'L1' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700' %>">
                   <%= r.shift.dept %>.<%= r.shift.shiftId %><%= r.shift.custom ? '*' : '' %>
                 </span>
-                <span class="text-gray-500 ml-1"><%= r.shift.startUtc %>–<%= r.shift.endUtc %></span>
+                <span class="text-slate-500 ml-1"><%= r.shift.startUtc %>–<%= r.shift.endUtc %></span>
                 <% if (r.shift.swapped) { %>
                   <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold ring-1 ring-amber-300" title="Cambio aprobado">↔ cambio</span>
                 <% } %>
               <% } else if (r.kind === 'off') { %>
-                <span class="text-gray-400">Libre<% if (r.offReason) { %> · <%= r.offReason %><% } %></span>
+                <% if (r.offReason === 'vacaciones') { %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ring-1 bg-cyan-50 text-cyan-800 ring-cyan-300">🏖️ Vacaciones</span>
+                <% } else if (r.offReason === 'permiso') { %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ring-1 bg-amber-50 text-amber-800 ring-amber-300">📝 Permiso</span>
+                <% } else { %>
+                  <span class="text-slate-400">Libre</span>
+                <% } %>
               <% } else { %>
-                <span class="text-gray-300">—</span>
+                <span class="text-slate-300">—</span>
               <% } %>
             </td>
             <td class="px-3 py-2 text-xs">
@@ -88,7 +94,7 @@
                   <% } else if (r.shift.statusClass === 'alert') { %>bg-red-100 text-red-700
                   <% } else if (r.shift.statusClass === 'warning') { %>bg-yellow-100 text-yellow-700
                   <% } else if (r.shift.statusClass === 'upcoming') { %>bg-blue-100 text-blue-700
-                  <% } else if (r.shift.statusClass === 'completed') { %>bg-gray-100 text-gray-600
+                  <% } else if (r.shift.statusClass === 'completed') { %>bg-slate-100 text-slate-600
                   <% } %>">
                   <%= r.shift.status %>
                 </span>
@@ -98,16 +104,16 @@
               <% if (r.kind === 'shift' && r.shift.punches.length) { %>
                 <div class="flex flex-wrap gap-1">
                   <% r.shift.punches.forEach(p => { %>
-                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 bg-gray-100 rounded text-[10px]"
+                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 rounded text-[10px]"
                       title="<%= p.source %><%= p.note ? ' · ' + p.note : '' %>">
-                      <span class="font-mono text-gray-500"><%= p.ts %></span>
-                      <span class="text-gray-700"><%= p.type.replace('_',' ') %></span>
+                      <span class="font-mono text-slate-500"><%= p.ts %></span>
+                      <span class="text-slate-700"><%= p.type.replace('_',' ') %></span>
                       <% if (p.source !== 'button') { %><span class="text-orange-600">[<%= p.source %>]</span><% } %>
                     </span>
                   <% }) %>
                 </div>
               <% } else if (r.kind === 'shift') { %>
-                <span class="text-gray-300">sin punches</span>
+                <span class="text-slate-300">sin punches</span>
               <% } %>
             </td>
             <td class="px-3 py-2 text-xs">
@@ -128,6 +134,6 @@
       </tbody>
     </table>
   </div>
-  <p class="text-xs text-gray-400 mt-2">Todos los timestamps en UTC. Source <span class="font-mono">[manual/auto/test]</span> indica origen no-boton. <span class="px-1 rounded bg-amber-100 text-amber-800 text-[10px] font-bold ring-1 ring-amber-300">↔ cambio</span> = turno cambiado por aprobación de swap.</p>
+  <p class="text-xs text-slate-400 mt-2">Todos los timestamps en UTC. Source <span class="font-mono">[manual/auto/test]</span> indica origen no-boton. <span class="px-1 rounded bg-amber-100 text-amber-800 text-[10px] font-bold ring-1 ring-amber-300">↔ cambio</span> = turno cambiado por aprobación de swap.</p>
 </main>
 <%- include('partials/foot') %>

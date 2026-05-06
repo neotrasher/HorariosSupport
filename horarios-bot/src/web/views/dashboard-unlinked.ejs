@@ -1,0 +1,21 @@
+<%- include('partials/head') %>
+<%- include('partials/nav', { user }) %>
+
+<main class="max-w-2xl mx-auto px-4 py-12">
+  <div class="bg-white rounded-lg border border-slate-200 shadow-card p-8 text-center">
+    <div class="text-5xl mb-4">🔒</div>
+    <h2 class="text-xl font-semibold text-slate-900 mb-2">Tu cuenta no esta vinculada</h2>
+    <p class="text-sm text-slate-600 mb-6">
+      Te identificaste con Slack como <span class="font-medium"><%= user.name %></span>,
+      pero tu usuario aun no esta vinculado a un agente del equipo.
+    </p>
+    <p class="text-sm text-slate-500 mb-6">
+      Pide a un manager que ejecute en Slack:<br>
+      <code class="inline-block mt-2 bg-slate-100 text-gray-800 px-3 py-1 rounded text-xs font-mono">
+        /horario-link @<%= user.name %> &lt;planner_id&gt; &lt;L1|L2&gt;
+      </code>
+    </p>
+    <a href="/auth/logout" class="inline-block text-sm text-slate-400 hover:text-slate-600">Salir</a>
+  </div>
+</main>
+<%- include('partials/foot') %>

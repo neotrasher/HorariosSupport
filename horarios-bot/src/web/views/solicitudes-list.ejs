@@ -1,26 +1,46 @@
 <%- include('partials/head') %>
 <%- include('partials/nav', { user }) %>
 
-<main class="max-w-6xl mx-auto px-4 py-6">
-  <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
-    <div>
-      <h2 class="text-xl font-semibold text-gray-900">Solicitudes</h2>
+<%
+  const statusStyle = (s) => {
+    if (s === 'pending')   return 'bg-amber-50 text-amber-800 ring-amber-200';
+    if (s === 'approved')  return 'bg-emerald-50 text-emerald-800 ring-emerald-200';
+    if (s === 'rejected')  return 'bg-rose-50 text-rose-800 ring-rose-200';
+    return 'bg-slate-100 text-slate-600 ring-slate-200';
+  };
+  const statusDot = (s) => {
+    if (s === 'pending')   return 'bg-amber-500';
+    if (s === 'approved')  return 'bg-emerald-500';
+    if (s === 'rejected')  return 'bg-rose-500';
+    return 'bg-slate-400';
+  };
+%>
+
+<main class="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+  <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
+    <div class="min-w-0">
+      <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Solicitudes</h2>
       <% if (isManager && pendingCount > 0) { %>
-        <p class="text-sm text-yellow-600"><%= pendingCount %> pendiente<%= pendingCount === 1 ? '' : 's' %> de revision</p>
+        <p class="text-sm text-amber-600 mt-1">
+          <span class="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 align-middle"></span>
+          <%= pendingCount %> pendiente<%= pendingCount === 1 ? '' : 's' %> de revision
+        </p>
+      <% } else { %>
+        <p class="text-sm text-slate-500 mt-1">Vacaciones y permisos del equipo</p>
       <% } %>
     </div>
-    <a href="/solicitudes/nueva" class="inline-flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-800">
-      + Nueva solicitud
+    <a href="/solicitudes/nueva" class="btn-primary inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold self-start sm:self-auto shrink-0">
+      <span class="text-base leading-none">+</span> Nueva solicitud
     </a>
   </div>
 
   <% if (isManager) { %>
-    <div class="flex items-center gap-2 mb-4 text-sm">
-      <span class="text-gray-500">Filtrar:</span>
+    <div class="flex items-center gap-2 mb-5 text-sm overflow-x-auto pb-1">
+      <span class="text-slate-500 shrink-0">Filtrar:</span>
       <% const filters = [['','Todas'],['pending','Pendientes'],['approved','Aprobadas'],['rejected','Rechazadas'],['cancelled','Canceladas']] %>
       <% filters.forEach(([val, lbl]) => { %>
         <a href="/solicitudes<%= val ? '?status=' + val : '' %>"
-           class="px-3 py-1 rounded-full <%= filterStatus === val ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50' %>">
+           class="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 <%= filterStatus === val ? 'bg-ink-800 text-white shadow-card' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50' %>">
           <%= lbl %>
         </a>
       <% }) %>
@@ -28,75 +48,88 @@
   <% } %>
 
   <% if (requests.length === 0) { %>
-    <div class="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-400">
-      Sin solicitudes
+    <div class="bg-white rounded-xl border border-slate-200 shadow-card p-12 text-center">
+      <div class="text-4xl mb-2 opacity-30">◌</div>
+      <p class="text-sm text-slate-400">Sin solicitudes</p>
     </div>
   <% } else { %>
-    <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <!-- Desktop table -->
+    <div class="hidden md:block bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
       <table class="w-full text-sm">
-        <thead class="bg-gray-50 border-b border-gray-200 text-xs">
+        <thead class="bg-slate-50/60 border-b border-slate-200 text-xs uppercase tracking-wider">
           <tr>
-            <% if (isManager) { %><th class="text-left px-3 py-2 font-medium text-gray-600">Agente</th><% } %>
-            <th class="text-left px-3 py-2 font-medium text-gray-600">Tipo</th>
-            <th class="text-left px-3 py-2 font-medium text-gray-600">Fechas</th>
-            <th class="text-left px-3 py-2 font-medium text-gray-600">Motivo</th>
-            <th class="text-left px-3 py-2 font-medium text-gray-600">Estado</th>
-            <th class="text-left px-3 py-2 font-medium text-gray-600">Creada</th>
-            <th class="text-right px-3 py-2 font-medium text-gray-600">Acciones</th>
+            <% if (isManager) { %><th class="text-left px-4 py-3 font-semibold text-slate-500">Agente</th><% } %>
+            <th class="text-left px-3 py-3 font-semibold text-slate-500">Tipo</th>
+            <th class="text-left px-3 py-3 font-semibold text-slate-500">Fechas</th>
+            <th class="text-left px-3 py-3 font-semibold text-slate-500">Motivo</th>
+            <th class="text-left px-3 py-3 font-semibold text-slate-500">Estado</th>
+            <th class="text-left px-3 py-3 font-semibold text-slate-500">Creada</th>
+            <th class="text-right px-4 py-3 font-semibold text-slate-500">Acciones</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-gray-100">
+        <tbody class="divide-y divide-slate-100">
           <% requests.forEach(r => { %>
-            <tr class="hover:bg-gray-50 align-top">
-              <% if (isManager) { %><td class="px-3 py-3 font-medium text-gray-900"><%= r.requesterName %></td><% } %>
+            <tr class="hover:bg-slate-50/60 transition-colors align-top">
+              <% if (isManager) { %><td class="px-4 py-3 font-semibold text-slate-900"><%= r.requesterName %></td><% } %>
               <td class="px-3 py-3">
-                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs
-                  <%= r.type === 'vacaciones' ? 'bg-cyan-100 text-cyan-700' : 'bg-amber-100 text-amber-700' %>">
-                  <%= r.type === 'vacaciones' ? '🏖️ Vacaciones' : '📝 Permiso' %>
+                <span class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ring-1
+                  <%= r.type === 'vacaciones' ? 'bg-cyan-50 text-cyan-800 ring-cyan-200' : 'bg-amber-50 text-amber-800 ring-amber-200' %>">
+                  <%= r.type === 'vacaciones' ? '🏖️' : '📝' %>
+                  <%= r.type %>
                 </span>
               </td>
-              <td class="px-3 py-3 text-gray-700 text-xs">
+              <td class="px-3 py-3 text-slate-700 text-xs">
                 <% if (r.start_date === r.end_date) { %>
-                  <%= r.start_date %>
+                  <span class="font-mono"><%= r.start_date %></span>
                 <% } else { %>
-                  <%= r.start_date %> → <%= r.end_date %>
+                  <span class="font-mono"><%= r.start_date %></span>
+                  <span class="text-slate-400">→</span>
+                  <span class="font-mono"><%= r.end_date %></span>
                 <% } %>
-                <span class="text-gray-400">(<%= r.days %>d)</span>
+                <span class="text-slate-400 ml-1">(<%= r.days %>d)</span>
               </td>
-              <td class="px-3 py-3 text-gray-600 text-xs max-w-xs"><%= r.reason || '—' %></td>
+              <td class="px-3 py-3 text-slate-600 text-xs max-w-xs"><%= r.reason || '—' %></td>
               <td class="px-3 py-3">
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
-                  <% if (r.status === 'pending') { %>bg-yellow-100 text-yellow-700
-                  <% } else if (r.status === 'approved') { %>bg-green-100 text-green-700
-                  <% } else if (r.status === 'rejected') { %>bg-red-100 text-red-700
-                  <% } else { %>bg-gray-100 text-gray-600
-                  <% } %>">
+                <span class="pill inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ring-1 <%= statusStyle(r.status) %>">
+                  <span class="w-1.5 h-1.5 rounded-full <%= statusDot(r.status) %>"></span>
                   <%= r.status %>
                 </span>
                 <% if (r.status === 'rejected' && r.rejection_reason) { %>
-                  <div class="text-[10px] text-gray-500 mt-1 italic"><%= r.rejection_reason %></div>
+                  <div class="text-[10px] text-slate-500 mt-1 italic"><%= r.rejection_reason %></div>
                 <% } %>
               </td>
-              <td class="px-3 py-3 text-gray-500 text-xs"><%= r.createdLocal %></td>
-              <td class="px-3 py-3 text-right">
+              <td class="px-3 py-3 text-slate-500 text-xs"><%= r.createdLocal %></td>
+              <td class="px-4 py-3 text-right whitespace-nowrap">
                 <% if (r.status === 'pending') { %>
-                  <% if (isManager && r.requester_slack_id !== user.slack_id) { %>
+                  <% const canResolve = isManager && (r.requester_slack_id !== user.slack_id || user.role === 'admin'); %>
+                  <% if (canResolve) { %>
                     <form method="post" action="/solicitudes/<%= r.id %>/approve" class="inline">
-                      <button class="text-green-600 hover:underline text-xs mr-2">Aprobar</button>
+                      <button class="text-emerald-700 hover:text-emerald-800 text-xs font-semibold mr-2">Aprobar</button>
                     </form>
-                    <details class="inline-block">
-                      <summary class="text-red-600 hover:underline text-xs cursor-pointer">Rechazar</summary>
-                      <form method="post" action="/solicitudes/<%= r.id %>/reject" class="absolute z-10 mt-1 bg-white border border-gray-200 rounded shadow-lg p-2 right-0">
-                        <textarea name="rejection_reason" rows="2" placeholder="Motivo (opcional)" class="block w-64 text-xs border border-gray-200 rounded p-1 mb-1"></textarea>
-                        <button class="bg-red-600 text-white text-xs px-2 py-1 rounded">Confirmar rechazo</button>
+                    <details class="inline-block relative">
+                      <summary class="text-rose-600 hover:text-rose-700 text-xs font-semibold cursor-pointer list-none">Rechazar</summary>
+                      <form method="post" action="/solicitudes/<%= r.id %>/reject" class="absolute z-10 mt-1 bg-white border border-slate-200 rounded-lg shadow-card-hover p-3 right-0 w-64">
+                        <textarea name="rejection_reason" rows="2" placeholder="Motivo (opcional)" class="block w-full text-xs border border-slate-200 rounded p-2 mb-2"></textarea>
+                        <button class="bg-rose-600 hover:bg-rose-700 text-white text-xs px-3 py-1.5 rounded font-semibold w-full">Confirmar rechazo</button>
                       </form>
                     </details>
                   <% } %>
                   <% if (r.requester_slack_id === user.slack_id) { %>
                     <form method="post" action="/solicitudes/<%= r.id %>/cancel" class="inline">
-                      <button class="text-gray-500 hover:underline text-xs">Cancelar</button>
+                      <button class="text-slate-500 hover:text-slate-700 text-xs font-semibold">Cancelar</button>
+                    </form>
+                  <% } else if (isManager) { %>
+                    <form method="post" action="/solicitudes/<%= r.id %>/cancel" class="inline ml-2"
+                          onsubmit="return confirm('Cancelar esta solicitud pendiente del agente?')">
+                      <button class="text-slate-500 hover:text-slate-700 text-xs font-semibold">Cancelar</button>
                     </form>
                   <% } %>
+                <% } %>
+                <% if (isManager) { %>
+                  <form method="post" action="/solicitudes/<%= r.id %>/delete" class="inline ml-2"
+                        onsubmit="return confirm('<%= r.status === 'approved' ? 'Eliminar esta solicitud APROBADA? El horario original del agente se restablece.' : 'Eliminar esta solicitud?' %>')">
+                    <button class="text-slate-400 hover:text-rose-600 text-xs font-semibold" title="Eliminar">🗑</button>
+                  </form>
                 <% } %>
               </td>
             </tr>
@@ -104,6 +137,69 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Mobile card list -->
+    <ul class="md:hidden space-y-3">
+      <% requests.forEach(r => { %>
+        <li class="bg-white rounded-xl border border-slate-200 shadow-card p-4">
+          <div class="flex items-start justify-between gap-3 mb-2">
+            <div class="flex-1 min-w-0">
+              <% if (isManager) { %>
+                <div class="font-semibold text-slate-900 text-sm truncate"><%= r.requesterName %></div>
+              <% } %>
+              <div class="flex items-center gap-2 mt-1 flex-wrap">
+                <span class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1
+                  <%= r.type === 'vacaciones' ? 'bg-cyan-50 text-cyan-800 ring-cyan-200' : 'bg-amber-50 text-amber-800 ring-amber-200' %>">
+                  <%= r.type === 'vacaciones' ? '🏖️' : '📝' %> <%= r.type %>
+                </span>
+                <span class="pill inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= statusStyle(r.status) %>">
+                  <span class="w-1.5 h-1.5 rounded-full <%= statusDot(r.status) %>"></span>
+                  <%= r.status %>
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class="text-xs text-slate-700 mb-1">
+            <% if (r.start_date === r.end_date) { %>
+              <span class="font-mono"><%= r.start_date %></span>
+            <% } else { %>
+              <span class="font-mono"><%= r.start_date %></span> <span class="text-slate-400">→</span> <span class="font-mono"><%= r.end_date %></span>
+            <% } %>
+            <span class="text-slate-400">(<%= r.days %>d)</span>
+          </div>
+          <% if (r.reason) { %>
+            <p class="text-xs text-slate-600 mb-2 leading-relaxed"><%= r.reason %></p>
+          <% } %>
+          <% if (r.status === 'rejected' && r.rejection_reason) { %>
+            <p class="text-[11px] text-rose-700 italic mt-1">Rechazo: <%= r.rejection_reason %></p>
+          <% } %>
+          <div class="flex items-center justify-between mt-3 pt-2 border-t border-slate-100">
+            <span class="text-[10px] text-slate-400"><%= r.createdLocal %></span>
+            <div class="flex gap-2 items-center">
+              <% if (r.status === 'pending') { %>
+                <% const canResolve = isManager && (r.requester_slack_id !== user.slack_id || user.role === 'admin'); %>
+                <% if (canResolve) { %>
+                  <form method="post" action="/solicitudes/<%= r.id %>/approve" class="inline">
+                    <button class="text-emerald-700 hover:text-emerald-800 text-xs font-semibold">Aprobar</button>
+                  </form>
+                <% } %>
+                <% if (r.requester_slack_id === user.slack_id || isManager) { %>
+                  <form method="post" action="/solicitudes/<%= r.id %>/cancel" class="inline">
+                    <button class="text-slate-500 hover:text-slate-700 text-xs font-semibold">Cancelar</button>
+                  </form>
+                <% } %>
+              <% } %>
+              <% if (isManager) { %>
+                <form method="post" action="/solicitudes/<%= r.id %>/delete" class="inline"
+                      onsubmit="return confirm('<%= r.status === 'approved' ? 'Eliminar esta solicitud APROBADA?' : 'Eliminar?' %>')">
+                  <button class="text-slate-400 hover:text-rose-600" title="Eliminar">🗑</button>
+                </form>
+              <% } %>
+            </div>
+          </div>
+        </li>
+      <% }) %>
+    </ul>
   <% } %>
 </main>
 <%- include('partials/foot') %>
