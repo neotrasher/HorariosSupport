@@ -1,0 +1,205 @@
+<%
+  // Shared edit-mode modals for /horarios?view=day and view=week.
+  // - dateStrForEdit: a single date string (day view) or null (week view → uses
+  //   per-chip data-date attribute)
+  // - allAgents: { plannerId, name, dept }[]
+  const SHIFT_DEFS_BY_DEPT = {
+    L1: [
+      { id: 'M', label: 'Mañana',     time: '00–08', color: '#276749' },
+      { id: 'T', label: 'Tarde',      time: '08–16', color: '#97266d' },
+      { id: 'E', label: 'Intermedio', time: '12–20', color: '#b45309' },
+      { id: 'N', label: 'Noche',      time: '16–00', color: '#44337a' }
+    ],
+    L2: [
+      { id: 'M', label: 'Mañana',     time: '03–11', color: '#dd6b20' },
+      { id: 'T', label: 'Tarde',      time: '11–19', color: '#2b6cb0' },
+      { id: 'E', label: 'Intermedio', time: '15–23', color: '#b45309' },
+      { id: 'N', label: 'Noche',      time: '19–03', color: '#553c9a' }
+    ]
+  };
+%>
+
+<!-- Add-agent modal -->
+<div id="addModal" class="hidden fixed inset-0 bg-ink-900/40 z-50 flex items-center justify-center px-4 backdrop-blur-sm">
+  <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-5 border border-slate-200">
+    <h3 class="text-lg font-semibold text-slate-900 mb-1">Agregar agente al turno</h3>
+    <p class="text-xs text-slate-500 mb-4" id="addModalSubtitle"></p>
+    <label class="block text-sm font-medium text-slate-700 mb-1">Agente</label>
+    <select id="addAgentSel" class="block w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-4">
+      <% allAgents.forEach(a => { %>
+        <option value="<%= a.plannerId %>"><%= a.name %> · <%= a.dept %></option>
+      <% }) %>
+    </select>
+    <div class="flex justify-end gap-2">
+      <button type="button" id="addCancel" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg">Cancelar</button>
+      <button type="button" id="addConfirm" class="btn-primary px-4 py-2 rounded-lg text-sm font-semibold">Agregar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Move-agent modal: shift picker -->
+<div id="moveModal" class="hidden fixed inset-0 bg-ink-900/40 z-50 flex items-center justify-center px-4 backdrop-blur-sm">
+  <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-5 border border-slate-200 max-h-[90vh] overflow-y-auto">
+    <h3 class="text-lg font-semibold text-slate-900 mb-1">Mover agente</h3>
+    <p class="text-xs text-slate-500 mb-4" id="moveModalSubtitle"></p>
+    <p class="text-[11px] uppercase tracking-wider font-bold text-slate-500 mb-2">Mover a</p>
+    <div class="space-y-3 mb-4">
+      <% Object.keys(SHIFT_DEFS_BY_DEPT).forEach(dept => { %>
+        <div>
+          <div class="text-[10px] font-bold uppercase tracking-wider mb-1.5
+            <%= dept === 'L1' ? 'text-blue-700' : 'text-violet-700' %>"><%= dept %></div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <% SHIFT_DEFS_BY_DEPT[dept].forEach(sh => { %>
+              <button type="button" class="move-pill px-3 py-2 rounded-lg border-2 border-slate-200 bg-white text-left hover:border-ink-700 hover:bg-slate-50 transition disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:hover:bg-white"
+                      data-to-dept="<%= dept %>" data-to-shift="<%= sh.id %>">
+                <div class="text-sm font-bold" style="color: <%= sh.color %>"><%= sh.id %> · <%= sh.label %></div>
+                <div class="text-[10px] text-slate-400 font-mono"><%= sh.time %></div>
+              </button>
+            <% }) %>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+    <div class="flex flex-wrap justify-between items-center gap-3 pt-3 border-t border-slate-100">
+      <button type="button" id="moveRemove" class="text-xs text-rose-600 hover:text-rose-700 font-semibold inline-flex items-center gap-1">🗑 Quitar del turno</button>
+      <button type="button" id="moveCancel" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const KEY = 'horarios.editMode';
+  const banner = document.getElementById('editBanner');
+  const toggle = document.getElementById('editToggle');
+  const addModal = document.getElementById('addModal');
+  const addSel   = document.getElementById('addAgentSel');
+  const addSub   = document.getElementById('addModalSubtitle');
+  const moveModal = document.getElementById('moveModal');
+  const moveSub   = document.getElementById('moveModalSubtitle');
+  // Single date string for day view; null/empty for week view (uses chip data-date)
+  const globalDate = '<%= typeof dateStrForEdit !== "undefined" && dateStrForEdit ? dateStrForEdit : "" %>';
+  let pendingAdd = null;     // { dept, shiftId, date }
+  let pendingMove = null;    // { pid, name, dept, shiftId, date }
+
+  function setEditMode(on) {
+    document.body.classList.toggle('edit-mode', on);
+    banner.classList.toggle('hidden', !on);
+    document.querySelectorAll('.edit-only').forEach(el => el.classList.toggle('hidden', !on));
+    document.querySelectorAll('.chip-link').forEach(el => {
+      if (on) { el.dataset.href = el.getAttribute('href'); el.removeAttribute('href'); el.style.cursor = 'pointer'; }
+      else if (el.dataset.href) { el.setAttribute('href', el.dataset.href); el.style.cursor = ''; }
+    });
+    toggle.classList.toggle('bg-white', !on);
+    toggle.classList.toggle('hover:bg-slate-50', !on);
+    toggle.classList.toggle('bg-amber-500', on);
+    toggle.classList.toggle('hover:bg-amber-600', on);
+    toggle.classList.toggle('text-white', on);
+    toggle.classList.toggle('border-amber-500', on);
+    toggle.textContent = on ? '✕ Salir de edición' : '✏️ Editar';
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  }
+  toggle.addEventListener('click', () => setEditMode(!document.body.classList.contains('edit-mode')));
+  try { if (localStorage.getItem(KEY) === '1') setEditMode(true); } catch(e) {}
+
+  async function postEdit(payload) {
+    const r = await fetch('/horarios/edit', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) { alert('Error: ' + (j.error || r.status)); return false; }
+    return true;
+  }
+
+  // ── × on chip → quick remove (with confirm)
+  document.addEventListener('click', async (ev) => {
+    const btn = ev.target.closest('[data-action="remove"]');
+    if (!btn) return;
+    ev.preventDefault(); ev.stopPropagation();
+    const { name, shiftId, dept, pid } = btn.dataset;
+    const date = btn.dataset.date || globalDate;
+    if (!confirm('Quitar a ' + name + ' del turno ' + dept + ':' + shiftId + ' el ' + date + '?')) return;
+    const ok = await postEdit({ action:'remove', plannerId: pid, date, shiftId, dept });
+    if (ok) location.reload();
+  });
+
+  // ── + Agregar → add modal
+  document.addEventListener('click', (ev) => {
+    const btn = ev.target.closest('[data-action="add"]');
+    if (!btn) return;
+    const date = btn.dataset.date || globalDate;
+    pendingAdd = { dept: btn.dataset.dept, shiftId: btn.dataset.shiftId, date };
+    addSub.textContent = pendingAdd.dept + ':' + pendingAdd.shiftId + ' · ' + pendingAdd.date;
+    addModal.classList.remove('hidden');
+  });
+  document.getElementById('addCancel').addEventListener('click', () => addModal.classList.add('hidden'));
+  document.getElementById('addConfirm').addEventListener('click', async () => {
+    if (!pendingAdd) return;
+    const ok = await postEdit({ action:'add', plannerId: addSel.value, date: pendingAdd.date, shiftId: pendingAdd.shiftId, dept: pendingAdd.dept });
+    if (ok) location.reload();
+  });
+  addModal.addEventListener('click', (ev) => { if (ev.target === addModal) addModal.classList.add('hidden'); });
+
+  // ── Click on chip body in edit mode → move modal
+  document.addEventListener('click', (ev) => {
+    if (!document.body.classList.contains('edit-mode')) return;
+    // Ignore clicks on action buttons inside the chip
+    if (ev.target.closest('[data-action]')) return;
+    const chipLink = ev.target.closest('.chip-link');
+    if (!chipLink) return;
+    const wrap = chipLink.closest('[data-chip]');
+    if (!wrap) return;
+    ev.preventDefault();
+    // Get pid + dept/shift + date — chip wrapper has data-pid, data-shift "DEPT:ID", data-date
+    const pid = wrap.dataset.pid;
+    const [dept, shiftId] = (wrap.dataset.shift || '').split(':');
+    const date = wrap.dataset.date || globalDate;
+    // Find name from any × button inside the wrap (data-name)
+    const xBtn = wrap.querySelector('[data-action="remove"]');
+    const name = xBtn?.dataset.name || chipLink.textContent.trim();
+    pendingMove = { pid, name, dept, shiftId, date };
+    moveSub.textContent = name + ' · actualmente en ' + dept + ':' + shiftId + ' · ' + date;
+    // Disable the "current" pill so user doesn't move to same shift
+    moveModal.querySelectorAll('.move-pill').forEach(p => {
+      const sameDept = p.dataset.toDept === dept;
+      const sameShift = p.dataset.toShift === shiftId;
+      p.disabled = sameDept && sameShift;
+    });
+    moveModal.classList.remove('hidden');
+  });
+  document.getElementById('moveCancel').addEventListener('click', () => moveModal.classList.add('hidden'));
+  moveModal.addEventListener('click', (ev) => { if (ev.target === moveModal) moveModal.classList.add('hidden'); });
+  moveModal.querySelectorAll('.move-pill').forEach(pill => {
+    pill.addEventListener('click', async () => {
+      if (!pendingMove || pill.disabled) return;
+      const ok = await postEdit({
+        action: 'move',
+        plannerId: pendingMove.pid,
+        date: pendingMove.date,
+        shiftId: pendingMove.shiftId, dept: pendingMove.dept,
+        toShiftId: pill.dataset.toShift, toDept: pill.dataset.toDept
+      });
+      if (ok) location.reload();
+    });
+  });
+  document.getElementById('moveRemove').addEventListener('click', async () => {
+    if (!pendingMove) return;
+    if (!confirm('Quitar a ' + pendingMove.name + ' del turno ' + pendingMove.dept + ':' + pendingMove.shiftId + ' el ' + pendingMove.date + '?')) return;
+    const ok = await postEdit({
+      action: 'remove',
+      plannerId: pendingMove.pid, date: pendingMove.date,
+      shiftId: pendingMove.shiftId, dept: pendingMove.dept
+    });
+    if (ok) location.reload();
+  });
+
+  // Close any modal with Esc
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape') {
+      addModal.classList.add('hidden');
+      moveModal.classList.add('hidden');
+    }
+  });
+})();
+</script>

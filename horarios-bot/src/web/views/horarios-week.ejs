@@ -43,8 +43,20 @@
       </label>
       <a href="/horarios?view=week&date=<%= next %>" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card shrink-0">&rarr;</a>
       <a href="/horarios?view=week&date=<%= today %>" class="px-2.5 sm:px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card text-slate-600 shrink-0 text-xs sm:text-sm">Hoy</a>
+      <% if (isManager) { %>
+        <button id="editToggle" type="button"
+                class="px-2.5 sm:px-3 py-1.5 border rounded-lg text-xs sm:text-sm border-slate-200 bg-white hover:bg-slate-50 shadow-card shrink-0">
+          ✏️ Editar
+        </button>
+      <% } %>
     </div>
   </div>
+
+  <% if (isManager) { %>
+    <div id="editBanner" class="hidden mb-4 px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+      <span class="font-medium">Modo edición activo</span> · click <span class="font-mono">×</span> en un chip para quitarlo · click <span class="font-mono">+</span> en una celda para agregar agente.
+    </div>
+  <% } %>
 
   <!-- TZ toggle -->
   <div class="flex items-center gap-2 mb-4">
@@ -73,8 +85,8 @@
           <% blocks.forEach(block => { %>
             <% block.rows.forEach(row => { %>
               <% const cell = row.cells[dayIdx]; %>
-              <% if (cell.agents.length > 0) { %>
-                <div class="px-4 py-3 flex items-start gap-3">
+              <% if (cell.agents.length > 0 || isManager) { %>
+                <div class="px-4 py-3 flex items-start gap-3 <%= cell.agents.length === 0 ? 'edit-only hidden' : '' %>">
                   <div class="w-16 shrink-0">
                     <div class="flex items-center gap-1">
                       <span class="text-[10px] font-bold uppercase tracking-wide
@@ -85,27 +97,42 @@
                          data-utc="<%= row.startUtcStr %>–<%= row.endUtcStr %>"
                          data-local="<%= row.startLocalStr %>–<%= row.endLocalStr %>"><%= row.startUtcStr %>–<%= row.endUtcStr %></div>
                   </div>
-                  <div class="flex-1 flex flex-wrap gap-1.5 min-w-0">
+                  <div class="flex-1 flex flex-wrap gap-1.5 min-w-0 items-center">
                     <% cell.agents.forEach(a => { %>
                       <% const cls = CHIP_COLORS[a.colorIdx]; %>
                       <% const tip = a.name + (a.custom ? ' · custom' : '') + (!a.native ? ' · presta de ' + a.nativeDept : '') + (a.swapped ? ' · cambio' : ''); %>
-                      <% if (isManager) { %>
-                        <a href="/horarios/agente/<%= a.plannerId %>"
-                           class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
-                           title="<%= tip %>">
-                          <% if (!a.native) { %><span class="px-1 rounded bg-white/60 text-[9px] font-bold"><%= a.nativeDept %></span><% } %>
-                          <%= a.name.split(' ')[0] %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
-                          <% if (a.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
-                        </a>
-                      <% } else { %>
-                        <span class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
-                              title="<%= tip %>">
-                          <% if (!a.native) { %><span class="px-1 rounded bg-white/60 text-[9px] font-bold"><%= a.nativeDept %></span><% } %>
-                          <%= a.name.split(' ')[0] %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
-                          <% if (a.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
-                        </span>
-                      <% } %>
+                      <span class="relative inline-flex items-center" data-chip data-pid="<%= a.plannerId %>" data-shift="<%= block.dept %>:<%= row.id %>" data-date="<%= d.date %>">
+                        <% if (isManager) { %>
+                          <a href="/horarios/agente/<%= a.plannerId %>"
+                             class="chip-link pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
+                             title="<%= tip %>">
+                            <% if (!a.native) { %><span class="px-1 rounded bg-white/60 text-[9px] font-bold"><%= a.nativeDept %></span><% } %>
+                            <%= a.name.split(' ')[0] %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
+                            <% if (a.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
+                          </a>
+                        <% } else { %>
+                          <span class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
+                                title="<%= tip %>">
+                            <% if (!a.native) { %><span class="px-1 rounded bg-white/60 text-[9px] font-bold"><%= a.nativeDept %></span><% } %>
+                            <%= a.name.split(' ')[0] %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
+                            <% if (a.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
+                          </span>
+                        <% } %>
+                        <% if (isManager) { %>
+                          <button type="button"
+                                  class="edit-only hidden absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] leading-none font-bold shadow hover:bg-red-600"
+                                  data-action="remove" data-name="<%= a.name %>" data-shift-id="<%= row.id %>" data-dept="<%= block.dept %>" data-pid="<%= a.plannerId %>" data-date="<%= d.date %>"
+                                  title="Quitar de este turno">×</button>
+                        <% } %>
+                      </span>
                     <% }) %>
+                    <% if (isManager) { %>
+                      <button type="button"
+                              class="edit-only hidden inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border border-dashed border-slate-300 text-slate-500 hover:bg-slate-50 hover:border-slate-400"
+                              data-action="add" data-shift-id="<%= row.id %>" data-dept="<%= block.dept %>" data-date="<%= d.date %>">
+                        + Agregar
+                      </button>
+                    <% } %>
                   </div>
                 </div>
               <% } %>
@@ -183,27 +210,41 @@
                 </th>
                 <% row.cells.forEach(cell => { %>
                   <td class="px-1.5 py-1.5 align-top <%= cell.isToday ? 'bg-yellow-50/40' : '' %>">
-                    <div class="flex flex-wrap gap-1">
+                    <div class="flex flex-wrap gap-1 items-center">
                       <% cell.agents.forEach(a => { %>
                         <% const cls = CHIP_COLORS[a.colorIdx]; %>
                         <% const tip = a.name + (a.custom ? ' · custom hours' : '') + (!a.native ? ' · presta de ' + a.nativeDept : '') + (a.swapped ? ' · cambio aprobado' : ''); %>
-                        <% if (isManager) { %>
-                          <a href="/horarios/agente/<%= a.plannerId %>"
-                             class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 hover:ring-2 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
-                             title="<%= tip %>">
-                            <% if (!a.native) { %><span class="px-1 rounded bg-white/60 text-[9px] font-bold"><%= a.nativeDept %></span><% } %>
-                            <%= a.name.split(' ')[0] %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
-                            <% if (a.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
-                          </a>
-                        <% } else { %>
-                          <span class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
-                                title="<%= tip %>">
-                            <% if (!a.native) { %><span class="px-1 rounded bg-white/60 text-[9px] font-bold"><%= a.nativeDept %></span><% } %>
-                            <%= a.name.split(' ')[0] %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
-                            <% if (a.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
-                          </span>
-                        <% } %>
+                        <span class="relative inline-flex items-center" data-chip data-pid="<%= a.plannerId %>" data-shift="<%= block.dept %>:<%= row.id %>" data-date="<%= cell.date %>">
+                          <% if (isManager) { %>
+                            <a href="/horarios/agente/<%= a.plannerId %>"
+                               class="chip-link pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 hover:ring-2 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
+                               title="<%= tip %>">
+                              <% if (!a.native) { %><span class="px-1 rounded bg-white/60 text-[9px] font-bold"><%= a.nativeDept %></span><% } %>
+                              <%= a.name.split(' ')[0] %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
+                              <% if (a.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
+                            </a>
+                          <% } else { %>
+                            <span class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
+                                  title="<%= tip %>">
+                              <% if (!a.native) { %><span class="px-1 rounded bg-white/60 text-[9px] font-bold"><%= a.nativeDept %></span><% } %>
+                              <%= a.name.split(' ')[0] %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
+                              <% if (a.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
+                            </span>
+                          <% } %>
+                          <% if (isManager) { %>
+                            <button type="button"
+                                    class="edit-only hidden absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] leading-none font-bold shadow hover:bg-red-600"
+                                    data-action="remove" data-name="<%= a.name %>" data-shift-id="<%= row.id %>" data-dept="<%= block.dept %>" data-pid="<%= a.plannerId %>" data-date="<%= cell.date %>"
+                                    title="Quitar de este turno">×</button>
+                          <% } %>
+                        </span>
                       <% }) %>
+                      <% if (isManager) { %>
+                        <button type="button"
+                                class="edit-only hidden inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium border border-dashed border-slate-300 text-slate-500 hover:bg-slate-50 hover:border-slate-400"
+                                data-action="add" data-shift-id="<%= row.id %>" data-dept="<%= block.dept %>" data-date="<%= cell.date %>"
+                                title="Agregar agente">+</button>
+                      <% } %>
                     </div>
                   </td>
                 <% }) %>
@@ -265,6 +306,10 @@
   </div><!-- /.hidden md:block (desktop grid) -->
 
   <p class="text-xs text-slate-400 mt-3 hidden md:block">Cada agente tiene un color consistente. <span class="font-mono">*</span> = horas custom · <span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span> = turno cambiado (cambio aprobado). Click en el chip (managers) abre el drill-down.</p>
+
+<% if (isManager) { %>
+  <%- include('partials/horariosEditModals', { dateStrForEdit: '', allAgents }) %>
+<% } %>
 </main>
 <script>
 (function() {

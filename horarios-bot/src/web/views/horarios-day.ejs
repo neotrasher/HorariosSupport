@@ -94,7 +94,7 @@
               <% row.agents.forEach(a => { %>
                 <% const cls = CHIP_COLORS[a.colorIdx]; %>
                 <% const tip = a.name + (a.custom ? ' · custom hours' : '') + (!a.native ? ' · presta de ' + a.nativeDept : '') + (a.swapped ? ' · cambio aprobado' : ''); %>
-                <span class="relative inline-flex items-center group" data-chip data-pid="<%= a.plannerId %>" data-shift="<%= block.dept %>:<%= row.id %>">
+                <span class="relative inline-flex items-center group" data-chip data-pid="<%= a.plannerId %>" data-shift="<%= block.dept %>:<%= row.id %>" data-date="<%= dateStr %>">
                   <% if (isManager) { %>
                     <a href="/horarios/agente/<%= a.plannerId %>"
                        class="chip-link pill inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ring-1 hover:ring-2 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
@@ -165,93 +165,7 @@
   <% } %>
 </main>
 <% if (isManager) { %>
-  <!-- Add-agent modal -->
-  <div id="addModal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4">
-    <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-5">
-      <h3 class="text-lg font-semibold text-slate-900 mb-1">Agregar agente al turno</h3>
-      <p class="text-xs text-slate-500 mb-4" id="addModalSubtitle"></p>
-      <label class="block text-sm font-medium text-slate-700 mb-1">Agente</label>
-      <select id="addAgentSel" class="block w-full border border-slate-300 rounded-lg px-3 py-2 text-sm mb-4">
-        <% allAgents.forEach(a => { %>
-          <option value="<%= a.plannerId %>"><%= a.name %> · <%= a.dept %></option>
-        <% }) %>
-      </select>
-      <div class="flex justify-end gap-2">
-        <button type="button" id="addCancel" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg">Cancelar</button>
-        <button type="button" id="addConfirm" class="px-4 py-2 bg-ink-800 text-white text-sm rounded-lg hover:bg-ink-700">Agregar</button>
-      </div>
-    </div>
-  </div>
-
-  <script>
-  (function() {
-    const KEY = 'horarios.editMode';
-    const banner = document.getElementById('editBanner');
-    const toggle = document.getElementById('editToggle');
-    const modal  = document.getElementById('addModal');
-    const sel    = document.getElementById('addAgentSel');
-    const sub    = document.getElementById('addModalSubtitle');
-    const dateStr = '<%= dateStr %>';
-    let pending = null; // { dept, shiftId }
-
-    function setEditMode(on) {
-      document.body.classList.toggle('edit-mode', on);
-      banner.classList.toggle('hidden', !on);
-      document.querySelectorAll('.edit-only').forEach(el => el.classList.toggle('hidden', !on));
-      document.querySelectorAll('.chip-link').forEach(el => {
-        // disable chip links during edit so × clicks don't navigate
-        if (on) { el.dataset.href = el.getAttribute('href'); el.removeAttribute('href'); el.style.cursor = 'default'; }
-        else if (el.dataset.href) { el.setAttribute('href', el.dataset.href); el.style.cursor = ''; }
-      });
-      toggle.classList.toggle('bg-amber-500', on);
-      toggle.classList.toggle('text-white', on);
-      toggle.classList.toggle('border-amber-500', on);
-      toggle.textContent = on ? '✕ Salir de edición' : '✏️ Editar';
-      try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
-    }
-
-    toggle.addEventListener('click', () => setEditMode(!document.body.classList.contains('edit-mode')));
-    try { if (localStorage.getItem(KEY) === '1') setEditMode(true); } catch(e) {}
-
-    async function postEdit(payload) {
-      const r = await fetch('/horarios/edit', {
-        method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify(payload)
-      });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok || !j.ok) { alert('Error: ' + (j.error || r.status)); return false; }
-      return true;
-    }
-
-    // Remove (× on chip)
-    document.addEventListener('click', async (ev) => {
-      const btn = ev.target.closest('[data-action="remove"]');
-      if (!btn) return;
-      ev.preventDefault(); ev.stopPropagation();
-      const name = btn.dataset.name, shiftId = btn.dataset.shiftId, dept = btn.dataset.dept, pid = btn.dataset.pid;
-      if (!confirm('Quitar a ' + name + ' del turno ' + dept + ':' + shiftId + ' el ' + dateStr + '?')) return;
-      const ok = await postEdit({ action:'remove', plannerId: pid, date: dateStr, shiftId, dept });
-      if (ok) location.reload();
-    });
-
-    // Add (+ button on row)
-    document.addEventListener('click', (ev) => {
-      const btn = ev.target.closest('[data-action="add"]');
-      if (!btn) return;
-      pending = { dept: btn.dataset.dept, shiftId: btn.dataset.shiftId };
-      sub.textContent = pending.dept + ':' + pending.shiftId + ' · ' + dateStr;
-      modal.classList.remove('hidden');
-    });
-    document.getElementById('addCancel').addEventListener('click', () => modal.classList.add('hidden'));
-    document.getElementById('addConfirm').addEventListener('click', async () => {
-      if (!pending) return;
-      const pid = sel.value;
-      const ok = await postEdit({ action:'add', plannerId: pid, date: dateStr, shiftId: pending.shiftId, dept: pending.dept });
-      if (ok) location.reload();
-    });
-    modal.addEventListener('click', (ev) => { if (ev.target === modal) modal.classList.add('hidden'); });
-  })();
-  </script>
+  <%- include('partials/horariosEditModals', { dateStrForEdit: dateStr, allAgents }) %>
 <% } %>
 
 <script>

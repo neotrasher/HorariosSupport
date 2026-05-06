@@ -221,6 +221,39 @@ export function removeAgentFromShift(plannerId: number, date: string, shiftId: s
   return r.changes as number;
 }
 
+/**
+ * Move an agent from one shift to another on the same date (atomic).
+ * Idempotent on the destination — if the agent is already in the target shift,
+ * still removes from source and returns the result.
+ */
+export function moveAgentShift(opts: {
+  plannerId: number; date: string;
+  fromShiftId: string; fromDept: string;
+  toShiftId: string; toDept: string;
+}): { removed: number; added: boolean } {
+  const tx = db.transaction(() => {
+    const removed = db.prepare(`
+      DELETE FROM schedule_entries
+      WHERE planner_id = ? AND date = ? AND shift_id = ? AND dept = ?
+    `).run(opts.plannerId, opts.date, opts.fromShiftId, opts.fromDept).changes as number;
+
+    const exists = db.prepare(`
+      SELECT 1 FROM schedule_entries
+      WHERE planner_id = ? AND date = ? AND shift_id = ? AND dept = ?
+    `).get(opts.plannerId, opts.date, opts.toShiftId, opts.toDept);
+    let added = false;
+    if (!exists) {
+      insertScheduleEntry({
+        date: opts.date, dept: opts.toDept, shiftId: opts.toShiftId,
+        plannerId: opts.plannerId, source: 'manual_edit'
+      });
+      added = true;
+    }
+    return { removed, added };
+  });
+  return tx();
+}
+
 /** Add an agent to a shift on a date (manual edit). Idempotent: skips if exact row exists. */
 export function addAgentToShift(opts: {
   plannerId: number; date: string; shiftId: string; dept: string;

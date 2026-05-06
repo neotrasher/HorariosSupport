@@ -7,7 +7,7 @@ import type { App as SlackApp } from '@slack/bolt';
 import { config } from '../config';
 import { authRouter, requireAuth, refreshSessionRole } from './routes/auth';
 import { dashboardRouter } from './routes/dashboard';
-import { horariosRouter } from './routes/horarios';
+import { buildHorariosRouter } from './routes/horarios';
 import { miHorarioRouter } from './routes/miHorario';
 import { agenteRouter } from './routes/agente';
 import { agentesRouter } from './routes/agentes';
@@ -66,7 +66,7 @@ export function startWeb(slackApp: SlackApp | null = null) {
 
   app.use('/mi-horario', requireAuth, refreshSessionRole, miHorarioRouter);
   app.use('/horarios/agente', requireAuth, refreshSessionRole, agenteRouter);
-  app.use('/horarios', requireAuth, refreshSessionRole, horariosRouter);
+  app.use('/horarios', requireAuth, refreshSessionRole, buildHorariosRouter(slackApp));
   app.use('/solicitudes', requireAuth, refreshSessionRole, buildSolicitudesRouter(slackApp));
   app.use('/agentes', requireAuth, refreshSessionRole, agentesRouter);
   app.use('/reportes', requireAuth, refreshSessionRole, reportesRouter);

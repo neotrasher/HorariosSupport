@@ -1,22 +1,77 @@
 import { Router } from 'express';
 import { DateTime } from 'luxon';
+import type { App as SlackApp } from '@slack/bolt';
 import { SHIFTS, config } from '../../config';
-import { listAgents, getAgentBySlackId } from '../../services/agents';
+import { listAgents, getAgentBySlackId, getAgentByPlannerId } from '../../services/agents';
 import {
   getAllShiftsForDate, getAllShiftsForRange, shiftWindow, cycleForDate,
   getAllDaysOffForDate, getAllDaysOffForRange,
-  removeAgentFromShift, addAgentToShift
+  removeAgentFromShift, addAgentToShift, moveAgentShift
 } from '../../services/schedule';
-
-export const horariosRouter = Router();
 
 type ViewMode = 'day' | 'week' | 'month';
 
 /**
- * Manual edit endpoint (manager/admin only). Accepts JSON:
- *   { action:'add'|'remove', plannerId, date, shiftId, dept }
+ * Returns a localized human label like "L1.M (00:00–08:00 UTC)" for a shift.
  */
-horariosRouter.post('/edit', (req, res) => {
+function shiftLabel(dept: string, shiftId: string): string {
+  const sh = SHIFTS[dept]?.[shiftId];
+  if (!sh) return `${dept}.${shiftId}`;
+  const fmt = (h: number) => (h % 24).toString().padStart(2, '0');
+  return `${dept}.${shiftId} (${fmt(sh.startHour)}:00–${fmt(sh.endHour)}:00 UTC)`;
+}
+
+/**
+ * Best-effort DM to the affected agent when a manager edits their shifts
+ * from /horarios. Silent on failure (network, unlinked account, etc).
+ */
+async function dmAgentEdit(
+  slackApp: SlackApp | null,
+  plannerId: number,
+  managerName: string,
+  payload:
+    | { action: 'add'; date: string; dept: string; shiftId: string }
+    | { action: 'remove'; date: string; dept: string; shiftId: string }
+    | { action: 'move'; date: string; fromDept: string; fromShiftId: string; toDept: string; toShiftId: string }
+) {
+  if (!slackApp) return;
+  const agent = getAgentByPlannerId(plannerId);
+  if (!agent || !agent.slack_id) return;
+  let text = '';
+  if (payload.action === 'add') {
+    text = `📅 *${managerName}* te agregó al turno *${shiftLabel(payload.dept, payload.shiftId)}* del *${payload.date}*.`;
+  } else if (payload.action === 'remove') {
+    text = `📅 *${managerName}* te quitó del turno *${shiftLabel(payload.dept, payload.shiftId)}* del *${payload.date}*.`;
+  } else {
+    text = `📅 *${managerName}* movió tu turno del *${payload.date}*: ~${shiftLabel(payload.fromDept, payload.fromShiftId)}~ → *${shiftLabel(payload.toDept, payload.toShiftId)}*.`;
+  }
+  try {
+    const im = await slackApp.client.conversations.open({ users: agent.slack_id });
+    const ch = (im as any).channel?.id;
+    if (ch) {
+      await slackApp.client.chat.postMessage({
+        channel: ch,
+        text,
+        blocks: [
+          { type: 'section', text: { type: 'mrkdwn', text } },
+          { type: 'context', elements: [{ type: 'mrkdwn', text: `_Cambio manual desde Horarios web · ${DateTime.utc().toFormat('yyyy-LL-dd HH:mm')} UTC_` }] }
+        ]
+      });
+    }
+  } catch (e) {
+    console.error(`[horarios edit] failed to DM agent ${agent.slack_id}:`, e);
+  }
+}
+
+export function buildHorariosRouter(slackApp: SlackApp | null = null): Router {
+  const horariosRouter = Router();
+
+/**
+ * Manual edit endpoint (manager/admin only). Accepts JSON:
+ *   { action:'add'|'remove'|'move', plannerId, date, shiftId, dept, [toShiftId, toDept] }
+ * On success, DMs the affected agent (best-effort) so they know about the change.
+ */
+horariosRouter.post('/edit', async (req, res) => {
   const user = (req.session as any).user;
   if (user?.role !== 'manager' && user?.role !== 'admin') {
     return res.status(403).json({ ok: false, error: 'forbidden' });
@@ -32,11 +87,33 @@ horariosRouter.post('/edit', (req, res) => {
   try {
     if (action === 'remove') {
       const n = removeAgentFromShift(pid, date, shiftId, dept);
+      if (n > 0) await dmAgentEdit(slackApp, pid, user?.name || 'manager', { action: 'remove', date, dept, shiftId });
       return res.json({ ok: true, removed: n });
     }
     if (action === 'add') {
       const ok = addAgentToShift({ plannerId: pid, date, shiftId, dept });
+      if (ok) await dmAgentEdit(slackApp, pid, user?.name || 'manager', { action: 'add', date, dept, shiftId });
       return res.json({ ok: true, added: ok });
+    }
+    if (action === 'move') {
+      const { toShiftId, toDept } = req.body || {};
+      if (!toShiftId || !toDept) return res.status(400).json({ ok: false, error: 'missing to_*' });
+      if (!SHIFTS[toDept] || !SHIFTS[toDept][toShiftId]) {
+        return res.status(400).json({ ok: false, error: 'invalid target shift' });
+      }
+      const result = moveAgentShift({
+        plannerId: pid, date,
+        fromShiftId: shiftId, fromDept: dept,
+        toShiftId, toDept
+      });
+      if (result.removed > 0 || result.added) {
+        await dmAgentEdit(slackApp, pid, user?.name || 'manager', {
+          action: 'move', date,
+          fromDept: dept, fromShiftId: shiftId,
+          toDept, toShiftId
+        });
+      }
+      return res.json({ ok: true, ...result });
     }
     return res.status(400).json({ ok: false, error: 'unknown action' });
   } catch (e: any) {
@@ -276,6 +353,10 @@ function renderWeek(req: any, res: any, user: any) {
     offRow,
     cycle,
     localTz: localTzW,
+    allAgents: agents
+      .filter(a => a.active !== 0)
+      .map(a => ({ plannerId: a.planner_id, name: a.name, dept: a.dept }))
+      .sort((a, b) => a.dept.localeCompare(b.dept) || a.name.localeCompare(b.name)),
     currentDate: refDate.toFormat('yyyy-LL-dd'),
     weekLabel: `${weekStart.toFormat('LL-dd')} → ${weekEnd.toFormat('LL-dd')}`,
     prev: weekStart.minus({ weeks: 1 }).toFormat('yyyy-LL-dd'),
@@ -369,4 +450,7 @@ function renderMonth(req: any, res: any, user: any) {
     weeks,
     isManager: user.role === 'manager'
   });
+}
+
+  return horariosRouter;
 }
