@@ -1,11 +1,14 @@
 import { db } from '../db';
+import { config } from '../config';
+
+export type AgentRole = 'agent' | 'manager' | 'admin';
 
 export type Agent = {
   slack_id: string;
   planner_id: number;
   name: string;
   dept: string;
-  role: 'agent' | 'manager';
+  role: AgentRole;
   active: number;
   // Operational HR
   admin_user: string | null;
@@ -27,13 +30,16 @@ export type Agent = {
   last_adjustment_pct: number | null;
   last_salary_adjustment_date: string | null;
   holiday_day_amount: number | null;
+  vacation_days_per_year: number | null;
+  timezone: string | null;
   created_at: string;
 };
 
 export const OPERATIONAL_FIELDS = [
   'name', 'dept', 'admin_user', 'position', 'email_company', 'email_personal',
   'start_date', 'end_date', 'last_evaluation_date', 'next_evaluation_date',
-  'birthdate', 'address', 'phone'
+  'birthdate', 'address', 'phone',
+  'vacation_days_per_year', 'timezone'
 ] as const;
 
 export const SENSITIVE_FIELDS = [
@@ -99,12 +105,37 @@ export function updateAgentFields(slackId: string, fields: Record<string, string
   db.prepare(`UPDATE agents SET ${setClause} WHERE slack_id = ?`).run(...values, slackId);
 }
 
+/**
+ * Recompute config.managerSlackIds and config.adminSlackIds as the union of
+ * (env defaults at startup, kept in `envManagerSlackIds`/`envAdminSlackIds`)
+ * and any agent rows whose role column is 'manager' or 'admin'. Called on
+ * startup and after the /agentes role edit. Mutates `config` in place so all
+ * downstream code that does `config.managerSlackIds.includes(x)` keeps working.
+ */
+export function applyDbRoles() {
+  const c: any = config;
+  // Snapshot env defaults the first time we run, so subsequent reloads union
+  // against the original env (not against the previous DB-merged list).
+  if (!c.envManagerSlackIds) c.envManagerSlackIds = [...c.managerSlackIds];
+  if (!c.envAdminSlackIds)   c.envAdminSlackIds   = [...c.adminSlackIds];
+
+  const dbManagers = db.prepare("SELECT slack_id FROM agents WHERE role = 'manager' AND active = 1").all() as { slack_id: string }[];
+  const dbAdmins   = db.prepare("SELECT slack_id FROM agents WHERE role = 'admin' AND active = 1").all() as { slack_id: string }[];
+
+  c.managerSlackIds = Array.from(new Set([...(c.envManagerSlackIds as string[]), ...dbManagers.map(r => r.slack_id)]));
+  c.adminSlackIds   = Array.from(new Set([...(c.envAdminSlackIds   as string[]), ...dbAdmins.map(r => r.slack_id)]));
+  // Admin implies manager for permission checks
+  for (const a of c.adminSlackIds) {
+    if (!c.managerSlackIds.includes(a)) c.managerSlackIds.push(a);
+  }
+}
+
 export function createAgent(opts: {
   slackId: string;
   plannerId: number;
   name: string;
   dept: string;
-  role?: 'agent' | 'manager';
+  role?: AgentRole;
 }) {
   db.prepare(`
     INSERT INTO agents (slack_id, planner_id, name, dept, role, active)

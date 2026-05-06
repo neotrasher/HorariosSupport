@@ -7,10 +7,11 @@ import {
 } from '../../services/schedule';
 import { getPunchesForShift } from '../../services/punches';
 import { requireManager } from './auth';
+import { getAgentBySlackId } from '../../services/agents';
 
 export const agenteRouter = Router();
 
-agenteRouter.get('/:plannerId', requireManager, (req, res) => {
+agenteRouter.get('/:plannerId', (req, res) => {
   const user = (req.session as any).user;
   const plannerId = parseInt(req.params.plannerId, 10);
   if (isNaN(plannerId)) {
@@ -22,6 +23,16 @@ agenteRouter.get('/:plannerId', requireManager, (req, res) => {
   if (!agent) {
     res.status(404).render('error', { message: 'Agente no encontrado', user });
     return;
+  }
+
+  // #9a: manager/admin can see any drill-down. Agents can see their OWN.
+  const isPriv = user?.role === 'manager' || user?.role === 'admin';
+  if (!isPriv) {
+    const own = getAgentBySlackId(user?.slack_id || '');
+    if (!own || own.planner_id !== plannerId) {
+      res.status(403).render('error', { message: 'Solo puedes ver tu propio detalle.', user });
+      return;
+    }
   }
 
   const monthParam = (req.query.month as string) || DateTime.utc().toFormat('yyyy-LL');
@@ -138,7 +149,15 @@ agenteRouter.get('/:plannerId', requireManager, (req, res) => {
       });
     } else if (dayOffSet.has(dateStr)) {
       const d = daysOff.find(x => x.date === dateStr)!;
-      rows.push({ date: dateStr, dayName, isToday, kind: 'off', offReason: d.reason });
+      const isApprovedTimeOff = d.reason === 'vacaciones' || d.reason === 'permiso';
+      // Only count days_off_entries with reason vacaciones/permiso as "time off".
+      // 'rest' / 'time_off' / null come from planner imports and are just regular
+      // days off (no shift scheduled) — render them as empty rather than as TO.
+      if (isApprovedTimeOff) {
+        rows.push({ date: dateStr, dayName, isToday, kind: 'off', offReason: d.reason });
+      } else {
+        rows.push({ date: dateStr, dayName, isToday, kind: 'empty' });
+      }
     } else {
       rows.push({ date: dateStr, dayName, isToday, kind: 'empty' });
     }
@@ -148,7 +167,10 @@ agenteRouter.get('/:plannerId', requireManager, (req, res) => {
   // Aggregate stats for the month
   const stats = {
     shifts: shifts.length,
-    daysOff: daysOff.length,
+    // "Libres" = days with no shift assigned, regardless of whether the planner
+    // marked them as rest. Approved time-off (vacaciones/permiso) counted separately.
+    daysOff: rows.filter(r => r.kind === 'empty' || r.kind === 'off').length,
+    timeOffDays: rows.filter(r => r.kind === 'off').length,
     late: rows.filter(r => r.shift?.lateMin && r.shift.lateMin > config.lateThresholdMin).length,
     breakExcess: rows.filter(r => r.shift?.breakExcessMin).length,
     forgotClockOut: rows.filter(r => r.shift?.forgotClockOut).length,

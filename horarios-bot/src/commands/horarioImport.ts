@@ -1,5 +1,6 @@
 import { App } from '@slack/bolt';
 import { db } from '../db';
+import { config } from '../config';
 import {
   clearScheduleRange, clearAllSchedules,
   insertScheduleEntry, insertDayOffEntry
@@ -27,8 +28,13 @@ import {
  * (allows month-by-month refresh). Without `range`, ALL schedule data is wiped.
  */
 export function registerHorarioImport(app: App) {
-  app.command('/horario-import', async ({ ack, body, client }) => {
+  app.command('/horario-import', async ({ ack, body, client, respond }) => {
     await ack();
+    const userId = (body as any).user_id;
+    if (!config.managerSlackIds.includes(userId) && !config.adminSlackIds.includes(userId)) {
+      await respond({ response_type: 'ephemeral', text: '❌ Solo manager/admin pueden importar horarios.' });
+      return;
+    }
     await client.views.open({
       trigger_id: body.trigger_id,
       view: {
@@ -54,6 +60,11 @@ export function registerHorarioImport(app: App) {
   });
 
   app.view('horario_import_submit', async ({ ack, view, client, body }) => {
+    const userId = (body as any).user?.id;
+    if (!config.managerSlackIds.includes(userId) && !config.adminSlackIds.includes(userId)) {
+      await ack({ response_action: 'errors', errors: { json_block: 'Solo manager/admin pueden importar.' } });
+      return;
+    }
     const raw = view.state.values.json_block.json_input.value || '';
     let data: any;
     try {

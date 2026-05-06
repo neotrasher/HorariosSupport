@@ -121,12 +121,41 @@ export function reject(id: number, approverSlackId: string, reason: string | nul
   `).run(approverSlackId, reason, id);
 }
 
+/**
+ * Delete a request (manager/admin action). If it was approved, rolls back the
+ * days_off_entries that were created by approveAndApply, restoring the agent's
+ * original planner-defined schedule. Atomic.
+ */
+export function deleteRequest(id: number, plannerId: number | null) {
+  const tx = db.transaction(() => {
+    const req = getRequest(id);
+    if (!req) return;
+    if (req.status === 'approved' && plannerId !== null) {
+      db.prepare(`
+        DELETE FROM days_off_entries
+        WHERE planner_id = ? AND date >= ? AND date <= ?
+      `).run(plannerId, req.start_date, req.end_date);
+    }
+    db.prepare('DELETE FROM time_off_requests WHERE id = ?').run(id);
+  });
+  tx();
+}
+
 export function cancel(id: number, requesterSlackId: string) {
   db.prepare(`
     UPDATE time_off_requests
     SET status = 'cancelled'
     WHERE id = ? AND requester_slack_id = ? AND status = 'pending'
   `).run(id, requesterSlackId);
+}
+
+/** #6b: Manager/admin override — cancels a pending request even if not the requester. */
+export function cancelByManager(id: number) {
+  db.prepare(`
+    UPDATE time_off_requests
+    SET status = 'cancelled'
+    WHERE id = ? AND status = 'pending'
+  `).run(id);
 }
 
 export function setDmTargets(id: number, targets: DmTarget[]) {
@@ -138,6 +167,31 @@ export function getDmTargets(id: number): DmTarget[] {
   const r = db.prepare('SELECT approval_dm_targets FROM time_off_requests WHERE id = ?').get(id) as { approval_dm_targets: string | null } | undefined;
   if (!r?.approval_dm_targets) return [];
   try { return JSON.parse(r.approval_dm_targets) as DmTarget[]; } catch { return []; }
+}
+
+/**
+ * Sum of vacation days consumed by an agent in a given calendar year, based
+ * on approved time-off requests of type 'vacaciones'. Counts the number of
+ * dates in [start_date, end_date] that fall within `year`. Cancelled and
+ * rejected requests are ignored.
+ */
+export function vacationDaysUsedInYear(slackId: string, year: number): number {
+  const yearStart = `${year}-01-01`;
+  const yearEnd = `${year}-12-31`;
+  const rows = db.prepare(`
+    SELECT start_date, end_date FROM time_off_requests
+    WHERE requester_slack_id = ? AND type = 'vacaciones' AND status = 'approved'
+      AND NOT (end_date < ? OR start_date > ?)
+  `).all(slackId, yearStart, yearEnd) as { start_date: string; end_date: string }[];
+  let total = 0;
+  for (const r of rows) {
+    const s = r.start_date < yearStart ? yearStart : r.start_date;
+    const e = r.end_date > yearEnd ? yearEnd : r.end_date;
+    const ds = DateTime.fromISO(s, { zone: 'utc' });
+    const de = DateTime.fromISO(e, { zone: 'utc' });
+    total += Math.max(0, Math.round(de.diff(ds, 'days').days) + 1);
+  }
+  return total;
 }
 
 export function setRequesterDm(id: number, channel: string, ts: string) {

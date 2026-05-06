@@ -2,11 +2,11 @@ import { Router } from 'express';
 import { App } from '@slack/bolt';
 import { DateTime } from 'luxon';
 import { config } from '../../config';
-import { getAgentBySlackId } from '../../services/agents';
+import { getAgentBySlackId, listAgents } from '../../services/agents';
 import {
   createRequest, listByRequester, listAll, listPending, getRequest,
-  approveAndApply, reject, cancel, findOverlappingActive,
-  setDmTargets, setRequesterDm, getDmTargets,
+  approveAndApply, reject, cancel, cancelByManager, deleteRequest, findOverlappingActive,
+  setDmTargets, setRequesterDm, getDmTargets, vacationDaysUsedInYear,
   TimeOffStatus
 } from '../../services/timeOff';
 import {
@@ -25,8 +25,9 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
     const user = (req.session as any).user;
     const filterStatus = (req.query.status as string) as TimeOffStatus | undefined;
 
+    const isPriv = user.role === 'manager' || user.role === 'admin';
     let requests;
-    if (user.role === 'manager') {
+    if (isPriv) {
       requests = filterStatus ? listAll({ status: filterStatus }) : listAll();
     } else {
       requests = listByRequester(user.slack_id);
@@ -52,51 +53,90 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
       requests: enriched,
       filterStatus: filterStatus || '',
       pendingCount,
-      isManager: user.role === 'manager'
+      isManager: isPriv
     });
   });
 
   router.get('/nueva', (req, res) => {
     const user = (req.session as any).user;
+    const isPriv = user.role === 'manager' || user.role === 'admin';
     const agent = getAgentBySlackId(user.slack_id);
-    if (!agent) {
+    // Manager/admin can create on behalf of others (no need to be linked themselves).
+    // Regular agents must be linked.
+    if (!isPriv && !agent) {
       res.status(403).render('error', {
         message: 'Tu cuenta no esta vinculada a un agente. Pide a un manager que use /horario-link.',
         user
       });
       return;
     }
-    res.render('solicitudes-new', { user, agent, error: null, form: { type: 'permiso', start_date: '', end_date: '', reason: '' } });
+    const allAgents = isPriv
+      ? listAgents().filter(a => a.active !== 0).sort((a, b) => a.name.localeCompare(b.name))
+      : [];
+    // For agent view: show their own vacation balance. For privileged users it
+    // gets recomputed client-side as they pick a target agent.
+    const year = DateTime.utc().year;
+    const myBalance = agent ? {
+      year,
+      used: vacationDaysUsedInYear(agent.slack_id, year),
+      entitled: agent.vacation_days_per_year ?? null
+    } : null;
+    // Map of slack_id → { year, used, entitled } for all agents (privileged use)
+    const balanceByAgent: Record<string, { year: number; used: number; entitled: number | null }> = {};
+    if (isPriv) {
+      for (const a of allAgents) {
+        balanceByAgent[a.slack_id] = {
+          year, used: vacationDaysUsedInYear(a.slack_id, year),
+          entitled: a.vacation_days_per_year ?? null
+        };
+      }
+    }
+    res.render('solicitudes-new', {
+      user, agent, allAgents, isPriv,
+      error: null,
+      myBalance, balanceByAgent,
+      form: { type: 'permiso', start_date: '', end_date: '', reason: '', target_slack_id: '' }
+    });
   });
 
   router.post('/nueva', async (req, res) => {
     const user = (req.session as any).user;
-    const agent = getAgentBySlackId(user.slack_id);
-    if (!agent) {
-      res.status(403).render('error', { message: 'Cuenta no vinculada.', user });
-      return;
-    }
+    const isPriv = user.role === 'manager' || user.role === 'admin';
 
     const type = req.body.type as 'permiso' | 'vacaciones';
     const startDate = (req.body.start_date as string || '').trim();
     const endDate = (req.body.end_date as string || '').trim();
     const reason = (req.body.reason as string || '').trim() || null;
+    const targetSlackId = (req.body.target_slack_id as string || '').trim();
 
-    const formState = { type, start_date: startDate, end_date: endDate, reason: reason || '' };
+    // Decide on whose behalf the request is being created
+    const requesterSlackId = isPriv && targetSlackId ? targetSlackId : user.slack_id;
+    const targetAgent = getAgentBySlackId(requesterSlackId);
+
+    const allAgents = isPriv
+      ? listAgents().filter(a => a.active !== 0).sort((a, b) => a.name.localeCompare(b.name))
+      : [];
+    const formState = { type, start_date: startDate, end_date: endDate, reason: reason || '', target_slack_id: targetSlackId };
     const renderError = (msg: string) =>
-      res.status(400).render('solicitudes-new', { user, agent, error: msg, form: formState });
+      res.status(400).render('solicitudes-new', { user, agent: targetAgent || null, allAgents, isPriv, error: msg, form: formState, myBalance: null, balanceByAgent: {} });
+
+    if (!targetAgent) {
+      return renderError(isPriv
+        ? 'Selecciona un agente o deja en blanco para crearla a tu nombre.'
+        : 'Tu cuenta no esta vinculada a un agente.');
+    }
 
     if (!['permiso', 'vacaciones'].includes(type)) return renderError('Tipo invalido.');
     if (!startDate || !endDate) return renderError('Las fechas son obligatorias.');
     if (endDate < startDate) return renderError('La fecha fin no puede ser anterior a la de inicio.');
 
-    const overlap = findOverlappingActive(user.slack_id, startDate, endDate);
+    const overlap = findOverlappingActive(requesterSlackId, startDate, endDate);
     if (overlap) {
-      return renderError(`Ya tienes una solicitud ${overlap.status} que se traslapa (${overlap.start_date} → ${overlap.end_date}).`);
+      return renderError(`Ya hay una solicitud ${overlap.status} que se traslapa (${overlap.start_date} → ${overlap.end_date}).`);
     }
 
     const reqRow = createRequest({
-      requesterSlackId: user.slack_id,
+      requesterSlackId,
       type, startDate, endDate, reason,
       source: 'web'
     });
@@ -104,20 +144,21 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
     // Notify managers via Slack DMs (same as bot flow). Best-effort.
     if (slackApp) {
       const targets: { slack_id: string; channel: string; ts: string }[] = [];
+      // Admin can self-approve, so include their DM. Manager cannot self-approve,
+      // so skip them only if they're the actual requester (not just the creator).
       for (const managerId of config.managerSlackIds) {
-        // If the requester is also a manager, don't send the approve buttons to themselves
-        if (managerId === user.slack_id) continue;
+        if (managerId === requesterSlackId && user.role !== 'admin') continue;
         try {
           const im = await slackApp.client.conversations.open({ users: managerId });
           const ch = im.channel?.id;
           if (!ch) continue;
           const r = await slackApp.client.chat.postMessage({
             channel: ch,
-            text: `Nueva solicitud de tiempo libre de ${agent.name}`,
+            text: `Nueva solicitud de tiempo libre de ${targetAgent.name}`,
             blocks: timeOffApproverBlocks({
               requestId: reqRow.id,
-              requesterName: agent.name,
-              requesterSlackId: user.slack_id,
+              requesterName: targetAgent.name,
+              requesterSlackId,
               type, startDate, endDate, reason
             })
           });
@@ -126,15 +167,38 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
           console.error(`solicitudes web: failed to DM manager ${managerId}:`, e);
         }
       }
+      // Also DM admins so they get the Approve/Reject buttons (even for their own requests).
+      for (const adminId of config.adminSlackIds) {
+        if (config.managerSlackIds.includes(adminId)) continue; // already notified above
+        try {
+          const im = await slackApp.client.conversations.open({ users: adminId });
+          const ch = im.channel?.id;
+          if (!ch) continue;
+          const r = await slackApp.client.chat.postMessage({
+            channel: ch,
+            text: `Nueva solicitud de tiempo libre de ${targetAgent.name}`,
+            blocks: timeOffApproverBlocks({
+              requestId: reqRow.id,
+              requesterName: targetAgent.name,
+              requesterSlackId,
+              type, startDate, endDate, reason
+            })
+          });
+          if (r.ts) targets.push({ slack_id: adminId, channel: ch, ts: r.ts });
+        } catch (e) {
+          console.error(`solicitudes web: failed to DM admin ${adminId}:`, e);
+        }
+      }
       setDmTargets(reqRow.id, targets);
 
+      // DM the requester (the agent the solicitud is FOR) — even when created by a manager
       try {
-        const im = await slackApp.client.conversations.open({ users: user.slack_id });
+        const im = await slackApp.client.conversations.open({ users: requesterSlackId });
         const ch = im.channel?.id;
         if (ch) {
           const r = await slackApp.client.chat.postMessage({
             channel: ch,
-            text: 'Solicitud enviada',
+            text: requesterSlackId === user.slack_id ? 'Solicitud enviada' : 'Tu manager creó una solicitud a tu nombre',
             blocks: timeOffRequesterBlocks({ type, startDate, endDate, reason })
           });
           if (r.ts) setRequesterDm(reqRow.id, ch, r.ts);
@@ -150,7 +214,10 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
   router.post('/:id/cancel', (req, res) => {
     const user = (req.session as any).user;
     const id = parseInt(req.params.id, 10);
-    cancel(id, user.slack_id);
+    // #6b: manager/admin can cancel anyone's pending request; agents only their own.
+    const isPriv = user.role === 'manager' || user.role === 'admin';
+    if (isPriv) cancelByManager(id);
+    else cancel(id, user.slack_id);
 
     // Update Slack DMs (best-effort) — manager and requester
     (async () => {
@@ -190,7 +257,8 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
       res.redirect('/solicitudes');
       return;
     }
-    if (r.requester_slack_id === user.slack_id) {
+    // Admin can self-approve; manager cannot.
+    if (r.requester_slack_id === user.slack_id && user.role !== 'admin') {
       res.status(403).render('error', { message: 'No puedes aprobar tu propia solicitud. Pide a otro manager que la revise.', user });
       return;
     }
@@ -220,13 +288,53 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
       res.redirect('/solicitudes');
       return;
     }
-    if (r.requester_slack_id === user.slack_id) {
-      res.status(403).render('error', { message: 'No puedes rechazar tu propia solicitud.', user });
+    // #4a: admin can self-reject (consistency with self-approve). Manager cannot.
+    if (r.requester_slack_id === user.slack_id && user.role !== 'admin') {
+      res.status(403).render('error', { message: 'No puedes rechazar tu propia solicitud. Pide a otro manager que la revise.', user });
       return;
     }
     reject(id, user.slack_id, reasonInput);
 
     if (slackApp) await broadcastWebResolution(slackApp, id, 'rejected', user.slack_id, reasonInput);
+    res.redirect('/solicitudes');
+  });
+
+  router.post('/:id/delete', requireManager, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    const r = getRequest(id);
+    if (!r) {
+      res.redirect('/solicitudes');
+      return;
+    }
+    // If approved, look up plannerId so days_off rollback is possible
+    const agent = getAgentBySlackId(r.requester_slack_id);
+    const plannerId = agent ? agent.planner_id : null;
+
+    deleteRequest(id, plannerId);
+
+    // Best-effort: tombstone any DMs (so old buttons can't act on a dead row)
+    if (slackApp) {
+      const tombstoneBlocks = [{
+        type: 'section',
+        text: { type: 'mrkdwn', text: `🗑️ _Solicitud eliminada por un manager. ${r.status === 'approved' ? 'El horario original se restablece.' : ''}_` }
+      }];
+      for (const t of getDmTargets(id)) {
+        try {
+          await slackApp.client.chat.update({
+            channel: t.channel, ts: t.ts, text: 'Solicitud eliminada', blocks: tombstoneBlocks
+          });
+        } catch (e) { /* ignore */ }
+      }
+      if (r.requester_dm_channel && r.requester_dm_ts) {
+        try {
+          await slackApp.client.chat.update({
+            channel: r.requester_dm_channel, ts: r.requester_dm_ts,
+            text: 'Tu solicitud fue eliminada', blocks: tombstoneBlocks
+          });
+        } catch (e) { /* ignore */ }
+      }
+    }
+
     res.redirect('/solicitudes');
   });
 

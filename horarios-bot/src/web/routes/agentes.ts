@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import { DateTime } from 'luxon';
+import { vacationDaysUsedInYear } from '../../services/timeOff';
 import {
   Agent, getAgentBySlackId, listAllAgents, createAgent,
-  updateAgentFields, setActive,
+  updateAgentFields, setActive, applyDbRoles,
   OPERATIONAL_FIELDS, SENSITIVE_FIELDS
 } from '../../services/agents';
 import { requireManager, requireAdmin } from './auth';
@@ -24,7 +25,8 @@ agentesRouter.get('/nuevo', (req, res) => {
     user, isAdmin: user.role === 'admin',
     mode: 'create',
     agent: emptyAgent(),
-    error: null
+    error: null,
+    vacationBalance: null
   });
 });
 
@@ -38,7 +40,8 @@ agentesRouter.post('/nuevo', (req, res) => {
   const renderError = (msg: string) => {
     const merged = { ...emptyAgent(), ...req.body };
     res.status(400).render('agentes-form', {
-      user, isAdmin: user.role === 'admin', mode: 'create', agent: merged, error: msg
+      user, isAdmin: user.role === 'admin', mode: 'create', agent: merged, error: msg,
+      vacationBalance: null
     });
   };
 
@@ -51,7 +54,14 @@ agentesRouter.post('/nuevo', (req, res) => {
   if (getAgentBySlackId(slackId)) return renderError('Ya existe un agente con ese slack_id.');
 
   try {
-    createAgent({ slackId, plannerId, name, dept, role: req.body.role === 'manager' ? 'manager' : 'agent' });
+    // #5a: only admin can elevate a new agent's role. Manager always creates 'agent'.
+    let role: 'agent' | 'manager' | 'admin' = 'agent';
+    if (user.role === 'admin') {
+      const requested = (req.body.role as string || '').trim();
+      if (['agent', 'manager', 'admin'].includes(requested)) role = requested as any;
+    }
+    createAgent({ slackId, plannerId, name, dept, role });
+    if (role !== 'agent') applyDbRoles();
   } catch (e: any) {
     return renderError(`Error al crear: ${e?.message || 'desconocido'}`);
   }
@@ -77,9 +87,18 @@ agentesRouter.get('/:slackId', (req, res) => {
     res.status(404).render('error', { message: 'Agente no encontrado.', user });
     return;
   }
+  const year = DateTime.utc().year;
+  const used = vacationDaysUsedInYear(agent.slack_id, year);
+  const entitled = agent.vacation_days_per_year ?? null;
+  const vacationBalance = {
+    year, used,
+    entitled,
+    available: entitled === null ? 0 - used : entitled - used
+  };
   res.render('agentes-form', {
     user, isAdmin: user.role === 'admin',
-    mode: 'edit', agent, error: null
+    mode: 'edit', agent, error: null,
+    vacationBalance
   });
 });
 
@@ -94,15 +113,25 @@ agentesRouter.post('/:slackId', (req, res) => {
 
   // Operational fields — both managers and admin can edit
   const opFields = pickFields(req.body, [...OPERATIONAL_FIELDS, 'role']);
-  // dept must be L1/L2; role agent/manager (whitelist)
+  // dept must be L1/L2/MGMT
   if (opFields.dept && !['L1', 'L2', 'MGMT'].includes(opFields.dept as string)) {
     res.status(400).render('error', { message: 'Dept debe ser L1, L2 o MGMT.', user });
     return;
   }
-  if (opFields.role && !['agent', 'manager'].includes(opFields.role as string)) {
-    delete (opFields as any).role;
+  // Role: admin can grant any role (incl. admin/manager). Manager cannot
+  // change roles (silently ignore). Agent value must be in the whitelist.
+  if ('role' in opFields) {
+    const newRole = opFields.role as string;
+    if (user.role !== 'admin') {
+      delete (opFields as any).role;
+    } else if (!['agent', 'manager', 'admin'].includes(newRole)) {
+      delete (opFields as any).role;
+    }
   }
   if (Object.keys(opFields).length) updateAgentFields(slackId, opFields);
+
+  // If role changed, refresh in-memory role lists so cron/jobs see the update
+  if ('role' in opFields) applyDbRoles();
 
   // Sensitive fields — admin only. Defense in depth: even if the form was tampered,
   // we ignore the sensitive keys for non-admin users.

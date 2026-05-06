@@ -1,14 +1,48 @@
 import { Router } from 'express';
 import { DateTime } from 'luxon';
-import { SHIFTS } from '../../config';
-import { listAgents } from '../../services/agents';
+import { SHIFTS, config } from '../../config';
+import { listAgents, getAgentBySlackId } from '../../services/agents';
 import {
-  getAllShiftsForDate, getAllShiftsForRange, shiftWindow, cycleForDate
+  getAllShiftsForDate, getAllShiftsForRange, shiftWindow, cycleForDate,
+  getAllDaysOffForDate, getAllDaysOffForRange,
+  removeAgentFromShift, addAgentToShift
 } from '../../services/schedule';
 
 export const horariosRouter = Router();
 
 type ViewMode = 'day' | 'week' | 'month';
+
+/**
+ * Manual edit endpoint (manager/admin only). Accepts JSON:
+ *   { action:'add'|'remove', plannerId, date, shiftId, dept }
+ */
+horariosRouter.post('/edit', (req, res) => {
+  const user = (req.session as any).user;
+  if (user?.role !== 'manager' && user?.role !== 'admin') {
+    return res.status(403).json({ ok: false, error: 'forbidden' });
+  }
+  const { action, plannerId, date, shiftId, dept } = req.body || {};
+  const pid = parseInt(plannerId, 10);
+  if (!action || !pid || !date || !shiftId || !dept) {
+    return res.status(400).json({ ok: false, error: 'missing fields' });
+  }
+  if (!SHIFTS[dept] || !SHIFTS[dept][shiftId]) {
+    return res.status(400).json({ ok: false, error: 'invalid shift' });
+  }
+  try {
+    if (action === 'remove') {
+      const n = removeAgentFromShift(pid, date, shiftId, dept);
+      return res.json({ ok: true, removed: n });
+    }
+    if (action === 'add') {
+      const ok = addAgentToShift({ plannerId: pid, date, shiftId, dept });
+      return res.json({ ok: true, added: ok });
+    }
+    return res.status(400).json({ ok: false, error: 'unknown action' });
+  } catch (e: any) {
+    return res.status(500).json({ ok: false, error: e?.message || 'error' });
+  }
+});
 
 horariosRouter.get('/', (req, res) => {
   const user = (req.session as any).user;
@@ -67,13 +101,58 @@ function renderDay(req: any, res: any, user: any) {
     blocks.push({ dept, rows });
   }
 
+  const dateStr = date.toFormat('yyyy-LL-dd');
+
+  // Resolve viewer's timezone for the local-hour display toggle
+  const viewerAgent = getAgentBySlackId(user?.slack_id || '');
+  const localTz = (viewerAgent?.timezone) || (config as any).displayTimezone || 'UTC';
+
+  // For each shift row, compute UTC and local hour windows
+  for (const block of blocks) {
+    for (const row of block.rows as any[]) {
+      const startDt = date.startOf('day').plus({ hours: row.startHour });
+      const endDt   = date.startOf('day').plus({ hours: row.endHour });
+      row.startUtcStr   = startDt.toFormat('HH:mm');
+      row.endUtcStr     = endDt.toFormat('HH:mm');
+      row.startLocalStr = startDt.setZone(localTz).toFormat('HH:mm');
+      row.endLocalStr   = endDt.setZone(localTz).toFormat('HH:mm');
+    }
+  }
+
+  // Collect agents off-duty (vacaciones / permiso) on this date
+  const offRows = getAllDaysOffForDate(dateStr);
+  type OffAgent = { name: string; plannerId: number; dept: string; reason: string | null; isVac: boolean };
+  const offAgents: OffAgent[] = offRows
+    .map(o => {
+      const a = agentByPid.get(o.planner_id);
+      if (!a) return null;
+      return {
+        name: a.name, plannerId: o.planner_id, dept: a.dept,
+        reason: o.reason, isVac: (o.reason || '').toLowerCase() === 'vacaciones'
+      } as OffAgent;
+    })
+    .filter((x): x is OffAgent => !!x)
+    .sort((a, b) => a.dept.localeCompare(b.dept) || a.name.localeCompare(b.name));
+
   res.render('horarios-day', {
     user,
     view: 'day',
-    dateStr: date.toFormat('yyyy-LL-dd'),
+    dateStr,
+    currentDate: dateStr,
     dateLabelLocal: date.setLocale('es').toFormat('cccc d LLLL yyyy'),
     cycle,
     blocks,
+    offAgents,
+    localTz,
+    allAgents: agents
+      .filter(a => a.active !== 0)
+      .map(a => ({ plannerId: a.planner_id, name: a.name, dept: a.dept }))
+      .sort((a, b) => a.dept.localeCompare(b.dept) || a.name.localeCompare(b.name)),
+    shiftDefs: Object.keys(SHIFTS).sort().flatMap(d =>
+      Object.values(SHIFTS[d]).map(s => ({
+        dept: d, id: s.id, label: s.label, startHour: s.startHour, endHour: s.endHour
+      }))
+    ),
     prev: date.minus({ days: 1 }).toFormat('yyyy-LL-dd'),
     next: date.plus({ days: 1 }).toFormat('yyyy-LL-dd'),
     today: DateTime.utc().toFormat('yyyy-LL-dd'),
@@ -155,13 +234,49 @@ function renderWeek(req: any, res: any, user: any) {
     blocks.push({ dept, rows });
   }
 
+  // Compute UTC + local hour windows for each shift row (week view)
+  const viewerAgentW = getAgentBySlackId(user?.slack_id || '');
+  const localTzW = (viewerAgentW?.timezone) || (config as any).displayTimezone || 'UTC';
+  const refForWindow = weekStart.startOf('day');
+  for (const block of blocks) {
+    for (const row of block.rows as any[]) {
+      const startDt = refForWindow.plus({ hours: row.startHour });
+      const endDt   = refForWindow.plus({ hours: row.endHour });
+      row.startUtcStr   = startDt.toFormat('HH:mm');
+      row.endUtcStr     = endDt.toFormat('HH:mm');
+      row.startLocalStr = startDt.setZone(localTzW).toFormat('HH:mm');
+      row.endLocalStr   = endDt.setZone(localTzW).toFormat('HH:mm');
+    }
+  }
+
+  // Agents off-duty per day for this week
+  type OffAgent = { name: string; plannerId: number; dept: string; reason: string | null; isVac: boolean };
+  const offByDate = new Map<string, OffAgent[]>();
+  for (const o of getAllDaysOffForRange(startStr, endStr)) {
+    const a = agentByPid.get(o.planner_id);
+    if (!a) continue;
+    const arr = offByDate.get(o.date) || [];
+    arr.push({
+      name: a.name, plannerId: o.planner_id, dept: a.dept,
+      reason: o.reason, isVac: (o.reason || '').toLowerCase() === 'vacaciones'
+    });
+    offByDate.set(o.date, arr);
+  }
+  const offRow = days.map(d => ({
+    date: d.date, isToday: d.isToday,
+    agents: (offByDate.get(d.date) || []).sort((a, b) => a.dept.localeCompare(b.dept) || a.name.localeCompare(b.name))
+  }));
+
   const cycle = cycleForDate(weekStart);
   res.render('horarios-week', {
     user,
     view: 'week',
     days,
     blocks,
+    offRow,
     cycle,
+    localTz: localTzW,
+    currentDate: refDate.toFormat('yyyy-LL-dd'),
     weekLabel: `${weekStart.toFormat('LL-dd')} → ${weekEnd.toFormat('LL-dd')}`,
     prev: weekStart.minus({ weeks: 1 }).toFormat('yyyy-LL-dd'),
     next: weekStart.plus({ weeks: 1 }).toFormat('yyyy-LL-dd'),
@@ -248,6 +363,7 @@ function renderMonth(req: any, res: any, user: any) {
     view: 'month',
     monthLabel: monthStart.setLocale('es').toFormat('LLLL yyyy'),
     monthParam,
+    currentDate: monthStart.toFormat('yyyy-LL-dd'),
     prevMonth: monthStart.minus({ months: 1 }).toFormat('yyyy-LL'),
     nextMonth: monthStart.plus({ months: 1 }).toFormat('yyyy-LL'),
     weeks,

@@ -2,6 +2,8 @@ import { App, LogLevel } from '@slack/bolt';
 import cron from 'node-cron';
 import { config } from './config';
 import { migrate } from './db';
+import { applyDbSettings } from './services/settings';
+import { applyDbRoles } from './services/agents';
 import { registerHorarioImport } from './commands/horarioImport';
 import { registerHorarioLink } from './commands/horarioLink';
 import { registerHorarioStatus } from './commands/horarioStatus';
@@ -22,6 +24,8 @@ import { startWeb } from './web/server';
 
 async function main() {
   migrate();
+  applyDbSettings();
+  applyDbRoles();
 
   const app = new App({
     token: config.slack.botToken,

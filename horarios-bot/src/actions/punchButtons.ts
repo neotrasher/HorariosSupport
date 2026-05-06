@@ -6,6 +6,7 @@ import {
   lastBreakInWithDur, lastPunchId, updatePunchNote, lastPunchForShift
 } from '../services/punches';
 import { getAgentBySlackId } from '../services/agents';
+import { findScheduleEntry } from '../services/schedule';
 import { punchButtonsBlocks, attendancePostBlocks } from '../ui/blocks';
 
 const ACTION_TO_TYPE: Record<string, PunchType> = {
@@ -37,6 +38,32 @@ export function registerPunchButtons(app: App) {
 
       const type = ACTION_TO_TYPE[actionId];
       const now = DateTime.utc();
+
+      // Rule 0 (#3a): block if the actor has no schedule_entry for this date+dept+shift.
+      // Buttons are normally only sent to agents with a shift, but this guards
+      // against stale messages or unauthorized clicks.
+      const agent = getAgentBySlackId(slackId);
+      if (!agent) {
+        try {
+          await client.chat.postEphemeral({
+            channel: (body as any).channel?.id || slackId,
+            user: slackId,
+            text: '❌ Tu cuenta no esta vinculada a un agente. Pide a un manager que use `/horario-link`.'
+          });
+        } catch { /* ignore */ }
+        return;
+      }
+      const scheduled = findScheduleEntry(agent.planner_id, shiftDate);
+      if (!scheduled || scheduled.dept !== dept || scheduled.shift_id !== shiftId) {
+        try {
+          await client.chat.postEphemeral({
+            channel: (body as any).channel?.id || slackId,
+            user: slackId,
+            text: `❌ No tienes turno asignado para ${dept}.${shiftId} el ${shiftDate}. Si crees que es un error, avisa a un manager.`
+          });
+        } catch { /* ignore */ }
+        return;
+      }
 
       const date = DateTime.fromISO(shiftDate, { zone: 'utc' });
       const start = date.startOf('day').plus({ hours: shift.startHour });
@@ -126,7 +153,7 @@ export function registerPunchButtons(app: App) {
         });
       } catch { /* message may have expired */ }
 
-      const agent = getAgentBySlackId(slackId);
+      // `agent` already resolved at top of handler (rule 0)
 
       // Post to attendance channel
       if (config.attendanceChannelId) {

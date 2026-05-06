@@ -9,6 +9,15 @@ export const dashboardRouter = Router();
 
 dashboardRouter.get('/', (req, res) => {
   const user = (req.session as any).user;
+
+  // #7b: viewers (logged-in via Slack but not linked to an agent and not
+  // in manager/admin lists) see a minimal page asking them to get linked,
+  // not the live operational dashboard.
+  if (user.role === 'viewer') {
+    res.render('dashboard-unlinked', { user });
+    return;
+  }
+
   const now = DateTime.utc();
   const today = now.startOf('day');
   const yesterday = today.minus({ days: 1 });

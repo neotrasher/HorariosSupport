@@ -14,6 +14,7 @@ import { agentesRouter } from './routes/agentes';
 import { reportesRouter } from './routes/reportes';
 import { plannerRouter } from './routes/planner';
 import { buildSolicitudesRouter } from './routes/solicitudes';
+import { settingsRouter } from './routes/settings';
 
 const SQLiteStore = require('connect-sqlite3')(session);
 
@@ -32,6 +33,12 @@ export function startWeb(slackApp: SlackApp | null = null) {
 
   app.use(express.urlencoded({ extended: true }));
   app.use(express.json());
+
+  // Inject path into views so the nav can highlight active links
+  app.use((req, res, next) => {
+    res.locals.currentPath = req.path;
+    next();
+  });
 
   const sessionDir = path.dirname(config.dbPath);
   app.use(session({
@@ -64,6 +71,7 @@ export function startWeb(slackApp: SlackApp | null = null) {
   app.use('/agentes', requireAuth, agentesRouter);
   app.use('/reportes', requireAuth, reportesRouter);
   app.use('/planner', requireAuth, plannerRouter);
+  app.use('/settings', requireAuth, settingsRouter);
   app.use('/', requireAuth, dashboardRouter);
 
   // Global error handler — must be last

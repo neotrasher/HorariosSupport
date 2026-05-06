@@ -39,9 +39,20 @@ miHorarioRouter.get('/', (req, res) => {
     dayNum: number;
     inMonth: boolean;
     isToday: boolean;
-    shift?: { dept: string; shiftId: string; label: string; startUtc: string; endUtc: string; custom: boolean; swapped: boolean };
+    shift?: {
+      dept: string; shiftId: string; label: string;
+      startUtc: string; endUtc: string;
+      startLocal: string; endLocal: string;
+      custom: boolean; swapped: boolean;
+    };
     dayOff?: { reason: string | null };
   };
+
+  // Resolve which timezone to display "local" hours in. Priority:
+  //   1. agent.timezone (per-agent override)
+  //   2. system displayTimezone setting
+  //   3. UTC
+  const localTz = (agent?.timezone) || config.displayTimezone || 'UTC';
 
   const today = DateTime.utc().toFormat('yyyy-LL-dd');
   const weeks: Cell[][] = [];
@@ -63,8 +74,10 @@ miHorarioRouter.get('/', (req, res) => {
           dept: sh.dept,
           shiftId: sh.shift.id,
           label: sh.shift.label,
-          startUtc: w.start.toFormat('HH:mm'),
-          endUtc: w.end.toFormat('HH:mm'),
+          startUtc:   w.start.toFormat('HH:mm'),
+          endUtc:     w.end.toFormat('HH:mm'),
+          startLocal: w.start.setZone(localTz).toFormat('HH:mm'),
+          endLocal:   w.end.setZone(localTz).toFormat('HH:mm'),
           custom: sh.startHour !== sh.shift.startHour || sh.endHour !== sh.shift.endHour,
           swapped: sh.source === 'swap'
         };
@@ -93,6 +106,6 @@ miHorarioRouter.get('/', (req, res) => {
     totalShifts,
     totalDaysOff,
     isEmpty,
-    displayTimezone: config.displayTimezone
+    localTz
   });
 });

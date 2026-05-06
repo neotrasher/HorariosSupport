@@ -1,6 +1,7 @@
 import { App } from '@slack/bolt';
 import { linkAgent, listAgents, unlinkAgent } from '../services/agents';
 import { db } from '../db';
+import { config } from '../config';
 
 /**
  * /horario-link
@@ -11,6 +12,10 @@ import { db } from '../db';
 export function registerHorarioLink(app: App) {
   app.command('/horario-link', async ({ ack, command, client, respond }) => {
     await ack();
+    if (!config.managerSlackIds.includes(command.user_id) && !config.adminSlackIds.includes(command.user_id)) {
+      await respond({ response_type: 'ephemeral', text: '❌ Solo manager/admin pueden usar este comando.' });
+      return;
+    }
     const text = (command.text || '').trim();
 
     if (!text) {

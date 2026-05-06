@@ -173,6 +173,31 @@ export function getDaysOffForAgentRange(plannerId: number, startDate: string, en
   `).all(plannerId, startDate, endDate) as { date: string; reason: string | null }[];
 }
 
+/**
+ * Reasons used in days_off_entries that represent an APPROVED time-off request
+ * (vacaciones / permiso). The other reasons ('rest', 'time_off', null) come
+ * from the regular planner import and just mean "no shift this day", they are
+ * NOT time off and should not be displayed as such in /horarios.
+ */
+const APPROVED_TIME_OFF_REASONS = ['vacaciones', 'permiso'] as const;
+
+/** Approved time-off rows (vacaciones/permiso) on a date. Excludes regular planner rest days. */
+export function getAllDaysOffForDate(dateStr: string): { planner_id: number; date: string; reason: string | null }[] {
+  return db.prepare(`
+    SELECT planner_id, date, reason FROM days_off_entries
+    WHERE date = ? AND reason IN ('vacaciones','permiso')
+  `).all(dateStr) as { planner_id: number; date: string; reason: string | null }[];
+}
+
+/** Approved time-off rows (vacaciones/permiso) in a date range. Excludes regular planner rest days. */
+export function getAllDaysOffForRange(startDate: string, endDate: string): { planner_id: number; date: string; reason: string | null }[] {
+  return db.prepare(`
+    SELECT planner_id, date, reason FROM days_off_entries
+    WHERE date >= ? AND date <= ? AND reason IN ('vacaciones','permiso')
+    ORDER BY date ASC
+  `).all(startDate, endDate) as { planner_id: number; date: string; reason: string | null }[];
+}
+
 /** All shifts for all agents in a range. */
 export function getAllShiftsForRange(startDate: string, endDate: string): ResolvedShift[] {
   const rows = db.prepare(`
@@ -185,6 +210,32 @@ export function getAllShiftsForRange(startDate: string, endDate: string): Resolv
     ORDER BY s.date ASC
   `).all(startDate, endDate) as ScheduleEntryRow[];
   return rows.map(resolve).filter((x): x is ResolvedShift => !!x);
+}
+
+/** Remove a single shift assignment (manager edit). Returns rows deleted. */
+export function removeAgentFromShift(plannerId: number, date: string, shiftId: string, dept: string): number {
+  const r = db.prepare(`
+    DELETE FROM schedule_entries
+    WHERE planner_id = ? AND date = ? AND shift_id = ? AND dept = ?
+  `).run(plannerId, date, shiftId, dept);
+  return r.changes as number;
+}
+
+/** Add an agent to a shift on a date (manual edit). Idempotent: skips if exact row exists. */
+export function addAgentToShift(opts: {
+  plannerId: number; date: string; shiftId: string; dept: string;
+}): boolean {
+  // Skip if the exact entry already exists
+  const exists = db.prepare(`
+    SELECT 1 FROM schedule_entries
+    WHERE planner_id = ? AND date = ? AND shift_id = ? AND dept = ?
+  `).get(opts.plannerId, opts.date, opts.shiftId, opts.dept);
+  if (exists) return false;
+  insertScheduleEntry({
+    date: opts.date, dept: opts.dept, shiftId: opts.shiftId,
+    plannerId: opts.plannerId, source: 'manual_edit'
+  });
+  return true;
 }
 
 export function countScheduleEntries(plannerId: number, date: string): number {

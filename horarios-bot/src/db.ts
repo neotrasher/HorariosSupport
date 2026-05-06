@@ -159,11 +159,32 @@ export function migrate() {
   if (!hasAgentCol('last_adjustment_pct'))        db.exec('ALTER TABLE agents ADD COLUMN last_adjustment_pct REAL');
   if (!hasAgentCol('last_salary_adjustment_date')) db.exec('ALTER TABLE agents ADD COLUMN last_salary_adjustment_date TEXT');
   if (!hasAgentCol('holiday_day_amount'))         db.exec('ALTER TABLE agents ADD COLUMN holiday_day_amount REAL');
+  // Vacation tracking
+  if (!hasAgentCol('vacation_days_per_year'))     db.exec('ALTER TABLE agents ADD COLUMN vacation_days_per_year INTEGER');
+  // Per-agent timezone for displaying shift hours in their local time
+  if (!hasAgentCol('timezone'))                   db.exec('ALTER TABLE agents ADD COLUMN timezone TEXT');
 
   // Now safe to create indexes that reference the new columns
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_punches_shift
       ON punches(slack_id, shift_date, shift_id);
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_by TEXT
+    );
+
+    -- Single-row JSON store for the cycle-based planner template (4 cycles × dept × day × shift).
+    -- The planner editor reads/writes the whole blob; applying to specific dates is a separate step.
+    CREATE TABLE IF NOT EXISTS planner_state (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      schedule_json TEXT NOT NULL,
+      days_off_json TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_by TEXT
+    );
   `);
 }
 

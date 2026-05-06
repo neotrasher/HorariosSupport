@@ -18,7 +18,9 @@ export function registerTimeOffButtons(app: App) {
     const requestId = parseInt(action.value, 10);
     const approverSlackId = (body as any).user.id;
 
-    if (!config.managerSlackIds.includes(approverSlackId)) {
+    const isAdmin = config.adminSlackIds.includes(approverSlackId);
+    const isManager = config.managerSlackIds.includes(approverSlackId);
+    if (!isAdmin && !isManager) {
       await client.chat.postEphemeral({
         channel: (body as any).channel.id,
         user: approverSlackId,
@@ -37,7 +39,8 @@ export function registerTimeOffButtons(app: App) {
       return;
     }
 
-    if (req.requester_slack_id === approverSlackId) {
+    // Admin can self-approve; manager cannot.
+    if (req.requester_slack_id === approverSlackId && !isAdmin) {
       await client.chat.postEphemeral({
         channel: (body as any).channel.id,
         user: approverSlackId,
@@ -77,21 +80,24 @@ export function registerTimeOffButtons(app: App) {
     const requestId = parseInt(action.value, 10);
     const approverSlackId = (body as any).user.id;
 
-    if (!config.managerSlackIds.includes(approverSlackId)) {
+    const isAdminReject = config.adminSlackIds.includes(approverSlackId);
+    const isManagerReject = config.managerSlackIds.includes(approverSlackId);
+    if (!isAdminReject && !isManagerReject) {
       await client.chat.postEphemeral({
         channel: (body as any).channel.id,
         user: approverSlackId,
-        text: '❌ Solo managers pueden rechazar.'
+        text: '❌ Solo manager/admin pueden rechazar.'
       });
       return;
     }
 
     const req = getRequest(requestId);
-    if (req && req.requester_slack_id === approverSlackId) {
+    // #4a: admin can self-reject (consistency with self-approve). Manager cannot.
+    if (req && req.requester_slack_id === approverSlackId && !isAdminReject) {
       await client.chat.postEphemeral({
         channel: (body as any).channel.id,
         user: approverSlackId,
-        text: '❌ No puedes rechazar tu propia solicitud.'
+        text: '❌ No puedes rechazar tu propia solicitud. Pide a otro manager que la revise.'
       });
       return;
     }
