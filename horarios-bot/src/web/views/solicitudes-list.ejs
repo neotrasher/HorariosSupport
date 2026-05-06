@@ -173,29 +173,39 @@
           <% if (r.status === 'rejected' && r.rejection_reason) { %>
             <p class="text-[11px] text-rose-700 italic mt-1">Rechazo: <%= r.rejection_reason %></p>
           <% } %>
-          <div class="flex items-center justify-between mt-3 pt-2 border-t border-slate-100">
+          <div class="mt-3 pt-2 border-t border-slate-100 flex flex-col gap-2">
             <span class="text-[10px] text-slate-400"><%= r.createdLocal %></span>
-            <div class="flex gap-2 items-center">
-              <% if (r.status === 'pending') { %>
-                <% const canResolve = isManager && (r.requester_slack_id !== user.slack_id || user.role === 'admin'); %>
-                <% if (canResolve) { %>
+            <% const canResolveM = isManager && (r.requester_slack_id !== user.slack_id || user.role === 'admin'); %>
+            <% const canCancelM = r.status === 'pending' && (r.requester_slack_id === user.slack_id || isManager); %>
+            <% const showActions = (r.status === 'pending' && (canResolveM || canCancelM)) || isManager; %>
+            <% if (showActions) { %>
+              <div class="flex flex-wrap gap-2 items-center">
+                <% if (r.status === 'pending' && canResolveM) { %>
                   <form method="post" action="/solicitudes/<%= r.id %>/approve" class="inline">
-                    <button class="text-emerald-700 hover:text-emerald-800 text-xs font-semibold">Aprobar</button>
+                    <button class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100">✓ Aprobar</button>
+                  </form>
+                  <details class="inline-block relative">
+                    <summary class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700 ring-1 ring-rose-200 hover:bg-rose-100 cursor-pointer list-none">✕ Rechazar</summary>
+                    <form method="post" action="/solicitudes/<%= r.id %>/reject" class="absolute z-10 mt-1 bg-white border border-slate-200 rounded-lg shadow-card-hover p-3 left-0 w-64 max-w-[calc(100vw-2rem)]">
+                      <textarea name="rejection_reason" rows="2" placeholder="Motivo (opcional)" class="block w-full text-xs border border-slate-200 rounded p-2 mb-2"></textarea>
+                      <button class="bg-rose-600 hover:bg-rose-700 text-white text-xs px-3 py-1.5 rounded font-semibold w-full">Confirmar rechazo</button>
+                    </form>
+                  </details>
+                <% } %>
+                <% if (canCancelM) { %>
+                  <form method="post" action="/solicitudes/<%= r.id %>/cancel" class="inline"
+                        <% if (r.requester_slack_id !== user.slack_id) { %>onsubmit="return confirm('Cancelar esta solicitud pendiente del agente?')"<% } %>>
+                    <button class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-200">Cancelar</button>
                   </form>
                 <% } %>
-                <% if (r.requester_slack_id === user.slack_id || isManager) { %>
-                  <form method="post" action="/solicitudes/<%= r.id %>/cancel" class="inline">
-                    <button class="text-slate-500 hover:text-slate-700 text-xs font-semibold">Cancelar</button>
+                <% if (isManager) { %>
+                  <form method="post" action="/solicitudes/<%= r.id %>/delete" class="inline ml-auto"
+                        onsubmit="return confirm('<%= r.status === 'approved' ? 'Eliminar esta solicitud APROBADA? El horario original del agente se restablece.' : 'Eliminar esta solicitud?' %>')">
+                    <button class="px-2 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:bg-rose-50 hover:text-rose-600" title="Eliminar">🗑</button>
                   </form>
                 <% } %>
-              <% } %>
-              <% if (isManager) { %>
-                <form method="post" action="/solicitudes/<%= r.id %>/delete" class="inline"
-                      onsubmit="return confirm('<%= r.status === 'approved' ? 'Eliminar esta solicitud APROBADA?' : 'Eliminar?' %>')">
-                  <button class="text-slate-400 hover:text-rose-600" title="Eliminar">🗑</button>
-                </form>
-              <% } %>
-            </div>
+              </div>
+            <% } %>
           </div>
         </li>
       <% }) %>
