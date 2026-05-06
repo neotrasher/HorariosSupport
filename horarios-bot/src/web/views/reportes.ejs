@@ -1,39 +1,51 @@
 <%- include('partials/head') %>
 <style>
   @media print {
-    nav, .no-print { display: none !important; }
+    nav, aside, .nav-mobile-bar, .no-print, #appOverlay { display: none !important; }
+    .app-shell { display: block !important; }
+    .app-main { width: 100% !important; }
+    body { background: white !important; background-image: none !important; }
     main { max-width: 100% !important; padding: 0 !important; }
-    body { background: white !important; }
     .border, .border-slate-200, .border-slate-100 { border-color: #000 !important; }
     table { font-size: 10px !important; }
     th, td { padding: 4px 6px !important; }
     a { color: black !important; text-decoration: none !important; }
+    .shadow-card { box-shadow: none !important; }
   }
 </style>
 <%- include('partials/nav', { user }) %>
 
-<main class="max-w-7xl mx-auto px-4 py-6">
-  <% const filterQs = (filterDept ? '&dept=' + filterDept : '') + (filterAgent ? '&agent=' + filterAgent : '') %>
-  <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-    <div>
-      <h2 class="text-xl font-semibold text-slate-900">Reportes</h2>
-      <p class="text-sm text-slate-500 capitalize"><%= rangeLabel %></p>
+<%
+  const filterQs = (filterDept ? '&dept=' + filterDept : '') + (filterAgent ? '&agent=' + filterAgent : '');
+  const presetQs = presetActive ? `preset=${presetActive}` : `start=${startStr}&end=${endStr}`;
+  const exportHref = `/reportes/export.csv?${presetQs}${filterQs}`;
+%>
+
+<main class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+  <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-5">
+    <div class="min-w-0">
+      <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Reportes</h2>
+      <p class="text-sm text-slate-500 mt-1 capitalize"><%= rangeLabel %><% if (filterDept || filterAgent) { %> · filtrado<% } %></p>
     </div>
-    <div class="flex items-center gap-2 text-sm no-print">
+    <div class="flex items-center gap-2 text-sm no-print flex-wrap">
       <a href="/reportes?start=<%= prevStart %>&end=<%= prevEnd %><%= filterQs %>"
-         class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card" title="Periodo anterior">&larr;</a>
+         class="px-3 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card shrink-0" title="Periodo anterior">&larr;</a>
       <a href="/reportes?start=<%= nextStart %>&end=<%= nextEnd %><%= filterQs %>"
-         class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card" title="Periodo siguiente">&rarr;</a>
-      <button type="button" onclick="window.print()"
-         class="ml-2 bg-ink-800 text-white px-4 py-2 rounded-lg hover:bg-ink-700">
+         class="px-3 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card shrink-0" title="Periodo siguiente">&rarr;</a>
+      <a href="<%= exportHref %>" class="px-3 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card text-slate-700 text-xs font-medium shrink-0 inline-flex items-center gap-1">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
+        CSV
+      </a>
+      <button type="button" onclick="window.print()" class="btn-primary inline-flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-semibold shrink-0">
         🖨️ Imprimir
       </button>
     </div>
   </div>
 
   <!-- Selector de rango -->
-  <div class="bg-white rounded-lg border border-slate-200 shadow-card p-3 mb-4 flex flex-wrap items-end gap-3 no-print">
-    <div class="flex flex-wrap gap-1">
+  <div class="bg-white rounded-xl border border-slate-200 shadow-card p-3 mb-4 flex flex-wrap items-end gap-3 no-print">
+    <div class="flex flex-wrap gap-1 items-center">
+      <span class="text-[10px] uppercase tracking-wider font-bold text-slate-400 mr-1">Rango</span>
       <% const presets = [
         ['this-month', 'Este mes'],
         ['last-month', 'Mes pasado'],
@@ -44,12 +56,12 @@
       ] %>
       <% presets.forEach(([key, label]) => { %>
         <a href="/reportes?preset=<%= key %><%= filterQs %>"
-           class="px-3 py-1.5 rounded-lg text-xs <%= presetActive === key ? 'bg-ink-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-gray-200' %>">
+           class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap <%= presetActive === key ? 'bg-ink-800 text-white shadow-card' : 'bg-slate-100 text-slate-700 hover:bg-slate-200' %>">
           <%= label %>
         </a>
       <% }) %>
     </div>
-    <div class="border-l border-slate-200 h-8"></div>
+    <div class="border-l border-slate-200 h-8 hidden sm:block"></div>
     <form method="get" action="/reportes" class="flex flex-wrap items-end gap-2">
       <% if (filterDept) { %><input type="hidden" name="dept" value="<%= filterDept %>"><% } %>
       <% if (filterAgent) { %><input type="hidden" name="agent" value="<%= filterAgent %>"><% } %>
@@ -63,12 +75,12 @@
         <input type="date" name="end" value="<%= endStr %>" required
                class="text-sm border border-slate-300 rounded-lg px-2 py-1.5">
       </div>
-      <button type="submit" class="text-sm bg-ink-800 text-white px-4 py-1.5 rounded-lg hover:bg-ink-700">Aplicar</button>
+      <button type="submit" class="text-sm bg-ink-800 hover:bg-ink-700 text-white px-4 py-1.5 rounded-lg font-semibold">Aplicar</button>
     </form>
   </div>
 
   <!-- Filtros agente / dept -->
-  <form method="get" action="/reportes" class="bg-white rounded-lg border border-slate-200 shadow-card p-3 mb-4 flex flex-wrap items-end gap-3 no-print">
+  <form method="get" action="/reportes" class="bg-white rounded-xl border border-slate-200 shadow-card p-3 mb-5 flex flex-wrap items-end gap-3 no-print">
     <input type="hidden" name="start" value="<%= startStr %>">
     <input type="hidden" name="end" value="<%= endStr %>">
     <div>
@@ -91,56 +103,66 @@
         <% }) %>
       </select>
     </div>
-    <button type="submit" class="text-sm bg-ink-800 text-white px-4 py-1.5 rounded-lg hover:bg-ink-700">Filtrar</button>
+    <button type="submit" class="text-sm bg-ink-800 hover:bg-ink-700 text-white px-4 py-1.5 rounded-lg font-semibold">Filtrar</button>
     <% if (filterDept || filterAgent) { %>
       <a href="/reportes?start=<%= startStr %>&end=<%= endStr %>" class="text-sm text-slate-500 hover:underline">Limpiar</a>
     <% } %>
   </form>
 
-  <!-- Totales -->
-  <div class="grid grid-cols-2 sm:grid-cols-6 gap-3 mb-6">
-    <div class="bg-white rounded-lg border border-slate-200 shadow-card p-3">
-      <div class="text-xl font-bold text-slate-900"><%= totals.shifts %></div>
-      <div class="text-xs text-slate-500 mt-0.5">Turnos</div>
-    </div>
-    <div class="bg-white rounded-lg border border-slate-200 shadow-card p-3">
-      <div class="text-xl font-bold text-green-600"><%= totals.completed %></div>
-      <div class="text-xs text-slate-500 mt-0.5">Completos</div>
-    </div>
-    <div class="bg-white rounded-lg border border-slate-200 shadow-card p-3">
-      <div class="text-xl font-bold text-red-600"><%= totals.unmarked %></div>
-      <div class="text-xs text-slate-500 mt-0.5">Sin marcar</div>
-    </div>
-    <div class="bg-white rounded-lg border border-slate-200 shadow-card p-3">
-      <div class="text-xl font-bold text-yellow-600"><%= totals.lateCount %></div>
-      <div class="text-xs text-slate-500 mt-0.5">Tardanzas (<%= totals.lateMin %>m)</div>
-    </div>
-    <div class="bg-white rounded-lg border border-slate-200 shadow-card p-3">
-      <div class="text-xl font-bold text-orange-600"><%= totals.breakExcessCount %></div>
-      <div class="text-xs text-slate-500 mt-0.5">Excesos break (<%= totals.breakExcessMin %>m)</div>
-    </div>
-    <div class="bg-white rounded-lg border border-slate-200 shadow-card p-3">
-      <div class="text-xl font-bold text-slate-700"><%= totals.hoursWorked.toFixed(0) %></div>
-      <div class="text-xs text-slate-500 mt-0.5">Horas trabajadas</div>
-    </div>
+  <!-- Totales: stat cards con strip de color -->
+  <%
+    const stats = [
+      { label: 'Turnos',          value: totals.shifts,            accent: 'slate',   icon: '▤' },
+      { label: 'Completos',       value: totals.completed,         accent: 'emerald', icon: '✓' },
+      { label: 'Sin marcar',      value: totals.unmarked,          accent: 'rose',    icon: '!' },
+      { label: 'Tardanzas',       value: totals.lateCount,         accent: 'amber',   icon: '◷', sub: totals.lateMin + ' min' },
+      { label: 'Excesos break',   value: totals.breakExcessCount,  accent: 'orange',  icon: '⏸', sub: totals.breakExcessMin + ' min' },
+      { label: 'Horas trabajadas', value: totals.hoursWorked.toFixed(0), accent: 'blue',    icon: '∑', sub: 'h' }
+    ];
+    const accentMap = {
+      slate:   { dot: 'bg-slate-400',   text: 'text-slate-700',   bg: 'bg-slate-100',  ring: 'ring-slate-200' },
+      emerald: { dot: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50', ring: 'ring-emerald-200' },
+      rose:    { dot: 'bg-rose-500',    text: 'text-rose-700',    bg: 'bg-rose-50',    ring: 'ring-rose-200' },
+      amber:   { dot: 'bg-amber-500',   text: 'text-amber-700',   bg: 'bg-amber-50',   ring: 'ring-amber-200' },
+      orange:  { dot: 'bg-orange-500',  text: 'text-orange-700',  bg: 'bg-orange-50',  ring: 'ring-orange-200' },
+      blue:    { dot: 'bg-sky-500',     text: 'text-sky-700',     bg: 'bg-sky-50',     ring: 'ring-sky-200' }
+    };
+  %>
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+    <% stats.forEach(s => { const c = accentMap[s.accent]; %>
+      <div class="relative bg-white rounded-xl border border-slate-200 shadow-card p-4 overflow-hidden">
+        <div class="absolute top-0 left-0 right-0 h-1 <%= c.dot %>"></div>
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="text-[11px] uppercase tracking-wider font-bold text-slate-400"><%= s.label %></div>
+            <div class="text-2xl sm:text-3xl font-extrabold mt-1 <%= s.value > 0 || s.value === '0' ? c.text : 'text-slate-300' %>"><%= s.value %></div>
+            <% if (s.sub) { %><div class="text-[10px] text-slate-400 mt-0.5"><%= s.sub %></div><% } %>
+          </div>
+          <div class="w-7 h-7 rounded-lg <%= c.bg %> <%= c.text %> flex items-center justify-center text-sm font-bold ring-1 <%= c.ring %>">
+            <%= s.icon %>
+          </div>
+        </div>
+      </div>
+    <% }) %>
   </div>
 
   <!-- Por dept -->
   <% if (Object.keys(byDept).length > 1) { %>
-    <div class="grid grid-cols-2 gap-3 mb-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
       <% Object.entries(byDept).forEach(([dept, t]) => { %>
-        <div class="bg-white rounded-lg border border-slate-200 shadow-card p-4">
-          <div class="flex items-center justify-between mb-2">
-            <span class="font-semibold text-slate-900"><%= dept %></span>
+        <div class="bg-white rounded-xl border border-slate-200 shadow-card p-4">
+          <div class="flex items-center justify-between mb-3">
+            <span class="inline-block px-2.5 py-0.5 rounded text-xs font-bold tracking-wide
+              <%= dept === 'L1' ? 'bg-blue-600 text-white' : dept === 'L2' ? 'bg-violet-600 text-white' : 'bg-slate-600 text-white' %>"><%= dept %></span>
             <span class="text-xs text-slate-500"><%= t.agents %> agente<%= t.agents === 1 ? '' : 's' %></span>
           </div>
           <div class="grid grid-cols-3 gap-2 text-xs">
-            <div><span class="text-slate-500">Turnos:</span> <span class="font-medium"><%= t.shifts %></span></div>
-            <div><span class="text-slate-500">Completos:</span> <span class="font-medium"><%= t.completed %></span></div>
-            <div><span class="text-slate-500">Sin marcar:</span> <span class="font-medium text-red-600"><%= t.unmarked %></span></div>
-            <div><span class="text-slate-500">Tardanzas:</span> <span class="font-medium text-yellow-700"><%= t.lateCount %></span></div>
-            <div><span class="text-slate-500">Excesos:</span> <span class="font-medium text-orange-700"><%= t.breakExcessCount %></span></div>
-            <div><span class="text-slate-500">Horas:</span> <span class="font-medium"><%= t.hoursWorked.toFixed(0) %></span></div>
+            <div><span class="text-slate-500">Turnos:</span> <span class="font-semibold"><%= t.shifts %></span></div>
+            <div><span class="text-slate-500">Completos:</span> <span class="font-semibold text-emerald-700"><%= t.completed %></span></div>
+            <div><span class="text-slate-500">Sin marcar:</span> <span class="font-semibold text-rose-700"><%= t.unmarked %></span></div>
+            <div><span class="text-slate-500">Tardanzas:</span> <span class="font-semibold text-amber-700"><%= t.lateCount %></span></div>
+            <div><span class="text-slate-500">Excesos:</span> <span class="font-semibold text-orange-700"><%= t.breakExcessCount %></span></div>
+            <div><span class="text-slate-500">Horas:</span> <span class="font-semibold"><%= t.hoursWorked.toFixed(0) %></span></div>
           </div>
         </div>
       <% }) %>
@@ -149,69 +171,122 @@
 
   <!-- Tabla por agente -->
   <% if (rows.length === 0) { %>
-    <div class="bg-white rounded-lg border border-slate-200 shadow-card p-8 text-center text-slate-400">Sin datos para este mes</div>
+    <div class="bg-white rounded-xl border border-slate-200 shadow-card p-12 text-center">
+      <div class="text-4xl mb-2 opacity-30">◌</div>
+      <p class="text-sm text-slate-400">Sin datos para este rango</p>
+    </div>
   <% } else { %>
-    <div class="bg-white rounded-lg border border-slate-200 shadow-card overflow-x-auto">
+    <!-- Desktop table -->
+    <div class="hidden md:block bg-white rounded-xl border border-slate-200 shadow-card overflow-x-auto">
       <table class="w-full text-sm">
-        <thead class="bg-slate-50 border-b border-slate-200 text-xs">
+        <thead class="bg-slate-50/60 border-b border-slate-200 text-xs uppercase tracking-wider">
           <tr>
-            <th class="text-left px-3 py-2 font-medium text-slate-600">Agente</th>
-            <th class="text-left px-3 py-2 font-medium text-slate-600">Dept</th>
-            <th class="text-right px-3 py-2 font-medium text-slate-600">Turnos</th>
-            <th class="text-right px-3 py-2 font-medium text-slate-600">Completos</th>
-            <th class="text-right px-3 py-2 font-medium text-slate-600">Sin marcar</th>
-            <th class="text-right px-3 py-2 font-medium text-slate-600">Tarde</th>
-            <th class="text-right px-3 py-2 font-medium text-slate-600">Min tarde</th>
-            <th class="text-right px-3 py-2 font-medium text-slate-600">Exc. break</th>
-            <th class="text-right px-3 py-2 font-medium text-slate-600">Min exc.</th>
-            <th class="text-right px-3 py-2 font-medium text-slate-600">Auto-out</th>
-            <th class="text-right px-3 py-2 font-medium text-slate-600">Permisos</th>
-            <th class="text-right px-3 py-2 font-medium text-slate-600">Vacaciones</th>
-            <th class="text-right px-3 py-2 font-medium text-slate-600">Horas</th>
+            <th class="text-left px-3 py-3 font-semibold text-slate-500">Agente</th>
+            <th class="text-left px-3 py-3 font-semibold text-slate-500">Dept</th>
+            <th class="text-right px-3 py-3 font-semibold text-slate-500">Turnos</th>
+            <th class="text-right px-3 py-3 font-semibold text-slate-500">Compl.</th>
+            <th class="text-right px-3 py-3 font-semibold text-slate-500">Sin marcar</th>
+            <th class="text-right px-3 py-3 font-semibold text-slate-500">Tarde</th>
+            <th class="text-right px-3 py-3 font-semibold text-slate-500">Min tarde</th>
+            <th class="text-right px-3 py-3 font-semibold text-slate-500">Exc. break</th>
+            <th class="text-right px-3 py-3 font-semibold text-slate-500">Min exc.</th>
+            <th class="text-right px-3 py-3 font-semibold text-slate-500">Auto-out</th>
+            <th class="text-right px-3 py-3 font-semibold text-slate-500">Permisos</th>
+            <th class="text-right px-3 py-3 font-semibold text-slate-500">Vacac.</th>
+            <th class="text-right px-3 py-3 font-semibold text-slate-500">Horas</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
           <% rows.forEach(r => { %>
-            <tr class="hover:bg-slate-50 <%= r.agent.active ? '' : 'opacity-60' %>">
-              <td class="px-3 py-2">
+            <tr class="hover:bg-slate-50/60 transition-colors <%= r.agent.active ? '' : 'opacity-60' %>">
+              <td class="px-3 py-3">
                 <a href="/horarios/agente/<%= r.agent.planner_id %>?month=<%= startStr.slice(0,7) %>"
-                   class="font-medium text-slate-900 hover:underline"><%= r.agent.name %></a>
+                   class="font-semibold text-slate-900 hover:underline"><%= r.agent.name %></a>
               </td>
-              <td class="px-3 py-2 text-xs">
-                <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold
-                  <%= r.agent.dept === 'L1' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700' %>">
+              <td class="px-3 py-3">
+                <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold tracking-wide
+                  <%= r.agent.dept === 'L1' ? 'bg-blue-100 text-blue-700' : r.agent.dept === 'L2' ? 'bg-violet-100 text-violet-700' : 'bg-slate-100 text-slate-600' %>">
                   <%= r.agent.dept %>
                 </span>
               </td>
-              <td class="px-3 py-2 text-right text-slate-700"><%= r.shifts %></td>
-              <td class="px-3 py-2 text-right text-green-700"><%= r.completed %></td>
-              <td class="px-3 py-2 text-right <%= r.unmarked.count > 0 ? 'text-red-700 font-semibold cursor-help' : 'text-slate-400' %>"
+              <td class="px-3 py-3 text-right text-slate-700 font-medium"><%= r.shifts %></td>
+              <td class="px-3 py-3 text-right text-emerald-700 font-medium"><%= r.completed %></td>
+              <td class="px-3 py-3 text-right <%= r.unmarked.count > 0 ? 'text-rose-700 font-semibold cursor-help' : 'text-slate-400' %>"
                   <% if (r.unmarked.count > 0) { %>title="<%= r.unmarked.dates.join(', ') %>"<% } %>>
                 <%= r.unmarked.count %>
               </td>
-              <td class="px-3 py-2 text-right <%= r.late.count > 0 ? 'text-yellow-700 cursor-help' : 'text-slate-400' %>"
+              <td class="px-3 py-3 text-right <%= r.late.count > 0 ? 'text-amber-700 font-medium cursor-help' : 'text-slate-400' %>"
                   <% if (r.late.count > 0) { %>title="<%= r.late.incidents.map(i => i.date + ' (+' + i.min + 'm)').join(', ') %>"<% } %>>
                 <%= r.late.count %>
               </td>
-              <td class="px-3 py-2 text-right text-slate-500 text-xs"><%= r.late.totalMin || '—' %></td>
-              <td class="px-3 py-2 text-right <%= r.breakExcess.count > 0 ? 'text-orange-700 cursor-help' : 'text-slate-400' %>"
+              <td class="px-3 py-3 text-right text-slate-500 text-xs font-mono"><%= r.late.totalMin || '—' %></td>
+              <td class="px-3 py-3 text-right <%= r.breakExcess.count > 0 ? 'text-orange-700 font-medium cursor-help' : 'text-slate-400' %>"
                   <% if (r.breakExcess.count > 0) { %>title="<%= r.breakExcess.incidents.map(i => i.date + ' (+' + i.min + 'm)').join(', ') %>"<% } %>>
                 <%= r.breakExcess.count %>
               </td>
-              <td class="px-3 py-2 text-right text-slate-500 text-xs"><%= r.breakExcess.totalMin || '—' %></td>
-              <td class="px-3 py-2 text-right <%= r.autoClockouts.count > 0 ? 'text-yellow-700 cursor-help' : 'text-slate-400' %>"
+              <td class="px-3 py-3 text-right text-slate-500 text-xs font-mono"><%= r.breakExcess.totalMin || '—' %></td>
+              <td class="px-3 py-3 text-right <%= r.autoClockouts.count > 0 ? 'text-amber-700 font-medium cursor-help' : 'text-slate-400' %>"
                   <% if (r.autoClockouts.count > 0) { %>title="<%= r.autoClockouts.dates.join(', ') %>"<% } %>>
                 <%= r.autoClockouts.count %>
               </td>
-              <td class="px-3 py-2 text-right text-slate-700"><%= r.permisoDays || '—' %></td>
-              <td class="px-3 py-2 text-right text-slate-700"><%= r.vacationDays || '—' %></td>
-              <td class="px-3 py-2 text-right text-slate-700 font-mono"><%= r.hoursWorked.toFixed(1) %></td>
+              <td class="px-3 py-3 text-right text-slate-700"><%= r.permisoDays || '—' %></td>
+              <td class="px-3 py-3 text-right text-slate-700"><%= r.vacationDays || '—' %></td>
+              <td class="px-3 py-3 text-right text-slate-700 font-mono font-semibold"><%= r.hoursWorked.toFixed(1) %></td>
             </tr>
           <% }) %>
         </tbody>
       </table>
     </div>
-    <p class="text-xs text-slate-400 mt-3">Pasa el cursor sobre los numeros (Tarde, Sin marcar, Exc. break, Auto-out) para ver las fechas exactas. Click en el nombre del agente abre el desglose dia a dia con punches. Tardanza = clock_in &gt; 15m despues del inicio. Exceso break = mas de 60 min.</p>
+
+    <!-- Mobile card list -->
+    <ul class="md:hidden space-y-3">
+      <% rows.forEach(r => { %>
+        <li class="bg-white rounded-xl border border-slate-200 shadow-card p-4 <%= r.agent.active ? '' : 'opacity-60' %>">
+          <div class="flex items-start justify-between gap-2 mb-3">
+            <div class="min-w-0">
+              <a href="/horarios/agente/<%= r.agent.planner_id %>?month=<%= startStr.slice(0,7) %>"
+                 class="font-semibold text-slate-900 hover:underline truncate block"><%= r.agent.name %></a>
+              <div class="flex items-center gap-2 mt-1">
+                <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold tracking-wide
+                  <%= r.agent.dept === 'L1' ? 'bg-blue-100 text-blue-700' : r.agent.dept === 'L2' ? 'bg-violet-100 text-violet-700' : 'bg-slate-100 text-slate-600' %>">
+                  <%= r.agent.dept %>
+                </span>
+                <span class="text-xs text-slate-500"><%= r.shifts %> turnos · <%= r.hoursWorked.toFixed(0) %>h</span>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-2xl font-extrabold text-emerald-700"><%= r.completed %></div>
+              <div class="text-[10px] uppercase tracking-wider text-slate-400">completos</div>
+            </div>
+          </div>
+          <div class="grid grid-cols-3 gap-2 text-xs">
+            <div class="bg-slate-50 rounded p-2">
+              <div class="text-[10px] uppercase tracking-wider text-slate-500">Sin marcar</div>
+              <div class="text-base font-bold mt-0.5 <%= r.unmarked.count > 0 ? 'text-rose-700' : 'text-slate-400' %>"><%= r.unmarked.count %></div>
+            </div>
+            <div class="bg-slate-50 rounded p-2">
+              <div class="text-[10px] uppercase tracking-wider text-slate-500">Tardanzas</div>
+              <div class="text-base font-bold mt-0.5 <%= r.late.count > 0 ? 'text-amber-700' : 'text-slate-400' %>"><%= r.late.count %></div>
+              <% if (r.late.totalMin) { %><div class="text-[10px] text-slate-500 font-mono"><%= r.late.totalMin %>m</div><% } %>
+            </div>
+            <div class="bg-slate-50 rounded p-2">
+              <div class="text-[10px] uppercase tracking-wider text-slate-500">Exc. break</div>
+              <div class="text-base font-bold mt-0.5 <%= r.breakExcess.count > 0 ? 'text-orange-700' : 'text-slate-400' %>"><%= r.breakExcess.count %></div>
+              <% if (r.breakExcess.totalMin) { %><div class="text-[10px] text-slate-500 font-mono"><%= r.breakExcess.totalMin %>m</div><% } %>
+            </div>
+          </div>
+          <% if (r.permisoDays > 0 || r.vacationDays > 0 || r.autoClockouts.count > 0) { %>
+            <div class="flex flex-wrap gap-2 mt-2 pt-2 border-t border-slate-100 text-[11px]">
+              <% if (r.permisoDays > 0) { %><span class="text-amber-700">📝 <%= r.permisoDays %>d permiso</span><% } %>
+              <% if (r.vacationDays > 0) { %><span class="text-cyan-700">🏖️ <%= r.vacationDays %>d vacaciones</span><% } %>
+              <% if (r.autoClockouts.count > 0) { %><span class="text-amber-700">🤖 <%= r.autoClockouts.count %> auto-out</span><% } %>
+            </div>
+          <% } %>
+        </li>
+      <% }) %>
+    </ul>
+
+    <p class="text-xs text-slate-400 mt-3">Pasa el cursor sobre los numeros (Tarde, Sin marcar, Exc. break, Auto-out) para ver las fechas exactas. Click en el nombre del agente abre el desglose dia a dia con punches. Tardanza = clock_in &gt; <%= user.role === 'admin' ? 'umbral configurable en Settings' : '15m' %> despues del inicio.</p>
   <% } %>
 </main>
 <%- include('partials/foot') %>

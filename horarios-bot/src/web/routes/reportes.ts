@@ -7,6 +7,72 @@ export const reportesRouter = Router();
 
 reportesRouter.use(requireManager);
 
+/** CSV export of the same data the table shows. */
+reportesRouter.get('/export.csv', (req, res) => {
+  const now = DateTime.utc();
+  const preset = (req.query.preset as string) || '';
+  const startQ = (req.query.start as string) || '';
+  const endQ = (req.query.end as string) || '';
+  let start: DateTime, end: DateTime;
+  if (preset) {
+    const r = resolvePreset(preset, now);
+    if (!r) return res.status(400).send('preset invalido');
+    start = r.start; end = r.end;
+  } else if (startQ && endQ) {
+    start = DateTime.fromISO(startQ, { zone: 'utc' });
+    end = DateTime.fromISO(endQ, { zone: 'utc' });
+    if (!start.isValid || !end.isValid || end < start) return res.status(400).send('rango invalido');
+  } else {
+    start = now.startOf('month'); end = now.endOf('month');
+  }
+  const startStr = start.toFormat('yyyy-LL-dd');
+  const endStr = end.toFormat('yyyy-LL-dd');
+
+  const filterDept = ((req.query.dept as string) || '').trim();
+  const filterAgent = ((req.query.agent as string) || '').trim();
+
+  let rows = buildReports(startStr, endStr);
+  if (filterDept) rows = rows.filter(r => r.agent.dept === filterDept);
+  if (filterAgent) {
+    const pid = parseInt(filterAgent, 10);
+    if (!isNaN(pid)) rows = rows.filter(r => r.agent.planner_id === pid);
+  }
+
+  // CSV with UTF-8 BOM so Excel detects encoding correctly
+  const headers = [
+    'Agente', 'Slack ID', 'Dept', 'Turnos', 'Completos', 'Sin marcar',
+    'Sin marcar (fechas)', 'Tardanzas', 'Min tarde', 'Tardanzas (detalle)',
+    'Excesos break', 'Min exceso', 'Excesos break (detalle)',
+    'Auto-clockouts', 'Auto-clockouts (fechas)',
+    'Dias permiso', 'Dias vacaciones', 'Horas trabajadas'
+  ];
+  const escape = (v: any) => {
+    const s = v === null || v === undefined ? '' : String(v);
+    if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  };
+  const lines = [headers.map(escape).join(',')];
+  for (const r of rows) {
+    lines.push([
+      r.agent.name, r.agent.slack_id, r.agent.dept,
+      r.shifts, r.completed, r.unmarked.count,
+      r.unmarked.dates.join('; '),
+      r.late.count, r.late.totalMin,
+      r.late.incidents.map((i: any) => `${i.date}+${i.min}m`).join('; '),
+      r.breakExcess.count, r.breakExcess.totalMin,
+      r.breakExcess.incidents.map((i: any) => `${i.date}+${i.min}m`).join('; '),
+      r.autoClockouts.count,
+      r.autoClockouts.dates.join('; '),
+      r.permisoDays, r.vacationDays, r.hoursWorked.toFixed(2)
+    ].map(escape).join(','));
+  }
+  const csv = '﻿' + lines.join('\r\n');
+  const fname = `reporte_${startStr}_a_${endStr}${filterDept ? '_' + filterDept : ''}${filterAgent ? '_ag' + filterAgent : ''}.csv`;
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${fname}"`);
+  res.send(csv);
+});
+
 reportesRouter.get('/', (req, res) => {
   const user = (req.session as any).user;
   const now = DateTime.utc();
