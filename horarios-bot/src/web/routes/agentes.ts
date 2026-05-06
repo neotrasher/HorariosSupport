@@ -7,6 +7,7 @@ import {
   OPERATIONAL_FIELDS, SENSITIVE_FIELDS
 } from '../../services/agents';
 import { requireManager, requireAdmin } from './auth';
+import { logAudit } from '../../services/audit';
 
 export const agentesRouter = Router();
 
@@ -131,7 +132,16 @@ agentesRouter.post('/:slackId', (req, res) => {
   if (Object.keys(opFields).length) updateAgentFields(slackId, opFields);
 
   // If role changed, refresh in-memory role lists so cron/jobs see the update
-  if ('role' in opFields) applyDbRoles();
+  if ('role' in opFields) {
+    applyDbRoles();
+    logAudit({
+      actorSlackId: user.slack_id, actorName: user.name,
+      action: 'agent.role.change',
+      targetKind: 'agent', targetId: slackId,
+      summary: `Cambio rol de ${agent.name}: ${agent.role} -> ${opFields.role}`,
+      payload: { slackId, agentName: agent.name, fromRole: agent.role, toRole: opFields.role }
+    });
+  }
 
   // Sensitive fields — admin only. Defense in depth: even if the form was tampered,
   // we ignore the sensitive keys for non-admin users.

@@ -185,6 +185,24 @@ export function migrate() {
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_by TEXT
     );
+
+    -- Audit log: who did what and when. Records manual schedule edits,
+    -- time-off resolutions, role changes, etc.
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ts TEXT NOT NULL DEFAULT (datetime('now')),
+      actor_slack_id TEXT,
+      actor_name TEXT,
+      action TEXT NOT NULL,            -- e.g. shift.add, shift.remove, shift.move, timeoff.approve
+      target_kind TEXT,                -- 'agent', 'request', 'setting', 'shift', etc.
+      target_id TEXT,                  -- planner_id, request id, agent slack_id, setting key, etc.
+      summary TEXT,                    -- human-readable one-liner
+      payload TEXT                     -- JSON with structured details
+    );
+    CREATE INDEX IF NOT EXISTS idx_audit_ts ON audit_log(ts DESC);
+    CREATE INDEX IF NOT EXISTS idx_audit_actor ON audit_log(actor_slack_id, ts DESC);
+    CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_log(action, ts DESC);
+    CREATE INDEX IF NOT EXISTS idx_audit_target ON audit_log(target_kind, target_id, ts DESC);
   `);
 }
 

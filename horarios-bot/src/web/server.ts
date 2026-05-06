@@ -15,6 +15,7 @@ import { reportesRouter } from './routes/reportes';
 import { plannerRouter } from './routes/planner';
 import { buildSolicitudesRouter } from './routes/solicitudes';
 import { settingsRouter } from './routes/settings';
+import { auditoriaRouter } from './routes/auditoria';
 
 const SQLiteStore = require('connect-sqlite3')(session);
 
@@ -72,6 +73,7 @@ export function startWeb(slackApp: SlackApp | null = null) {
   app.use('/reportes', requireAuth, refreshSessionRole, reportesRouter);
   app.use('/planner', requireAuth, refreshSessionRole, plannerRouter);
   app.use('/settings', requireAuth, refreshSessionRole, settingsRouter);
+  app.use('/auditoria', requireAuth, refreshSessionRole, auditoriaRouter);
   app.use('/', requireAuth, refreshSessionRole, dashboardRouter);
 
   // Global error handler — must be last

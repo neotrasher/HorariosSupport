@@ -9,6 +9,7 @@ import {
   setDmTargets, setRequesterDm, getDmTargets, vacationDaysUsedInYear,
   TimeOffStatus
 } from '../../services/timeOff';
+import { logAudit } from '../../services/audit';
 import {
   timeOffApproverBlocks, timeOffRequesterBlocks, timeOffResolvedBlocks
 } from '../../ui/blocks';
@@ -216,8 +217,19 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
     const id = parseInt(req.params.id, 10);
     // #6b: manager/admin can cancel anyone's pending request; agents only their own.
     const isPriv = user.role === 'manager' || user.role === 'admin';
+    const r = getRequest(id);
     if (isPriv) cancelByManager(id);
     else cancel(id, user.slack_id);
+    if (r) {
+      const a = getAgentBySlackId(r.requester_slack_id);
+      logAudit({
+        actorSlackId: user.slack_id, actorName: user.name,
+        action: 'timeoff.cancel',
+        targetKind: 'request', targetId: String(id),
+        summary: `Cancelo solicitud #${id} de ${a?.name || r.requester_slack_id} (${r.type} ${r.start_date}→${r.end_date})`,
+        payload: { id, type: r.type, start: r.start_date, end: r.end_date, requester: r.requester_slack_id, byPriv: isPriv }
+      });
+    }
 
     // Update Slack DMs (best-effort) — manager and requester
     (async () => {
@@ -274,6 +286,13 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
       res.status(500).render('error', { message: `Error al aprobar: ${e?.message}`, user });
       return;
     }
+    logAudit({
+      actorSlackId: user.slack_id, actorName: user.name,
+      action: 'timeoff.approve',
+      targetKind: 'request', targetId: String(id),
+      summary: `Aprobo ${r.type} de ${agent.name} (${r.start_date}→${r.end_date})`,
+      payload: { id, type: r.type, start: r.start_date, end: r.end_date, requester: r.requester_slack_id, plannerId: agent.planner_id }
+    });
 
     if (slackApp) await broadcastWebResolution(slackApp, id, 'approved', user.slack_id);
     res.redirect('/solicitudes');
@@ -294,12 +313,23 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
       return;
     }
     reject(id, user.slack_id, reasonInput);
+    {
+      const a = getAgentBySlackId(r.requester_slack_id);
+      logAudit({
+        actorSlackId: user.slack_id, actorName: user.name,
+        action: 'timeoff.reject',
+        targetKind: 'request', targetId: String(id),
+        summary: `Rechazo ${r.type} de ${a?.name || r.requester_slack_id} (${r.start_date}→${r.end_date})${reasonInput ? ' · ' + reasonInput : ''}`,
+        payload: { id, type: r.type, start: r.start_date, end: r.end_date, requester: r.requester_slack_id, reason: reasonInput }
+      });
+    }
 
     if (slackApp) await broadcastWebResolution(slackApp, id, 'rejected', user.slack_id, reasonInput);
     res.redirect('/solicitudes');
   });
 
   router.post('/:id/delete', requireManager, async (req, res) => {
+    const user = (req.session as any).user;
     const id = parseInt(req.params.id, 10);
     const r = getRequest(id);
     if (!r) {
@@ -311,6 +341,13 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
     const plannerId = agent ? agent.planner_id : null;
 
     deleteRequest(id, plannerId);
+    logAudit({
+      actorSlackId: user.slack_id, actorName: user.name,
+      action: 'timeoff.delete',
+      targetKind: 'request', targetId: String(id),
+      summary: `Elimino ${r.status} ${r.type} de ${agent?.name || r.requester_slack_id} (${r.start_date}→${r.end_date})`,
+      payload: { id, type: r.type, status: r.status, start: r.start_date, end: r.end_date, requester: r.requester_slack_id, plannerId }
+    });
 
     // Best-effort: tombstone any DMs (so old buttons can't act on a dead row)
     if (slackApp) {

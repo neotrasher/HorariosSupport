@@ -8,6 +8,7 @@ import {
   getAllDaysOffForDate, getAllDaysOffForRange,
   removeAgentFromShift, addAgentToShift, moveAgentShift
 } from '../../services/schedule';
+import { logAudit } from '../../services/audit';
 
 type ViewMode = 'day' | 'week' | 'month';
 
@@ -85,14 +86,34 @@ horariosRouter.post('/edit', async (req, res) => {
     return res.status(400).json({ ok: false, error: 'invalid shift' });
   }
   try {
+    const agentForLog = getAgentByPlannerId(pid);
+    const targetName = agentForLog?.name || `pid#${pid}`;
     if (action === 'remove') {
       const n = removeAgentFromShift(pid, date, shiftId, dept);
-      if (n > 0) await dmAgentEdit(slackApp, pid, user?.name || 'manager', { action: 'remove', date, dept, shiftId });
+      if (n > 0) {
+        await dmAgentEdit(slackApp, pid, user?.name || 'manager', { action: 'remove', date, dept, shiftId });
+        logAudit({
+          actorSlackId: user.slack_id, actorName: user.name,
+          action: 'shift.remove',
+          targetKind: 'agent', targetId: String(pid),
+          summary: `Quito a ${targetName} de ${dept}.${shiftId} el ${date}`,
+          payload: { plannerId: pid, agentName: targetName, date, dept, shiftId }
+        });
+      }
       return res.json({ ok: true, removed: n });
     }
     if (action === 'add') {
       const ok = addAgentToShift({ plannerId: pid, date, shiftId, dept });
-      if (ok) await dmAgentEdit(slackApp, pid, user?.name || 'manager', { action: 'add', date, dept, shiftId });
+      if (ok) {
+        await dmAgentEdit(slackApp, pid, user?.name || 'manager', { action: 'add', date, dept, shiftId });
+        logAudit({
+          actorSlackId: user.slack_id, actorName: user.name,
+          action: 'shift.add',
+          targetKind: 'agent', targetId: String(pid),
+          summary: `Agrego a ${targetName} a ${dept}.${shiftId} el ${date}`,
+          payload: { plannerId: pid, agentName: targetName, date, dept, shiftId }
+        });
+      }
       return res.json({ ok: true, added: ok });
     }
     if (action === 'move') {
@@ -111,6 +132,13 @@ horariosRouter.post('/edit', async (req, res) => {
           action: 'move', date,
           fromDept: dept, fromShiftId: shiftId,
           toDept, toShiftId
+        });
+        logAudit({
+          actorSlackId: user.slack_id, actorName: user.name,
+          action: 'shift.move',
+          targetKind: 'agent', targetId: String(pid),
+          summary: `Movio a ${targetName} de ${dept}.${shiftId} -> ${toDept}.${toShiftId} el ${date}`,
+          payload: { plannerId: pid, agentName: targetName, date, fromDept: dept, fromShiftId: shiftId, toDept, toShiftId }
         });
       }
       return res.json({ ok: true, ...result });

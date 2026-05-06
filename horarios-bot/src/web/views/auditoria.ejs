@@ -1,0 +1,122 @@
+<%- include('partials/head') %>
+<%- include('partials/nav', { user }) %>
+
+<%
+  // Visual style per action category
+  function actionStyle(action) {
+    if (action.startsWith('shift.'))   return { bg: 'bg-blue-50',   text: 'text-blue-700',   ring: 'ring-blue-200',   dot: 'bg-blue-500' };
+    if (action.startsWith('timeoff.')) return { bg: 'bg-cyan-50',   text: 'text-cyan-700',   ring: 'ring-cyan-200',   dot: 'bg-cyan-500' };
+    if (action.startsWith('agent.'))   return { bg: 'bg-violet-50', text: 'text-violet-700', ring: 'ring-violet-200', dot: 'bg-violet-500' };
+    if (action.startsWith('settings.')) return { bg: 'bg-amber-50',  text: 'text-amber-700',  ring: 'ring-amber-200',  dot: 'bg-amber-500' };
+    return { bg: 'bg-slate-100', text: 'text-slate-700', ring: 'ring-slate-200', dot: 'bg-slate-400' };
+  }
+  function actorInitial(name) {
+    return (name || '?').trim().charAt(0).toUpperCase();
+  }
+  const actionLabels = {
+    'shift.add':        '+ turno',
+    'shift.remove':     '× turno',
+    'shift.move':       '↔ turno',
+    'timeoff.approve':  '✓ aprobado',
+    'timeoff.reject':   '× rechazado',
+    'timeoff.cancel':   '○ cancelado',
+    'timeoff.delete':   '🗑 eliminado',
+    'agent.role.change':'∆ rol',
+    'settings.update':  '⚙ settings'
+  };
+%>
+
+<main class="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+  <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-5">
+    <div class="min-w-0">
+      <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Auditoría</h2>
+      <p class="text-sm text-slate-500 mt-1">Registro de cambios de manager/admin · ultimos 30 dias por defecto</p>
+    </div>
+    <div class="text-xs text-slate-400 self-start sm:self-auto">
+      <%= totalShown %> evento<%= totalShown === 1 ? '' : 's' %> · limit <%= limit %>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <form method="get" action="/auditoria" class="bg-white rounded-xl border border-slate-200 shadow-card p-3 mb-5 flex flex-wrap items-end gap-3">
+    <div>
+      <label class="block text-[10px] font-medium text-slate-500 mb-0.5">Desde</label>
+      <input type="date" name="since" value="<%= since %>" class="text-sm border border-slate-300 rounded-lg px-2 py-1.5">
+    </div>
+    <div>
+      <label class="block text-[10px] font-medium text-slate-500 mb-0.5">Acción</label>
+      <select name="action" class="text-sm border border-slate-300 rounded-lg px-2 py-1.5">
+        <option value="">Todas</option>
+        <% actions.forEach(a => { %>
+          <option value="<%= a %>" <%= action === a ? 'selected' : '' %>><%= a %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div>
+      <label class="block text-[10px] font-medium text-slate-500 mb-0.5">Actor</label>
+      <select name="actor" class="text-sm border border-slate-300 rounded-lg px-2 py-1.5">
+        <option value="">Todos</option>
+        <% actors.forEach(a => { %>
+          <option value="<%= a.slack_id %>" <%= actor === a.slack_id ? 'selected' : '' %>><%= a.name || a.slack_id %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div>
+      <label class="block text-[10px] font-medium text-slate-500 mb-0.5">Limit</label>
+      <select name="limit" class="text-sm border border-slate-300 rounded-lg px-2 py-1.5">
+        <% [50, 100, 200, 500].forEach(n => { %>
+          <option value="<%= n %>" <%= limit === n ? 'selected' : '' %>><%= n %></option>
+        <% }) %>
+      </select>
+    </div>
+    <button type="submit" class="text-sm bg-ink-800 hover:bg-ink-700 text-white px-4 py-1.5 rounded-lg font-semibold">Aplicar</button>
+    <% if (action || actor) { %>
+      <a href="/auditoria?since=<%= since %>" class="text-sm text-slate-500 hover:underline">Limpiar</a>
+    <% } %>
+  </form>
+
+  <% if (rows.length === 0) { %>
+    <div class="bg-white rounded-xl border border-slate-200 shadow-card p-12 text-center">
+      <div class="text-4xl mb-2 opacity-30">◌</div>
+      <p class="text-sm text-slate-400">Sin eventos en este rango</p>
+    </div>
+  <% } else { %>
+    <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
+      <ul class="divide-y divide-slate-100">
+        <% rows.forEach(r => { const s = actionStyle(r.action); %>
+          <li class="px-4 py-3 hover:bg-slate-50/60 transition-colors">
+            <div class="flex items-start gap-3">
+              <!-- Avatar circular del actor -->
+              <div class="w-8 h-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold shrink-0">
+                <%= actorInitial(r.actor_name) %>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex flex-wrap items-center gap-2 mb-0.5">
+                  <span class="font-semibold text-slate-900 text-sm"><%= r.actor_name || r.actor_slack_id || 'sistema' %></span>
+                  <span class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= s.bg %> <%= s.text %> <%= s.ring %>">
+                    <span class="w-1.5 h-1.5 rounded-full <%= s.dot %>"></span>
+                    <%= actionLabels[r.action] || r.action %>
+                  </span>
+                  <span class="text-[10px] text-slate-400 font-mono ml-auto"><%= r.tsLabel %></span>
+                </div>
+                <p class="text-sm text-slate-700"><%= r.summary %></p>
+                <% if (r.payload) { %>
+                  <details class="mt-1">
+                    <summary class="text-[10px] text-slate-400 cursor-pointer hover:text-slate-600">payload</summary>
+                    <pre class="mt-1 p-2 bg-slate-50 border border-slate-200 rounded text-[10px] font-mono text-slate-600 overflow-x-auto"><%= JSON.stringify(r.payload, null, 2) %></pre>
+                  </details>
+                <% } %>
+              </div>
+            </div>
+          </li>
+        <% }) %>
+      </ul>
+    </div>
+  <% } %>
+
+  <p class="text-xs text-slate-400 mt-3">
+    Solo admin. Eventos: cambios manuales en <code>/horarios</code>, resoluciones de solicitudes,
+    cambios de rol y configuración del sistema.
+  </p>
+</main>
+<%- include('partials/foot') %>
