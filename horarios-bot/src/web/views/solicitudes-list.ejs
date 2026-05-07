@@ -121,14 +121,14 @@
                     </form>
                   <% } else if (isManager) { %>
                     <form method="post" action="/solicitudes/<%= r.id %>/cancel" class="inline ml-2"
-                          onsubmit="return confirm('Cancelar esta solicitud pendiente del agente?')">
+                          data-confirm="Cancelar esta solicitud pendiente del agente?" data-confirm-tone="warn" data-confirm-text="Sí, cancelar">
                       <button class="text-slate-500 hover:text-slate-700 text-xs font-semibold">Cancelar</button>
                     </form>
                   <% } %>
                 <% } %>
                 <% if (isManager) { %>
                   <form method="post" action="/solicitudes/<%= r.id %>/delete" class="inline ml-2"
-                        onsubmit="return confirm('<%= r.status === 'approved' ? 'Eliminar esta solicitud APROBADA? El horario original del agente se restablece.' : 'Eliminar esta solicitud?' %>')">
+                        data-confirm="<%= r.status === 'approved' ? 'Eliminar esta solicitud APROBADA? El horario original del agente se restablece.' : 'Eliminar esta solicitud?' %>" data-confirm-tone="danger" data-confirm-text="Eliminar">
                     <button class="text-slate-400 hover:text-rose-600 text-xs font-semibold" title="Eliminar">🗑</button>
                   </form>
                 <% } %>
@@ -196,13 +196,13 @@
                 <% } %>
                 <% if (canCancelM) { %>
                   <form method="post" action="/solicitudes/<%= r.id %>/cancel" class="inline"
-                        <% if (r.requester_slack_id !== user.slack_id) { %>onsubmit="return confirm('Cancelar esta solicitud pendiente del agente?')"<% } %>>
+                        <% if (r.requester_slack_id !== user.slack_id) { %>data-confirm="Cancelar esta solicitud pendiente del agente?" data-confirm-tone="warn" data-confirm-text="Sí, cancelar"<% } %>>
                     <button class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-200">Cancelar</button>
                   </form>
                 <% } %>
                 <% if (isManager) { %>
                   <form method="post" action="/solicitudes/<%= r.id %>/delete" class="inline ml-auto"
-                        onsubmit="return confirm('<%= r.status === 'approved' ? 'Eliminar esta solicitud APROBADA? El horario original del agente se restablece.' : 'Eliminar esta solicitud?' %>')">
+                        data-confirm="<%= r.status === 'approved' ? 'Eliminar esta solicitud APROBADA? El horario original del agente se restablece.' : 'Eliminar esta solicitud?' %>" data-confirm-tone="danger" data-confirm-text="Eliminar">
                     <button class="px-2 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:bg-rose-50 hover:text-rose-600" title="Eliminar">🗑</button>
                   </form>
                 <% } %>

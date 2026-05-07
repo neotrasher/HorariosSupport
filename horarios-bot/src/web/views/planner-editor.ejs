@@ -13,6 +13,7 @@
   height:100vh;overflow:hidden;display:flex;flex-direction:column;
 }
 @media (max-width: 768px) { .planner-shell { height: calc(100vh - 49px); } }
+@media (max-width: 768px) { .planner-mobile-hidden { display: none; } }
 
 /* ── Planner header: align with main app aesthetic (light, ink palette) ── */
 .planner-shell .hdr {
@@ -395,6 +396,18 @@
 ::-webkit-scrollbar-track{background:transparent}
 </style>
 
+<!-- Mobile-only message: planner is desktop-only -->
+<div class="md:hidden px-4 sm:px-6 py-12 text-center">
+  <div class="bg-white rounded-xl border border-slate-200 shadow-card p-8 max-w-sm mx-auto">
+    <div class="text-5xl mb-3 opacity-40">🖥</div>
+    <h2 class="text-lg font-bold text-slate-900 mb-2">Planner solo en desktop</h2>
+    <p class="text-sm text-slate-500 mb-4">El editor de plantilla cíclica requiere mucho espacio horizontal y arrastrar agentes entre celdas. Usa una computadora para esta sección.</p>
+    <a href="/" class="inline-block px-4 py-2 bg-ink-800 hover:bg-ink-700 text-white text-sm font-semibold rounded-lg shadow-card">Volver al inicio</a>
+  </div>
+</div>
+
+<!-- Desktop planner (md+) -->
+<div class="planner-mobile-hidden">
 <div class="planner-shell">
 <div class="hdr">
   <span class="hdr-title">Planner</span>
@@ -1500,4 +1513,5 @@ document.addEventListener('keydown', e=>{
 })();
 </script>
 </div><!-- /.planner-shell -->
+</div><!-- /.planner-mobile-hidden -->
 <%- include('partials/foot') %>

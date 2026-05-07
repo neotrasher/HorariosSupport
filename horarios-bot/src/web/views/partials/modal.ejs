@@ -1,0 +1,162 @@
+<!--
+  Global modal system. Renders once at the bottom of the page via foot.ejs.
+  Exposes window.appModal.{confirm, alert} (Promise-based) plus auto-intercept
+  for forms with `data-confirm="..."` attributes.
+
+  Usage from JS:
+    const ok = await appModal.confirm({ title: 'Eliminar', message: '¿Seguro?', tone: 'danger' });
+    if (ok) { ... }
+
+  Usage from HTML (replaces onsubmit="return confirm(...)"):
+    <form data-confirm="¿Eliminar este registro?" data-confirm-tone="danger">…</form>
+-->
+<div id="appModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4" aria-modal="true" role="dialog">
+  <div id="appModalBackdrop" class="absolute inset-0 bg-ink-900/50 backdrop-blur-sm"></div>
+  <div id="appModalCard" class="relative bg-white rounded-2xl shadow-card-hover max-w-md w-full overflow-hidden ring-1 ring-slate-200">
+    <div id="appModalHeader" class="px-5 py-4 border-b border-slate-100 flex items-start gap-3">
+      <div id="appModalIcon" class="w-9 h-9 rounded-full flex items-center justify-center text-lg shrink-0">!</div>
+      <div class="flex-1 min-w-0">
+        <h3 id="appModalTitle" class="font-bold text-slate-900 text-base"></h3>
+        <p id="appModalMessage" class="text-sm text-slate-600 mt-0.5"></p>
+      </div>
+    </div>
+    <div id="appModalBody" class="hidden px-5 py-3 text-sm text-slate-700"></div>
+    <div class="px-5 py-3 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+      <button type="button" id="appModalCancel"
+        class="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
+      <button type="button" id="appModalConfirm"
+        class="px-4 py-2 text-sm font-semibold text-white rounded-lg shadow-card transition-colors">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const root = document.getElementById('appModal');
+  const card = document.getElementById('appModalCard');
+  const titleEl = document.getElementById('appModalTitle');
+  const msgEl = document.getElementById('appModalMessage');
+  const bodyEl = document.getElementById('appModalBody');
+  const iconEl = document.getElementById('appModalIcon');
+  const okBtn = document.getElementById('appModalConfirm');
+  const cancelBtn = document.getElementById('appModalCancel');
+  const backdrop = document.getElementById('appModalBackdrop');
+
+  // Tone presets: confirm-button color + icon background
+  const TONES = {
+    info:    { btn: 'bg-ink-800 hover:bg-ink-700',         icon: 'bg-sky-100 text-sky-700',         char: 'i' },
+    primary: { btn: 'bg-ink-800 hover:bg-ink-700',         icon: 'bg-ink-100 text-ink-700',         char: '✓' },
+    success: { btn: 'bg-emerald-600 hover:bg-emerald-700', icon: 'bg-emerald-100 text-emerald-700', char: '✓' },
+    warn:    { btn: 'bg-amber-600 hover:bg-amber-700',     icon: 'bg-amber-100 text-amber-700',     char: '⚠' },
+    danger:  { btn: 'bg-rose-600 hover:bg-rose-700',       icon: 'bg-rose-100 text-rose-700',       char: '!' }
+  };
+
+  let resolver = null;
+  let lastFocused = null;
+
+  function applyTone(tone) {
+    const t = TONES[tone] || TONES.primary;
+    okBtn.className = 'px-4 py-2 text-sm font-semibold text-white rounded-lg shadow-card transition-colors ' + t.btn;
+    iconEl.className = 'w-9 h-9 rounded-full flex items-center justify-center text-lg shrink-0 font-bold ' + t.icon;
+    iconEl.textContent = t.char;
+  }
+
+  function open(opts) {
+    const {
+      title = 'Confirmar',
+      message = '',
+      body = '',
+      tone = 'primary',
+      confirmText = 'Confirmar',
+      cancelText = 'Cancelar',
+      cancelable = true
+    } = opts;
+    titleEl.textContent = title;
+    msgEl.textContent = message;
+    if (body) {
+      bodyEl.innerHTML = body;
+      bodyEl.classList.remove('hidden');
+    } else {
+      bodyEl.innerHTML = '';
+      bodyEl.classList.add('hidden');
+    }
+    okBtn.textContent = confirmText;
+    cancelBtn.textContent = cancelText;
+    cancelBtn.classList.toggle('hidden', !cancelable);
+    applyTone(tone);
+    lastFocused = document.activeElement;
+    root.classList.remove('hidden');
+    setTimeout(() => okBtn.focus(), 30);
+  }
+
+  function close() {
+    root.classList.add('hidden');
+    if (lastFocused && lastFocused.focus) {
+      try { lastFocused.focus(); } catch {}
+    }
+  }
+
+  function resolveAndClose(value) {
+    close();
+    if (resolver) {
+      const r = resolver; resolver = null;
+      r(value);
+    }
+  }
+
+  okBtn.addEventListener('click', () => resolveAndClose(true));
+  cancelBtn.addEventListener('click', () => resolveAndClose(false));
+  backdrop.addEventListener('click', () => resolveAndClose(false));
+  document.addEventListener('keydown', e => {
+    if (root.classList.contains('hidden')) return;
+    if (e.key === 'Escape') resolveAndClose(false);
+    if (e.key === 'Enter' && document.activeElement !== cancelBtn) resolveAndClose(true);
+  });
+
+  window.appModal = {
+    confirm(opts = {}) {
+      return new Promise(resolve => { resolver = resolve; open(opts); });
+    },
+    alert(opts = {}) {
+      return new Promise(resolve => {
+        resolver = resolve;
+        open({ ...opts, cancelable: false, confirmText: opts.confirmText || 'OK' });
+      });
+    }
+  };
+
+  // ── Auto-intercept forms with data-confirm ────────────────────────────
+  document.addEventListener('submit', async (e) => {
+    const form = e.target;
+    if (!form || !(form instanceof HTMLFormElement)) return;
+    const msg = form.dataset.confirm;
+    if (!msg) return;
+    if (form.dataset.confirmed === '1') return; // already confirmed, let it go
+    e.preventDefault();
+    const ok = await window.appModal.confirm({
+      title: form.dataset.confirmTitle || 'Confirmar acción',
+      message: msg,
+      tone: form.dataset.confirmTone || 'primary',
+      confirmText: form.dataset.confirmText || 'Confirmar'
+    });
+    if (ok) {
+      form.dataset.confirmed = '1';
+      form.submit();
+    }
+  });
+
+  // ── Auto-intercept anchors with data-confirm ──────────────────────────
+  document.addEventListener('click', async (e) => {
+    const a = e.target.closest('a[data-confirm]');
+    if (!a) return;
+    e.preventDefault();
+    const ok = await window.appModal.confirm({
+      title: a.dataset.confirmTitle || 'Confirmar acción',
+      message: a.dataset.confirm,
+      tone: a.dataset.confirmTone || 'primary',
+      confirmText: a.dataset.confirmText || 'Continuar'
+    });
+    if (ok) window.location.href = a.href;
+  });
+})();
+</script>

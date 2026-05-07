@@ -108,7 +108,10 @@
       body: JSON.stringify(payload)
     });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok || !j.ok) { alert('Error: ' + (j.error || r.status)); return false; }
+    if (!r.ok || !j.ok) {
+      await window.appModal.alert({ title: 'Error', message: j.error || ('HTTP ' + r.status), tone: 'danger' });
+      return false;
+    }
     return true;
   }
 
@@ -119,7 +122,12 @@
     ev.preventDefault(); ev.stopPropagation();
     const { name, shiftId, dept, pid } = btn.dataset;
     const date = btn.dataset.date || globalDate;
-    if (!confirm('Quitar a ' + name + ' del turno ' + dept + ':' + shiftId + ' el ' + date + '?')) return;
+    const confirmed = await window.appModal.confirm({
+      title: 'Quitar agente',
+      message: 'Quitar a ' + name + ' del turno ' + dept + ':' + shiftId + ' el ' + date + '?',
+      tone: 'danger', confirmText: 'Quitar'
+    });
+    if (!confirmed) return;
     const ok = await postEdit({ action:'remove', plannerId: pid, date, shiftId, dept });
     if (ok) location.reload();
   });
@@ -185,7 +193,12 @@
   });
   document.getElementById('moveRemove').addEventListener('click', async () => {
     if (!pendingMove) return;
-    if (!confirm('Quitar a ' + pendingMove.name + ' del turno ' + pendingMove.dept + ':' + pendingMove.shiftId + ' el ' + pendingMove.date + '?')) return;
+    const confirmed = await window.appModal.confirm({
+      title: 'Quitar agente',
+      message: 'Quitar a ' + pendingMove.name + ' del turno ' + pendingMove.dept + ':' + pendingMove.shiftId + ' el ' + pendingMove.date + '?',
+      tone: 'danger', confirmText: 'Quitar'
+    });
+    if (!confirmed) return;
     const ok = await postEdit({
       action: 'remove',
       plannerId: pendingMove.pid, date: pendingMove.date,

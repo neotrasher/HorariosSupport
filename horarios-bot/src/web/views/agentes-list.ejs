@@ -21,7 +21,46 @@
   <% if (agents.length === 0) { %>
     <div class="bg-white rounded-lg border border-slate-200 shadow-card p-8 text-center text-slate-400">Sin agentes</div>
   <% } else { %>
-    <div class="bg-white rounded-lg border border-slate-200 shadow-card overflow-x-auto">
+    <!-- Mobile cards -->
+    <div class="md:hidden space-y-2">
+      <% agents.forEach(a => { const bal = balanceByAgent[a.slack_id]; %>
+        <a href="/agentes/<%= a.slack_id %>"
+           class="block bg-white rounded-xl border border-slate-200 shadow-card p-3 hover:bg-slate-50 transition-colors <%= a.active ? '' : 'opacity-60' %>">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-semibold text-slate-900 text-sm"><%= a.name %></span>
+                <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide
+                  <% if (a.dept === 'L1') { %>bg-blue-100 text-blue-700
+                  <% } else if (a.dept === 'L2') { %>bg-purple-100 text-purple-700
+                  <% } else { %>bg-slate-100 text-slate-600<% } %>"><%= a.dept %></span>
+                <% if (a.role === 'manager' || a.role === 'admin') { %>
+                  <span class="text-[10px] uppercase font-bold <%= a.role === 'admin' ? 'text-rose-600' : 'text-violet-600' %>"><%= a.role %></span>
+                <% } %>
+              </div>
+              <% if (a.position) { %><div class="text-xs text-slate-500 mt-0.5"><%= a.position %></div><% } %>
+              <div class="text-[10px] text-slate-400 mt-0.5 font-mono"><%= a.slack_id %> · #<%= a.planner_id %></div>
+            </div>
+            <span class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ring-1 shrink-0
+              <%= a.active ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-slate-100 text-slate-500 ring-slate-200' %>">
+              <span class="w-1.5 h-1.5 rounded-full <%= a.active ? 'bg-emerald-500' : 'bg-slate-400' %>"></span>
+              <%= a.active ? 'Activo' : 'Inactivo' %>
+            </span>
+          </div>
+          <div class="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[11px] text-slate-600">
+            <% if (a.email_company) { %><span>📧 <%= a.email_company %></span><% } %>
+            <% if (a.phone) { %><span>📞 <%= a.phone %></span><% } %>
+            <% if (a.start_date) { %><span class="text-slate-400">↗ <%= a.start_date %></span><% } %>
+            <% if (bal && bal.entitled !== null) { %>
+              <span class="font-mono <%= bal.available <= 0 ? 'text-rose-700' : bal.available <= 3 ? 'text-amber-700' : 'text-emerald-700' %>">🌴 <%= bal.used %>/<%= bal.entitled %></span>
+            <% } %>
+          </div>
+        </a>
+      <% }) %>
+    </div>
+
+    <!-- Desktop table -->
+    <div class="hidden md:block bg-white rounded-lg border border-slate-200 shadow-card overflow-x-auto">
       <table class="w-full text-sm" id="agentes-table">
         <thead class="bg-slate-50 border-b border-slate-200 text-xs">
           <tr>
@@ -196,7 +235,7 @@
               if (field === 'salary_current') updateRowCalc(row);
             } catch (e) {
               inp.classList.add('border-red-400');
-              alert('Error al guardar: ' + e.message);
+              window.appModal.alert({ title: 'Error al guardar', message: e.message, tone: 'danger' });
             }
           });
         });

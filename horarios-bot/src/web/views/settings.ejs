@@ -32,13 +32,13 @@
         </header>
         <div class="divide-y divide-slate-100">
           <% items.forEach(r => { %>
-            <div class="px-4 py-3 flex items-start gap-4">
-              <div class="flex-1">
+            <div class="px-3 sm:px-4 py-3 flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
+              <div class="flex-1 min-w-0">
                 <label for="f_<%= r.key %>" class="block text-sm font-medium text-gray-800"><%= r.label %></label>
                 <% if (r.hint) { %><p class="text-xs text-slate-400 mt-0.5"><%= r.hint %></p><% } %>
-                <p class="text-[10px] text-slate-300 mt-0.5 font-mono"><%= r.key %></p>
+                <p class="text-[10px] text-slate-300 mt-0.5 font-mono break-all"><%= r.key %></p>
               </div>
-              <div class="w-48 shrink-0">
+              <div class="w-full sm:w-48 sm:shrink-0">
                 <input id="f_<%= r.key %>" name="<%= r.key %>" type="<%= (r.type === 'int' || r.type === 'float') ? 'number' : 'text' %>"
                        <%= r.type === 'float' ? 'step="0.1"' : '' %>
                        <%= r.min !== undefined ? `min="${r.min}"` : '' %>
