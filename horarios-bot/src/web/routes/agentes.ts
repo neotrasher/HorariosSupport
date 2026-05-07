@@ -83,6 +83,18 @@ agentesRouter.post('/nuevo', (req, res) => {
     return renderError(`Error al crear: ${e?.message || 'desconocido'}`);
   }
 
+  // Combine birthdate parts (day/month/optional year) → 'YYYY-MM-DD' or 'MM-DD'
+  {
+    const day = ((req.body.birthdate_day as string) || '').trim();
+    const month = ((req.body.birthdate_month as string) || '').trim();
+    const year = ((req.body.birthdate_year as string) || '').trim();
+    if (day && month) {
+      req.body.birthdate = year && /^\d{4}$/.test(year)
+        ? `${year}-${month}-${day}`
+        : `${month}-${day}`;
+    }
+  }
+
   // Apply operational fields from the form (sensitive are blocked unless admin — handled in update)
   const opFields = pickFields(req.body, OPERATIONAL_FIELDS as readonly string[]);
   delete (opFields as any).name;
@@ -126,6 +138,22 @@ agentesRouter.post('/:slackId', (req, res) => {
   if (!agent) {
     res.status(404).render('error', { message: 'Agente no encontrado.', user });
     return;
+  }
+
+  // Combine birthdate parts (day/month/optional year) into a single field.
+  // Empty day or month → clear birthdate.
+  // No year → 'MM-DD' (partial). With year → 'YYYY-MM-DD'.
+  {
+    const day = ((req.body.birthdate_day as string) || '').trim();
+    const month = ((req.body.birthdate_month as string) || '').trim();
+    const year = ((req.body.birthdate_year as string) || '').trim();
+    if (day && month) {
+      req.body.birthdate = year && /^\d{4}$/.test(year)
+        ? `${year}-${month}-${day}`
+        : `${month}-${day}`;
+    } else if (!day && !month && !year) {
+      req.body.birthdate = '';
+    }
   }
 
   // Operational fields — both managers and admin can edit

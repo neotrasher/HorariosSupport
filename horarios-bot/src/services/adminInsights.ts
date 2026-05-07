@@ -54,14 +54,19 @@ function daysUntilDate(target: string, today: DateTime): number {
 }
 
 /**
- * For a YYYY-MM-DD date (used for birthdays), compute days until the next
- * occurrence of that month/day. Returns -1 if date is invalid.
+ * Compute days until the next occurrence of a birthday's month/day.
+ * Accepts 'YYYY-MM-DD' (full) and 'MM-DD' (partial, no year known).
+ * Returns -1 if format invalid.
  */
-function daysUntilAnnual(monthDay: string, today: DateTime): number {
-  const m = monthDay.match(/^\d{4}-(\d{2})-(\d{2})$/);
-  if (!m) return -1;
-  const month = parseInt(m[1], 10);
-  const day = parseInt(m[2], 10);
+function daysUntilAnnual(birthdate: string, today: DateTime): number {
+  const full = birthdate.match(/^\d{4}-(\d{2})-(\d{2})$/);
+  const partial = birthdate.match(/^(\d{2})-(\d{2})$/);
+  let monthStr: string, dayStr: string;
+  if (full) { monthStr = full[1]; dayStr = full[2]; }
+  else if (partial) { monthStr = partial[1]; dayStr = partial[2]; }
+  else return -1;
+  const month = parseInt(monthStr, 10);
+  const day = parseInt(dayStr, 10);
   let next = today.set({ month, day }).startOf('day');
   if (next < today.startOf('day')) {
     next = next.plus({ years: 1 });

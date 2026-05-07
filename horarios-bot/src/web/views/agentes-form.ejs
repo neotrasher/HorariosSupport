@@ -172,8 +172,37 @@
         </div>
         <div>
           <label class="block text-xs font-medium text-slate-700 mb-1">Cumpleaños</label>
-          <input type="date" name="birthdate" value="<%= agent.birthdate || '' %>"
-                 class="block w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+          <%
+            // Parse stored birthdate: 'YYYY-MM-DD' or 'MM-DD' (sin año conocido)
+            const bd = agent.birthdate || '';
+            let bdDay = '', bdMonth = '', bdYear = '';
+            const fullMatch = bd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            const partialMatch = bd.match(/^(\d{2})-(\d{2})$/);
+            if (fullMatch) {
+              bdYear = fullMatch[1]; bdMonth = fullMatch[2]; bdDay = fullMatch[3];
+            } else if (partialMatch) {
+              bdMonth = partialMatch[1]; bdDay = partialMatch[2];
+            }
+          %>
+          <div class="grid grid-cols-3 gap-2">
+            <select name="birthdate_day" class="border border-slate-300 rounded-lg px-2 py-2 text-sm">
+              <option value="">Día</option>
+              <% for (let d = 1; d <= 31; d++) { const v = String(d).padStart(2,'0'); %>
+                <option value="<%= v %>" <%= bdDay === v ? 'selected' : '' %>><%= v %></option>
+              <% } %>
+            </select>
+            <select name="birthdate_month" class="border border-slate-300 rounded-lg px-2 py-2 text-sm">
+              <option value="">Mes</option>
+              <% const MONTHS_ES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']; %>
+              <% MONTHS_ES.forEach((lbl, i) => { const v = String(i+1).padStart(2,'0'); %>
+                <option value="<%= v %>" <%= bdMonth === v ? 'selected' : '' %>><%= v %> · <%= lbl %></option>
+              <% }) %>
+            </select>
+            <input type="number" name="birthdate_year" min="1900" max="2100" placeholder="Año (opc.)"
+                   value="<%= bdYear %>"
+                   class="border border-slate-300 rounded-lg px-2 py-2 text-sm">
+          </div>
+          <p class="text-[10px] text-slate-400 mt-1">Año opcional. Sin año, no se calcula edad pero sí se notifica el cumpleaños.</p>
         </div>
         <div class="sm:col-span-2">
           <label class="block text-xs font-medium text-slate-700 mb-1">Direccion</label>

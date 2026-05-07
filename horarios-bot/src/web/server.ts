@@ -43,8 +43,13 @@ export function startWeb(slackApp: SlackApp | null = null) {
   // fmtDateTime('2026-05-07 14:30') → '07/05/2026 14:30'
   function fmtDate(s: any): string {
     if (!s) return '';
-    const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
-    return m ? `${m[3]}/${m[2]}/${m[1]}` : String(s);
+    const str = String(s);
+    const full = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (full) return `${full[3]}/${full[2]}/${full[1]}`;
+    // Partial date: 'MM-DD' (e.g. birthdate without year known)
+    const partial = str.match(/^(\d{2})-(\d{2})$/);
+    if (partial) return `${partial[2]}/${partial[1]}`;
+    return str;
   }
   function fmtDateTime(s: any): string {
     if (!s) return '';

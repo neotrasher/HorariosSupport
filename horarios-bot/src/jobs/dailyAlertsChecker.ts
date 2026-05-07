@@ -26,24 +26,34 @@ function markSent(kind: string, target: string, date: string): void {
   ).run(kind, target, date);
 }
 
-/** Returns true if `birthdate` (YYYY-MM-DD) matches today's month-day. */
-function isBirthdayToday(birthdate: string, today: DateTime): boolean {
-  const m = birthdate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!m) return false;
-  const month = parseInt(m[2], 10);
-  const day = parseInt(m[3], 10);
-  return today.month === month && today.day === day;
+/**
+ * Extract month + day (and optional year) from birthdate field.
+ * Accepts both 'YYYY-MM-DD' (full) and 'MM-DD' (partial, no year known).
+ */
+function parseBirthdate(birthdate: string): { month: number; day: number; year: number | null } | null {
+  const full = birthdate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (full) {
+    return { year: parseInt(full[1], 10), month: parseInt(full[2], 10), day: parseInt(full[3], 10) };
+  }
+  const partial = birthdate.match(/^(\d{2})-(\d{2})$/);
+  if (partial) {
+    return { year: null, month: parseInt(partial[1], 10), day: parseInt(partial[2], 10) };
+  }
+  return null;
 }
 
-/** Computes age (years) on `today` based on birthdate. */
+function isBirthdayToday(birthdate: string, today: DateTime): boolean {
+  const p = parseBirthdate(birthdate);
+  if (!p) return false;
+  return today.month === p.month && today.day === p.day;
+}
+
+/** Returns null if year unknown or invalid. */
 function ageOn(birthdate: string, today: DateTime): number | null {
-  const m = birthdate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!m) return null;
-  const y = parseInt(m[1], 10);
-  const mo = parseInt(m[2], 10);
-  const d = parseInt(m[3], 10);
-  let age = today.year - y;
-  if (today.month < mo || (today.month === mo && today.day < d)) age--;
+  const p = parseBirthdate(birthdate);
+  if (!p || p.year === null) return null;
+  let age = today.year - p.year;
+  if (today.month < p.month || (today.month === p.month && today.day < p.day)) age--;
   return age >= 0 && age < 150 ? age : null;
 }
 
