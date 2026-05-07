@@ -84,31 +84,28 @@
     .btn-primary:active { transform: translateY(1px); }
 
     /* ── App shell layout ─────────────────────────────────────────────── */
-    .app-shell { display: flex; min-height: 100vh; }
+    .app-shell { min-height: 100vh; }
     .app-sidebar {
-      width: 232px; flex-shrink: 0;
-      position: sticky; top: 0; height: 100vh;
+      width: 232px;
+      position: fixed; top: 0; left: 0; bottom: 0;
       background: linear-gradient(to bottom, #ffffff 0%, #f8fafc 100%);
       border-right: 1px solid #e6eaf0;
       box-shadow: 1px 0 0 0 rgb(15 24 37 / 0.04), 4px 0 12px -8px rgb(15 24 37 / 0.05);
       display: flex; flex-direction: column;
       z-index: 30;
     }
-    .app-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .app-main { margin-left: 232px; min-width: 0; display: flex; flex-direction: column; }
     .nav-mobile-bar { display: none; }
     @media (max-width: 768px) {
-      .app-shell { flex-direction: column; }
       .app-sidebar {
-        position: fixed; top: 0; left: 0; bottom: 0;
         width: 280px; max-width: 85vw;
-        height: 100vh;
         transform: translateX(-100%);
         transition: transform 0.22s ease;
         box-shadow: 0 0 32px 0 rgb(15 24 37 / 0.30);
         z-index: 50;
       }
       .app-sidebar.open { transform: translateX(0); }
-      .app-main { width: 100%; }
+      .app-main { margin-left: 0; width: 100%; }
       #appOverlay { z-index: 40; }
       .nav-mobile-bar {
         display: flex; align-items: center; justify-content: space-between;

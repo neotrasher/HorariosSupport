@@ -1,0 +1,137 @@
+<%- include('partials/head') %>
+<%- include('partials/nav', { user }) %>
+
+<%
+  function dayOfWeek(dateStr) {
+    // 1=Mon..7=Sun (Luxon convention)
+    const d = new Date(dateStr + 'T00:00:00Z');
+    return d.getUTCDay() === 0 ? 7 : d.getUTCDay();
+  }
+  function dayLabel(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00Z');
+    const days = ['D','L','M','C','J','V','S'];
+    return days[d.getUTCDay()];
+  }
+
+  function colorFor(count, max) {
+    if (count === 0) return { bg: 'rgb(254 226 226)', text: '#991b1b' };  // rose-100/700
+    if (max <= 0) return { bg: 'rgb(241 245 249)', text: '#475569' };
+    const ratio = count / Math.max(max, 1);
+    if (ratio < 0.34) return { bg: 'rgb(254 243 199)', text: '#92400e' };  // amber-100/800
+    if (ratio < 0.67) return { bg: 'rgb(220 252 231)', text: '#166534' };  // emerald-100/800
+    return { bg: 'rgb(167 243 208)', text: '#064e3b' };                    // emerald-200/900
+  }
+
+  // Find peak hour
+  let peakHour = 0, peakHourCount = 0;
+  Object.entries(heatmap.totalsByHour).forEach(([h, c]) => {
+    if (c > peakHourCount) { peakHourCount = c; peakHour = parseInt(h, 10); }
+  });
+%>
+
+<main class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+  <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-5">
+    <div class="min-w-0">
+      <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Heatmap de cobertura</h2>
+      <p class="text-sm text-slate-500 mt-1">Densidad de agentes por hora UTC · <%= heatmap.dept || 'todos los depts' %></p>
+    </div>
+    <%- include('partials/viewSwitch', { view: 'heatmap', currentDate: heatmap.startDate }) %>
+  </div>
+  <div class="flex items-center gap-2 text-sm flex-wrap mb-4">
+    <a href="/horarios/heatmap?month=<%= prevMonth %><%= dept ? '&dept=' + dept : '' %>" class="px-3 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card">←</a>
+    <span class="px-4 py-2 font-semibold capitalize bg-white border border-slate-200 rounded-lg shadow-card text-slate-900"><%= monthLabel %></span>
+    <a href="/horarios/heatmap?month=<%= nextMonth %><%= dept ? '&dept=' + dept : '' %>" class="px-3 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card">→</a>
+  </div>
+
+  <!-- Filtros dept -->
+  <div class="flex flex-wrap items-center gap-2 mb-4 text-xs">
+    <span class="text-slate-500 font-medium">Filtro:</span>
+    <a href="/horarios/heatmap?month=<%= monthParam %>"
+       class="px-3 py-1.5 rounded-lg ring-1 font-semibold <%= !dept ? 'bg-ink-800 text-white ring-ink-800' : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-50' %>">Todos</a>
+    <a href="/horarios/heatmap?month=<%= monthParam %>&dept=L1"
+       class="px-3 py-1.5 rounded-lg ring-1 font-semibold <%= dept === 'L1' ? 'bg-blue-600 text-white ring-blue-600' : 'bg-white text-blue-700 ring-blue-200 hover:bg-blue-50' %>">L1</a>
+    <a href="/horarios/heatmap?month=<%= monthParam %>&dept=L2"
+       class="px-3 py-1.5 rounded-lg ring-1 font-semibold <%= dept === 'L2' ? 'bg-violet-600 text-white ring-violet-600' : 'bg-white text-violet-700 ring-violet-200 hover:bg-violet-50' %>">L2</a>
+  </div>
+
+  <!-- Resumen -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+    <div class="bg-white rounded-xl border border-slate-200 shadow-card p-3">
+      <div class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Pico de cobertura</div>
+      <div class="text-2xl font-extrabold text-emerald-700 mt-1"><%= heatmap.maxCount %><span class="text-sm text-slate-400 font-bold"> ag/h</span></div>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 shadow-card p-3">
+      <div class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Mínimo</div>
+      <div class="text-2xl font-extrabold <%= heatmap.minCount === 0 ? 'text-rose-700' : 'text-slate-700' %> mt-1"><%= heatmap.minCount %><span class="text-sm text-slate-400 font-bold"> ag/h</span></div>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 shadow-card p-3">
+      <div class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Hora punta</div>
+      <div class="text-2xl font-extrabold text-sky-700 mt-1"><%= String(peakHour).padStart(2, '0') %>:00</div>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 shadow-card p-3">
+      <div class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Total agente·hora</div>
+      <% const grandTotal = Object.values(heatmap.totalsByDate).reduce((s,v)=>s+v,0); %>
+      <div class="text-2xl font-extrabold text-slate-700 mt-1"><%= grandTotal %></div>
+    </div>
+  </div>
+
+  <!-- Heatmap grid -->
+  <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-x-auto">
+    <table class="w-full text-xs" style="border-collapse: separate; border-spacing: 1px;">
+      <thead class="bg-slate-50">
+        <tr>
+          <th class="text-left px-2 py-2 font-medium text-slate-600 sticky left-0 bg-slate-50 z-10" style="min-width: 90px;">Día</th>
+          <% for (let h = 0; h < 24; h++) { %>
+            <th class="text-center px-1 py-2 font-mono font-medium <%= h === peakHour ? 'text-sky-700' : 'text-slate-500' %>" style="min-width: 28px;"><%= String(h).padStart(2,'0') %></th>
+          <% } %>
+          <th class="text-right px-2 py-2 font-medium text-slate-600">Σ</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% heatmap.dates.forEach(date => {
+          const dn = dayOfWeek(date);
+          const isWeekend = dn === 6 || dn === 7;
+          const dayN = parseInt(date.slice(8), 10);
+        %>
+          <tr class="<%= isWeekend ? 'bg-slate-50/40' : '' %>">
+            <td class="px-2 py-1 sticky left-0 z-10 <%= isWeekend ? 'bg-slate-100' : 'bg-white' %>">
+              <span class="font-mono text-slate-500 text-[10px]"><%= dayLabel(date) %></span>
+              <span class="font-semibold text-slate-800"><%= dayN %></span>
+            </td>
+            <% for (let h = 0; h < 24; h++) {
+                 const c = heatmap.counts.get(date + '|' + h) || 0;
+                 const col = colorFor(c, heatmap.maxCount);
+            %>
+              <td class="text-center font-mono font-semibold"
+                  style="background: <%= col.bg %>; color: <%= col.text %>; padding: 6px 0;"
+                  title="<%= date %> <%= String(h).padStart(2,'0') %>:00 UTC · <%= c %> agente<%= c === 1 ? '' : 's' %>">
+                <%= c || '' %>
+              </td>
+            <% } %>
+            <td class="px-2 py-1 text-right font-mono font-semibold text-slate-700"><%= heatmap.totalsByDate[date] || 0 %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+      <tfoot class="bg-slate-50 border-t-2 border-slate-200">
+        <tr>
+          <td class="px-2 py-2 sticky left-0 bg-slate-50 z-10 font-semibold text-slate-600">Σ por hora</td>
+          <% for (let h = 0; h < 24; h++) { %>
+            <td class="text-center font-mono font-semibold text-slate-700 px-1 py-2"><%= heatmap.totalsByHour[h] || 0 %></td>
+          <% } %>
+          <td class="px-2 py-2 text-right font-mono font-bold text-slate-900"><%= grandTotal %></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <!-- Leyenda -->
+  <div class="flex flex-wrap items-center gap-3 mt-4 text-xs text-slate-500">
+    <span class="font-semibold">Leyenda:</span>
+    <span class="inline-flex items-center gap-1"><span class="w-4 h-4 rounded" style="background: rgb(254 226 226);"></span> 0 (sin cobertura)</span>
+    <span class="inline-flex items-center gap-1"><span class="w-4 h-4 rounded" style="background: rgb(254 243 199);"></span> bajo</span>
+    <span class="inline-flex items-center gap-1"><span class="w-4 h-4 rounded" style="background: rgb(220 252 231);"></span> medio</span>
+    <span class="inline-flex items-center gap-1"><span class="w-4 h-4 rounded" style="background: rgb(167 243 208);"></span> alto (pico)</span>
+  </div>
+  <p class="text-xs text-slate-400 mt-2">Horas en UTC. Los turnos que cruzan medianoche se distribuyen entre los días afectados.</p>
+</main>
+<%- include('partials/foot') %>

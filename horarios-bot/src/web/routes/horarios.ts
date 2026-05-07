@@ -9,6 +9,7 @@ import {
   removeAgentFromShift, addAgentToShift, moveAgentShift
 } from '../../services/schedule';
 import { logAudit } from '../../services/audit';
+import { buildHeatmap } from '../../services/coverageHeatmap';
 
 type ViewMode = 'day' | 'week' | 'month';
 
@@ -66,6 +67,35 @@ async function dmAgentEdit(
 
 export function buildHorariosRouter(slackApp: SlackApp | null = null): Router {
   const horariosRouter = Router();
+
+/**
+ * Coverage heatmap. Shows agents-per-hour grid for a given month.
+ * Optional ?dept=L1|L2 filters to one dept; default = all.
+ */
+horariosRouter.get('/heatmap', (req, res) => {
+  const user = (req.session as any).user;
+  const monthParam = (req.query.month as string) || DateTime.utc().toFormat('yyyy-LL');
+  const monthDate = DateTime.fromFormat(monthParam, 'yyyy-LL', { zone: 'utc' });
+  if (!monthDate.isValid) {
+    res.status(400).render('error', { message: 'Mes invalido (YYYY-MM)', user });
+    return;
+  }
+  const dept = ((req.query.dept as string) || '').trim() || null;
+  const startDate = monthDate.startOf('month').toFormat('yyyy-LL-dd');
+  const endDate = monthDate.endOf('month').toFormat('yyyy-LL-dd');
+  const heatmap = buildHeatmap({ startDate, endDate, dept });
+  res.render('horarios-heatmap', {
+    user,
+    view: 'heatmap',
+    currentDate: startDate,
+    monthParam,
+    monthLabel: monthDate.setLocale('es').toFormat('LLLL yyyy'),
+    prevMonth: monthDate.minus({ months: 1 }).toFormat('yyyy-LL'),
+    nextMonth: monthDate.plus({ months: 1 }).toFormat('yyyy-LL'),
+    dept,
+    heatmap
+  });
+});
 
 /**
  * Manual edit endpoint (manager/admin only). Accepts JSON:
