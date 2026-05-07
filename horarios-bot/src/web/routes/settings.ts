@@ -7,8 +7,11 @@ export const settingsRouter = Router();
 
 settingsRouter.get('/', requireAdmin, (req, res) => {
   const user = (req.session as any).user;
-  const groups: Record<string, typeof SETTING_DEFS> = { attendance: [], cycle: [], slack: [], misc: [] };
-  for (const d of SETTING_DEFS) groups[d.group].push(d);
+  const groups: Record<string, typeof SETTING_DEFS> = {};
+  for (const d of SETTING_DEFS) {
+    if (!groups[d.group]) groups[d.group] = [];
+    groups[d.group].push(d);
+  }
   const flash = (req.session as any).settingsFlash || null;
   delete (req.session as any).settingsFlash;
   res.render('settings', {
