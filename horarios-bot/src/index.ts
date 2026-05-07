@@ -20,6 +20,7 @@ import { runShiftReminder } from './jobs/shiftReminder';
 import { runLateChecker } from './jobs/lateChecker';
 import { runBreakOverdueChecker } from './jobs/breakOverdueChecker';
 import { runForgotClockoutChecker } from './jobs/forgotClockoutChecker';
+import { runDailyAlertsChecker } from './jobs/dailyAlertsChecker';
 import { startWeb } from './web/server';
 
 async function main() {
@@ -69,7 +70,13 @@ async function main() {
       runBreakOverdueChecker(app).catch(e => console.error('break overdue job error:', e));
       runForgotClockoutChecker(app).catch(e => console.error('forgot clockout job error:', e));
     });
-    console.log(`Cron: reminders ${config.reminderLeadMin}m before · late ${config.lateThresholdMin}m · break max ${config.breakMaxMin}m · break-in lockout ${config.breakInLockoutMin}m · auto-clockout ${config.autoClockoutGraceMin}-${config.autoClockoutWindowMin}m after end`);
+    // Daily alerts: birthdays + evaluation reminders, fires at 13:00 UTC (≈ 8 AM Bogota)
+    cron.schedule('0 13 * * *', () => {
+      runDailyAlertsChecker(app).catch(e => console.error('daily alerts job error:', e));
+    });
+    // Also run on startup (deduped via daily_notifications table)
+    runDailyAlertsChecker(app).catch(e => console.error('daily alerts startup run error:', e));
+    console.log(`Cron: reminders ${config.reminderLeadMin}m before · late ${config.lateThresholdMin}m · break max ${config.breakMaxMin}m · break-in lockout ${config.breakInLockoutMin}m · auto-clockout ${config.autoClockoutGraceMin}-${config.autoClockoutWindowMin}m after end · daily 13:00 UTC`);
   }
   console.log(`Managers: ${config.managerSlackIds.join(', ') || '(none configured)'}`);
   console.log(`Attendance channel: ${config.attendanceChannelId || '(none — DM only)'}`);

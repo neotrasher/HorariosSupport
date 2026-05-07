@@ -212,6 +212,16 @@ export function migrate() {
       last_used_at TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_cal_token ON agent_calendar_tokens(token);
+
+    -- Daily notification dedup: prevents resending birthday/evaluation alerts
+    -- if the bot restarts on the same day. Key = (kind, target, date).
+    CREATE TABLE IF NOT EXISTS daily_notifications (
+      kind      TEXT NOT NULL,        -- 'birthday' | 'evaluation_reminder'
+      target    TEXT NOT NULL,        -- agent slack_id (subject of the notification)
+      date      TEXT NOT NULL,        -- YYYY-MM-DD (UTC) when sent
+      sent_at   TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (kind, target, date)
+    );
   `);
 }
 
