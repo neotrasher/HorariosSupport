@@ -21,6 +21,7 @@ import { runLateChecker } from './jobs/lateChecker';
 import { runBreakOverdueChecker } from './jobs/breakOverdueChecker';
 import { runForgotClockoutChecker } from './jobs/forgotClockoutChecker';
 import { runDailyAlertsChecker } from './jobs/dailyAlertsChecker';
+import { runDbBackup } from './jobs/dbBackup';
 import { startWeb } from './web/server';
 
 async function main() {
@@ -76,7 +77,13 @@ async function main() {
     });
     // Also run on startup (deduped via daily_notifications table)
     runDailyAlertsChecker(app).catch(e => console.error('daily alerts startup run error:', e));
-    console.log(`Cron: reminders ${config.reminderLeadMin}m before · late ${config.lateThresholdMin}m · break max ${config.breakMaxMin}m · break-in lockout ${config.breakInLockoutMin}m · auto-clockout ${config.autoClockoutGraceMin}-${config.autoClockoutWindowMin}m after end · daily 13:00 UTC`);
+
+    // Daily DB backup at 03:00 UTC (low-traffic hours), 30-day retention
+    cron.schedule('0 3 * * *', () => {
+      runDbBackup(config.dbBackupRetentionDays).catch(e => console.error('db backup job error:', e));
+    });
+
+    console.log(`Cron: reminders ${config.reminderLeadMin}m before · late ${config.lateThresholdMin}m · break max ${config.breakMaxMin}m · break-in lockout ${config.breakInLockoutMin}m · auto-clockout ${config.autoClockoutGraceMin}-${config.autoClockoutWindowMin}m after end · daily 13:00 UTC · backup 03:00 UTC (retention ${config.dbBackupRetentionDays}d)`);
   }
   console.log(`Managers: ${config.managerSlackIds.join(', ') || '(none configured)'}`);
   console.log(`Attendance channel: ${config.attendanceChannelId || '(none — DM only)'}`);

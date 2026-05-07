@@ -96,6 +96,13 @@ export const SETTING_DEFS: SettingDef[] = [
     min: 1, max: 90
   },
   {
+    key: 'dbBackupRetentionDays', label: 'Retención de backups (días)', type: 'int', group: 'misc',
+    apply: v => { (config as any).dbBackupRetentionDays = v; },
+    current: () => config.dbBackupRetentionDays,
+    hint: 'Backups automáticos de la DB cada día a las 03:00 UTC. Los más antiguos se borran.',
+    min: 7, max: 365
+  },
+  {
     key: 'displayTimezone', label: 'Timezone para mostrar', type: 'string', group: 'misc',
     apply: v => { (config as any).displayTimezone = v; },
     current: () => config.displayTimezone,

@@ -16,6 +16,7 @@ import { plannerRouter } from './routes/planner';
 import { buildSolicitudesRouter } from './routes/solicitudes';
 import { settingsRouter } from './routes/settings';
 import { auditoriaRouter } from './routes/auditoria';
+import { backupsRouter } from './routes/backups';
 import { calendarRouter } from './routes/calendar';
 import { calendarTokenRouter } from './routes/calendarToken';
 
@@ -80,6 +81,7 @@ export function startWeb(slackApp: SlackApp | null = null) {
   app.use('/planner', requireAuth, refreshSessionRole, plannerRouter);
   app.use('/settings', requireAuth, refreshSessionRole, settingsRouter);
   app.use('/auditoria', requireAuth, refreshSessionRole, auditoriaRouter);
+  app.use('/backups', requireAuth, refreshSessionRole, backupsRouter);
   app.use('/', requireAuth, refreshSessionRole, dashboardRouter);
 
   // Global error handler — must be last

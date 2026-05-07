@@ -35,6 +35,8 @@ export const config = {
   autoClockoutWindowMin: parseInt(process.env.AUTO_CLOCKOUT_WINDOW_MIN || '120', 10),
   // Days before next_evaluation_date when admins receive a reminder DM
   evaluationReminderDays: parseInt(process.env.EVALUATION_REMINDER_DAYS || '15', 10),
+  // Days to keep automatic DB backups before pruning
+  dbBackupRetentionDays: parseInt(process.env.DB_BACKUP_RETENTION_DAYS || '30', 10),
   web: {
     port: parseInt(process.env.WEB_PORT || '3000', 10),
     slackClientId: process.env.SLACK_WEB_CLIENT_ID || '',
