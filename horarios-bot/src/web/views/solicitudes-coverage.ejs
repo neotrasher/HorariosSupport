@@ -1,0 +1,161 @@
+<%- include('partials/head') %>
+<%- include('partials/nav', { user }) %>
+
+<%
+  function gradeCls(g) {
+    if (g === 'A') return 'bg-emerald-50 text-emerald-700 ring-emerald-200';
+    if (g === 'B') return 'bg-lime-50 text-lime-700 ring-lime-200';
+    if (g === 'C') return 'bg-amber-50 text-amber-700 ring-amber-200';
+    if (g === 'D') return 'bg-orange-50 text-orange-700 ring-orange-200';
+    if (g === 'F') return 'bg-rose-50 text-rose-700 ring-rose-200';
+    return 'bg-slate-50 text-slate-500 ring-slate-200';
+  }
+  function deptCls(d) {
+    return d === 'L1' ? 'bg-blue-100 text-blue-700'
+         : d === 'L2' ? 'bg-violet-100 text-violet-700'
+         : 'bg-slate-100 text-slate-600';
+  }
+%>
+
+<main class="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+  <div class="mb-5">
+    <a href="/solicitudes" class="text-xs text-slate-400 hover:text-slate-600">← Volver a solicitudes</a>
+    <h2 class="text-2xl font-bold text-slate-900 tracking-tight mt-2">Sugerencias de cobertura</h2>
+    <p class="text-sm text-slate-500 mt-1">
+      <span class="font-semibold text-slate-700"><%= report.requesterName %></span>
+      <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ml-1 <%= deptCls(report.requesterDept) %>"><%= report.requesterDept %></span>
+      · <%= report.type %> del <%= report.startDate %> al <%= report.endDate %>
+    </p>
+  </div>
+
+  <!-- Resumen -->
+  <%
+    const datesWithShifts = report.perDate.filter(d => d.shift);
+    const datesWithoutCoverage = datesWithShifts.filter(d => d.candidates.length === 0);
+    const totalCandidates = datesWithShifts.reduce((s, d) => s + d.candidates.length, 0);
+  %>
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+    <div class="bg-white rounded-xl border border-slate-200 shadow-card p-3">
+      <div class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Días en rango</div>
+      <div class="text-2xl font-extrabold text-slate-700 mt-1"><%= report.perDate.length %></div>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 shadow-card p-3">
+      <div class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Con turno asignado</div>
+      <div class="text-2xl font-extrabold text-amber-700 mt-1"><%= datesWithShifts.length %></div>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 shadow-card p-3">
+      <div class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Sin candidatos</div>
+      <div class="text-2xl font-extrabold <%= datesWithoutCoverage.length > 0 ? 'text-rose-700' : 'text-emerald-700' %> mt-1"><%= datesWithoutCoverage.length %></div>
+    </div>
+    <div class="bg-white rounded-xl border border-slate-200 shadow-card p-3">
+      <div class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Total sugerencias</div>
+      <div class="text-2xl font-extrabold text-emerald-700 mt-1"><%= totalCandidates %></div>
+    </div>
+  </div>
+
+  <% if (datesWithShifts.length === 0) { %>
+    <div class="bg-emerald-50 ring-1 ring-emerald-200 rounded-xl p-6 text-center">
+      <div class="text-2xl mb-1">✓</div>
+      <p class="text-sm text-emerald-800">El agente no tiene turnos asignados en este rango. <strong>Aprobar no requiere reasignación.</strong></p>
+    </div>
+  <% } %>
+
+  <% report.perDate.forEach(d => { %>
+    <% if (!d.shift) { %>
+      <div class="bg-slate-50/60 rounded-lg border border-slate-200 px-4 py-2 mb-2 flex items-center justify-between">
+        <div class="text-xs">
+          <span class="font-mono text-slate-600"><%= d.date %></span>
+          <% if (d.isWeekend) { %><span class="ml-1 text-[10px] text-slate-400">(fin de semana)</span><% } %>
+        </div>
+        <span class="text-[10px] text-slate-400">Sin turno · libre</span>
+      </div>
+    <% } else { %>
+      <div class="bg-white rounded-xl border border-slate-200 shadow-card mb-3 overflow-hidden">
+        <header class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center gap-3">
+          <div class="font-mono text-sm font-semibold text-slate-900"><%= d.date %></div>
+          <% if (d.isWeekend) { %><span class="text-[10px] text-slate-400">(fin de semana)</span><% } %>
+          <span class="ml-auto inline-flex items-center gap-1.5 text-xs">
+            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold <%= deptCls(d.shift.dept) %>"><%= d.shift.dept %></span>
+            <span class="font-mono text-slate-700"><%= d.shift.dept %>.<%= d.shift.shiftId %></span>
+            <span class="text-slate-500"><%= d.shift.label %></span>
+            <span class="text-[10px] text-slate-400 font-mono">
+              <%= String(Math.floor(d.shift.startHour)).padStart(2,'0') %>:00–<%= String(Math.floor(d.shift.endHour)).padStart(2,'0') %>:00 UTC
+            </span>
+          </span>
+        </header>
+        <% if (d.candidates.length === 0) { %>
+          <div class="px-4 py-6 text-center">
+            <div class="text-rose-700 text-sm font-semibold">⚠ Sin candidatos disponibles</div>
+            <p class="text-xs text-slate-500 mt-1">Todos los agentes del dept están ocupados, en time-off o de descanso este día.</p>
+          </div>
+        <% } else { %>
+          <div class="divide-y divide-slate-100">
+            <% d.candidates.slice(0, 5).forEach((c, idx) => { %>
+              <div class="px-4 py-3 flex items-start gap-3 <%= idx === 0 ? 'bg-emerald-50/30' : '' %>">
+                <div class="w-8 h-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold shrink-0">
+                  <%= (c.agent.name || '?').charAt(0).toUpperCase() %>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="font-semibold text-slate-900 text-sm"><%= c.agent.name %></span>
+                    <% if (c.punctualityGrade) { %>
+                      <span class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ring-1 <%= gradeCls(c.punctualityGrade) %>">
+                        <span class="font-mono"><%= c.punctualityScore %></span>·<%= c.punctualityGrade %>
+                      </span>
+                    <% } else { %>
+                      <span class="text-[10px] text-slate-400">sin score</span>
+                    <% } %>
+                    <% if (idx === 0) { %><span class="text-[10px] text-emerald-700 font-bold">★ recomendado</span><% } %>
+                  </div>
+                  <div class="flex flex-wrap gap-1.5 mt-1">
+                    <% c.reasons.forEach(r => { %>
+                      <span class="text-[10px] text-emerald-700">✓ <%= r %></span>
+                    <% }) %>
+                    <% c.warnings.forEach(w => { %>
+                      <span class="text-[10px] text-amber-700">⚠ <%= w %></span>
+                    <% }) %>
+                  </div>
+                </div>
+                <a href="/horarios?date=<%= d.date %>" class="shrink-0 text-xs text-slate-500 hover:text-slate-900">Editar día →</a>
+              </div>
+            <% }) %>
+            <% if (d.candidates.length > 5) { %>
+              <details class="px-4 py-2">
+                <summary class="text-[10px] text-slate-400 cursor-pointer hover:text-slate-600">+ <%= d.candidates.length - 5 %> candidato<%= d.candidates.length - 5 === 1 ? '' : 's' %> más</summary>
+                <div class="mt-2 divide-y divide-slate-100">
+                  <% d.candidates.slice(5).forEach(c => { %>
+                    <div class="py-2 flex items-center gap-2 text-xs">
+                      <span class="text-slate-700"><%= c.agent.name %></span>
+                      <% if (c.punctualityGrade) { %>
+                        <span class="text-[10px] text-slate-500"><%= c.punctualityScore %>·<%= c.punctualityGrade %></span>
+                      <% } %>
+                      <span class="text-[10px] text-slate-400">· <%= c.recentShiftsCount %> turnos 14d</span>
+                    </div>
+                  <% }) %>
+                </div>
+              </details>
+            <% } %>
+          </div>
+        <% } %>
+      </div>
+    <% } %>
+  <% }) %>
+
+  <!-- Acciones finales -->
+  <div class="mt-5 flex flex-wrap gap-2 justify-end">
+    <a href="/solicitudes" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg">Volver</a>
+    <% if (request.status === 'pending') { %>
+      <form method="post" action="/solicitudes/<%= request.id %>/approve" class="inline">
+        <button class="px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold shadow-card">
+          ✓ Aprobar solicitud
+        </button>
+      </form>
+    <% } %>
+  </div>
+
+  <p class="text-xs text-slate-400 mt-4">
+    El ranking pondera: score de puntualidad (90d) descendente, luego carga reciente (turnos en últimos 14d) ascendente.
+    Filtros duros: mismo dept, sin turno ese día, sin time-off aprobado, sin vacaciones/permiso programado.
+  </p>
+</main>
+<%- include('partials/foot') %>

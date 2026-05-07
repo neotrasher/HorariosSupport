@@ -37,6 +37,10 @@ export const config = {
   evaluationReminderDays: parseInt(process.env.EVALUATION_REMINDER_DAYS || '15', 10),
   // Days to keep automatic DB backups before pruning
   dbBackupRetentionDays: parseInt(process.env.DB_BACKUP_RETENTION_DAYS || '30', 10),
+  // Punctuality score weights — applied as: penalty = unmarked*Wu + late*Wl + autoClockout*Wa
+  punctualityWeightUnmarked:    parseFloat(process.env.PUNCT_WEIGHT_UNMARKED     || '1.0'),
+  punctualityWeightLate:        parseFloat(process.env.PUNCT_WEIGHT_LATE         || '0.4'),
+  punctualityWeightAutoClockout:parseFloat(process.env.PUNCT_WEIGHT_AUTO_CLOCKOUT|| '0.5'),
   web: {
     port: parseInt(process.env.WEB_PORT || '3000', 10),
     slackClientId: process.env.SLACK_WEB_CLIENT_ID || '',

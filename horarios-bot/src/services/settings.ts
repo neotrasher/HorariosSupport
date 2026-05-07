@@ -12,8 +12,8 @@ type RawSetting = { key: string; value: string | null };
 export type SettingDef = {
   key: string;
   label: string;
-  type: 'int' | 'string';
-  group: 'attendance' | 'cycle' | 'slack' | 'misc' | 'rrhh';
+  type: 'int' | 'string' | 'float';
+  group: 'attendance' | 'cycle' | 'slack' | 'misc' | 'rrhh' | 'puntualidad';
   apply: (value: any) => void; // mutate config
   current: () => any;
   hint?: string;
@@ -96,6 +96,27 @@ export const SETTING_DEFS: SettingDef[] = [
     min: 1, max: 90
   },
   {
+    key: 'punctualityWeightUnmarked', label: 'Peso: sin marcar', type: 'float', group: 'puntualidad',
+    apply: v => { (config as any).punctualityWeightUnmarked = v; },
+    current: () => config.punctualityWeightUnmarked,
+    hint: 'Penalización por turno sin clock-in (0.0 = ignora, 1.0 = máx).',
+    min: 0, max: 2
+  },
+  {
+    key: 'punctualityWeightLate', label: 'Peso: tarde', type: 'float', group: 'puntualidad',
+    apply: v => { (config as any).punctualityWeightLate = v; },
+    current: () => config.punctualityWeightLate,
+    hint: 'Penalización por llegar tarde (más allá del umbral de tardanza).',
+    min: 0, max: 2
+  },
+  {
+    key: 'punctualityWeightAutoClockout', label: 'Peso: auto-clockout', type: 'float', group: 'puntualidad',
+    apply: v => { (config as any).punctualityWeightAutoClockout = v; },
+    current: () => config.punctualityWeightAutoClockout,
+    hint: 'Penalización cuando el agente olvidó hacer clock-out y el sistema lo cerró.',
+    min: 0, max: 2
+  },
+  {
     key: 'dbBackupRetentionDays', label: 'Retención de backups (días)', type: 'int', group: 'misc',
     apply: v => { (config as any).dbBackupRetentionDays = v; },
     current: () => config.dbBackupRetentionDays,
@@ -136,8 +157,10 @@ export function applyDbSettings() {
     if (r.value === null) continue;
     const def = DEFS_BY_KEY.get(r.key);
     if (!def) continue;
-    const parsed = def.type === 'int' ? parseInt(r.value, 10) : r.value;
-    if (def.type === 'int' && Number.isNaN(parsed)) continue;
+    let parsed: any = r.value;
+    if (def.type === 'int') parsed = parseInt(r.value, 10);
+    else if (def.type === 'float') parsed = parseFloat(r.value);
+    if ((def.type === 'int' || def.type === 'float') && Number.isNaN(parsed)) continue;
     def.apply(parsed);
   }
 }
@@ -148,6 +171,13 @@ export function validateAndApply(key: string, raw: string): { ok: true; value: a
   if (def.type === 'int') {
     const n = parseInt(raw, 10);
     if (Number.isNaN(n)) return { ok: false, error: 'expected integer' };
+    if (def.min !== undefined && n < def.min) return { ok: false, error: `min ${def.min}` };
+    if (def.max !== undefined && n > def.max) return { ok: false, error: `max ${def.max}` };
+    return { ok: true, value: n };
+  }
+  if (def.type === 'float') {
+    const n = parseFloat(raw);
+    if (Number.isNaN(n)) return { ok: false, error: 'expected number' };
     if (def.min !== undefined && n < def.min) return { ok: false, error: `min ${def.min}` };
     if (def.max !== undefined && n > def.max) return { ok: false, error: `max ${def.max}` };
     return { ok: true, value: n };

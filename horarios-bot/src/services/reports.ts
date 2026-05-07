@@ -31,10 +31,10 @@ export type AgentReport = {
 
 /**
  * Compute a punctuality score (0-100) from already-aggregated metrics.
- * Penalty weights:
- *   • unmarked      → 1.0  (no clock-in at all)
- *   • late          → 0.4  (clocked in but past lateThreshold)
- *   • autoClockout  → 0.5  (forgot to clock out, system did it)
+ * Penalty weights are read from config (editable in /settings):
+ *   • unmarked      → config.punctualityWeightUnmarked
+ *   • late          → config.punctualityWeightLate
+ *   • autoClockout  → config.punctualityWeightAutoClockout
  * Letter grade: A ≥95, B ≥85, C ≥70, D ≥50, F <50.
  */
 export function computePunctuality(opts: {
@@ -47,9 +47,9 @@ export function computePunctuality(opts: {
     return { score: null, grade: null, pastShifts: 0 };
   }
   const penalty =
-    1.0 * opts.unmarked +
-    0.4 * opts.late +
-    0.5 * opts.autoClockouts;
+    config.punctualityWeightUnmarked     * opts.unmarked +
+    config.punctualityWeightLate         * opts.late +
+    config.punctualityWeightAutoClockout * opts.autoClockouts;
   const raw = 100 * (1 - penalty / opts.pastShifts);
   const score = Math.max(0, Math.min(100, Math.round(raw)));
   let grade: PunctualityScore['grade'];

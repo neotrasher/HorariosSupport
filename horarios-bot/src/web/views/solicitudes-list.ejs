@@ -103,6 +103,7 @@
                 <% if (r.status === 'pending') { %>
                   <% const canResolve = isManager && (r.requester_slack_id !== user.slack_id || user.role === 'admin'); %>
                   <% if (canResolve) { %>
+                    <a href="/solicitudes/<%= r.id %>/coverage" class="text-sky-700 hover:text-sky-800 text-xs font-semibold mr-2" title="Ver candidatos para cubrir">📋 Cobertura</a>
                     <form method="post" action="/solicitudes/<%= r.id %>/approve" class="inline">
                       <button class="text-emerald-700 hover:text-emerald-800 text-xs font-semibold mr-2">Aprobar</button>
                     </form>
@@ -181,6 +182,7 @@
             <% if (showActions) { %>
               <div class="flex flex-wrap gap-2 items-center">
                 <% if (r.status === 'pending' && canResolveM) { %>
+                  <a href="/solicitudes/<%= r.id %>/coverage" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-sky-50 text-sky-700 ring-1 ring-sky-200 hover:bg-sky-100 inline-block">📋 Cobertura</a>
                   <form method="post" action="/solicitudes/<%= r.id %>/approve" class="inline">
                     <button class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100">✓ Aprobar</button>
                   </form>

@@ -7,6 +7,7 @@
     cycle: 'Ciclo de turnos',
     slack: 'Slack',
     rrhh: 'RRHH',
+    puntualidad: 'Score de puntualidad',
     misc: 'Misc'
   };
 %>
@@ -38,7 +39,8 @@
                 <p class="text-[10px] text-slate-300 mt-0.5 font-mono"><%= r.key %></p>
               </div>
               <div class="w-48 shrink-0">
-                <input id="f_<%= r.key %>" name="<%= r.key %>" type="<%= r.type === 'int' ? 'number' : 'text' %>"
+                <input id="f_<%= r.key %>" name="<%= r.key %>" type="<%= (r.type === 'int' || r.type === 'float') ? 'number' : 'text' %>"
+                       <%= r.type === 'float' ? 'step="0.1"' : '' %>
                        <%= r.min !== undefined ? `min="${r.min}"` : '' %>
                        <%= r.max !== undefined ? `max="${r.max}"` : '' %>
                        value="<%= r.value %>"

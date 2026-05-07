@@ -10,6 +10,7 @@ import {
   TimeOffStatus
 } from '../../services/timeOff';
 import { logAudit } from '../../services/audit';
+import { suggestCoverage } from '../../services/coverage';
 import {
   timeOffApproverBlocks, timeOffRequesterBlocks, timeOffResolvedBlocks
 } from '../../ui/blocks';
@@ -259,6 +260,30 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
     })();
 
     res.redirect('/solicitudes');
+  });
+
+  // Smart coverage suggestions for a pending time-off request (manager/admin only).
+  router.get('/:id/coverage', requireManager, (req, res) => {
+    const user = (req.session as any).user;
+    const id = parseInt(req.params.id, 10);
+    const r = getRequest(id);
+    if (!r) {
+      res.status(404).render('error', { message: 'Solicitud no encontrada.', user });
+      return;
+    }
+    const report = suggestCoverage({
+      requesterSlackId: r.requester_slack_id,
+      startDate: r.start_date,
+      endDate: r.end_date,
+      type: r.type
+    });
+    if (!report) {
+      res.status(400).render('error', { message: 'No se pudo calcular cobertura.', user });
+      return;
+    }
+    res.render('solicitudes-coverage', {
+      user, request: r, report
+    });
   });
 
   router.post('/:id/approve', requireManager, async (req, res) => {
