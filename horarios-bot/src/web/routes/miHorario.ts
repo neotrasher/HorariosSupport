@@ -5,6 +5,7 @@ import { getAgentBySlackId } from '../../services/agents';
 import {
   getShiftsForAgentRange, getDaysOffForAgentRange, shiftWindow
 } from '../../services/schedule';
+import { getTokenForAgent } from '../../services/calendarTokens';
 
 export const miHorarioRouter = Router();
 
@@ -95,6 +96,9 @@ miHorarioRouter.get('/', (req, res) => {
   const totalDaysOff = daysOff.length;
   const isEmpty = totalShifts === 0 && totalDaysOff === 0;
 
+  // Calendar sync token (may be null if not yet generated)
+  const calToken = agent ? getTokenForAgent(user.slack_id) : null;
+
   res.render('mi-horario', {
     user,
     agent,
@@ -106,6 +110,7 @@ miHorarioRouter.get('/', (req, res) => {
     totalShifts,
     totalDaysOff,
     isEmpty,
-    localTz
+    localTz,
+    calToken: calToken?.token ?? null
   });
 });

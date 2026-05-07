@@ -16,6 +16,8 @@ import { plannerRouter } from './routes/planner';
 import { buildSolicitudesRouter } from './routes/solicitudes';
 import { settingsRouter } from './routes/settings';
 import { auditoriaRouter } from './routes/auditoria';
+import { calendarRouter } from './routes/calendar';
+import { calendarTokenRouter } from './routes/calendarToken';
 
 const SQLiteStore = require('connect-sqlite3')(session);
 
@@ -55,6 +57,9 @@ export function startWeb(slackApp: SlackApp | null = null) {
     res.json({ ok: true, ts: new Date().toISOString() });
   });
 
+  // Public ICS calendar feed — no auth required (protected by UUID token in URL)
+  app.use('/cal', calendarRouter);
+
   // Rate limit OAuth endpoints to prevent abuse
   const authLimiter = rateLimit({
     windowMs: 60 * 1000,
@@ -65,6 +70,7 @@ export function startWeb(slackApp: SlackApp | null = null) {
   });
   app.use('/auth', authLimiter, authRouter);
 
+  app.use('/cal-token', requireAuth, refreshSessionRole, calendarTokenRouter);
   app.use('/mi-horario', requireAuth, refreshSessionRole, miHorarioRouter);
   app.use('/horarios/agente', requireAuth, refreshSessionRole, agenteRouter);
   app.use('/horarios', requireAuth, refreshSessionRole, buildHorariosRouter(slackApp));

@@ -89,6 +89,85 @@
     </p>
   <% } %>
 
+  <!-- Calendar Sync -->
+  <% if (agent) { %>
+  <div id="cal-sync" class="mt-6 bg-white rounded-xl border border-slate-200 shadow-card p-4">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="text-base">📅</span>
+      <h3 class="text-sm font-bold text-slate-900">Sincronizar con Google Calendar / Outlook</h3>
+    </div>
+    <% if (!calToken) { %>
+      <p class="text-sm text-slate-500 mb-3">Genera una URL privada para suscribir tu horario a cualquier app de calendario. Se actualiza automaticamente.</p>
+      <form method="post" action="/cal-token/generate">
+        <button type="submit" class="inline-flex items-center gap-1.5 px-4 py-2 bg-ink-800 hover:bg-ink-700 text-white text-sm font-semibold rounded-lg shadow-card transition-colors">
+          <span>📅</span> Generar URL de calendario
+        </button>
+      </form>
+    <% } else { %>
+      <p class="text-xs text-slate-500 mb-2">Copia esta URL y pégala en <strong>Google Calendar → Otros calendarios → Desde URL</strong>, o en cualquier app compatible con ICS.</p>
+      <div class="flex flex-col sm:flex-row gap-2 mb-3">
+        <input id="calUrl" type="text" readonly
+          value="<%= `${typeof calBaseUrl !== 'undefined' ? calBaseUrl : ''}/cal/${calToken}.ics` %>"
+          class="flex-1 text-xs font-mono bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-700 select-all cursor-text">
+        <button type="button" onclick="copyCalUrl()" id="copyBtn"
+          class="shrink-0 px-4 py-2 bg-ink-800 hover:bg-ink-700 text-white text-xs font-semibold rounded-lg shadow-card transition-colors">
+          Copiar URL
+        </button>
+      </div>
+      <div class="flex flex-wrap gap-3 text-xs text-slate-500">
+        <span>✓ Se actualiza automaticamente (cada ~1h)</span>
+        <span>✓ Solo lectura · incluye ±90 dias</span>
+      </div>
+      <details class="mt-3">
+        <summary class="text-xs text-slate-400 cursor-pointer hover:text-slate-600 select-none">Opciones avanzadas</summary>
+        <div class="mt-2 flex flex-wrap gap-2">
+          <form method="post" action="/cal-token/generate" class="inline">
+            <button type="submit" class="text-xs px-3 py-1.5 border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50"
+              onclick="return confirm('¿Rotar URL? El enlace anterior dejará de funcionar.')">
+              🔄 Rotar URL
+            </button>
+          </form>
+          <form method="post" action="/cal-token/revoke" class="inline">
+            <button type="submit" class="text-xs px-3 py-1.5 border border-rose-200 rounded-lg text-rose-600 hover:bg-rose-50"
+              onclick="return confirm('¿Revocar URL? El calendario dejará de sincronizarse.')">
+              🗑 Revocar acceso
+            </button>
+          </form>
+        </div>
+      </details>
+    <% } %>
+  </div>
+  <% } %>
+
+  <script>
+  (function() {
+    // Resolve base URL from current page location so it works on any domain
+    const calInput = document.getElementById('calUrl');
+    if (calInput) {
+      const token = calInput.value.split('/cal/')[1];
+      if (token) calInput.value = window.location.origin + '/cal/' + token;
+    }
+  })();
+  function copyCalUrl() {
+    const input = document.getElementById('calUrl');
+    const btn = document.getElementById('copyBtn');
+    if (!input || !btn) return;
+    navigator.clipboard.writeText(input.value).then(() => {
+      btn.textContent = '✓ Copiado';
+      btn.classList.add('bg-emerald-700');
+      btn.classList.remove('bg-ink-800', 'hover:bg-ink-700');
+      setTimeout(() => {
+        btn.textContent = 'Copiar URL';
+        btn.classList.remove('bg-emerald-700');
+        btn.classList.add('bg-ink-800', 'hover:bg-ink-700');
+      }, 2000);
+    }).catch(() => {
+      input.select();
+      document.execCommand('copy');
+    });
+  }
+  </script>
+
   <script>
   (function() {
     const KEY = 'tzPref';

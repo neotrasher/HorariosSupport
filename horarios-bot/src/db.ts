@@ -203,6 +203,15 @@ export function migrate() {
     CREATE INDEX IF NOT EXISTS idx_audit_actor ON audit_log(actor_slack_id, ts DESC);
     CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_log(action, ts DESC);
     CREATE INDEX IF NOT EXISTS idx_audit_target ON audit_log(target_kind, target_id, ts DESC);
+
+    -- ICS calendar feed tokens: one token per agent, public URL /cal/:token.ics
+    CREATE TABLE IF NOT EXISTS agent_calendar_tokens (
+      slack_id    TEXT PRIMARY KEY,
+      token       TEXT NOT NULL UNIQUE,
+      created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+      last_used_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_cal_token ON agent_calendar_tokens(token);
   `);
 }
 
