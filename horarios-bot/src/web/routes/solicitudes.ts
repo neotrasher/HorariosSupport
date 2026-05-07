@@ -26,11 +26,13 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
   router.get('/', (req, res) => {
     const user = (req.session as any).user;
     const filterStatus = (req.query.status as string) as TimeOffStatus | undefined;
+    const filterAgent = ((req.query.agent as string) || '').trim();
 
     const isPriv = user.role === 'manager' || user.role === 'admin';
     let requests;
     if (isPriv) {
       requests = filterStatus ? listAll({ status: filterStatus }) : listAll();
+      if (filterAgent) requests = requests.filter(r => r.requester_slack_id === filterAgent);
     } else {
       requests = listByRequester(user.slack_id);
     }
@@ -50,10 +52,20 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
       };
     });
 
+    // For privileged users, list of agents with at least one request (for the filter dropdown)
+    const agentOptions = isPriv
+      ? listAgents()
+          .filter(a => a.active !== 0)
+          .map(a => ({ slack_id: a.slack_id, name: a.name }))
+          .sort((a, b) => a.name.localeCompare(b.name))
+      : [];
+
     res.render('solicitudes-list', {
       user,
       requests: enriched,
       filterStatus: filterStatus || '',
+      filterAgent,
+      agentOptions,
       pendingCount,
       isManager: isPriv
     });

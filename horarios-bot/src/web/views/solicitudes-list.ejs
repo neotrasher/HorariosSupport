@@ -34,16 +34,40 @@
     </a>
   </div>
 
-  <% if (isManager) { %>
-    <div class="flex items-center gap-2 mb-5 text-sm flex-wrap">
-      <span class="text-slate-500 shrink-0">Filtrar:</span>
-      <% const filters = [['','Todas'],['pending','Pendientes'],['approved','Aprobadas'],['rejected','Rechazadas'],['cancelled','Canceladas']] %>
-      <% filters.forEach(([val, lbl]) => { %>
-        <a href="/solicitudes<%= val ? '?status=' + val : '' %>"
-           class="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap <%= filterStatus === val ? 'bg-ink-800 text-white shadow-card' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50' %>">
-          <%= lbl %>
-        </a>
-      <% }) %>
+  <% if (isManager) {
+       // Helper: build a query string preserving other active filters
+       function buildQs(overrides) {
+         const params = { status: filterStatus, agent: filterAgent, ...overrides };
+         const parts = Object.entries(params)
+           .filter(([k, v]) => v !== '' && v !== undefined && v !== null)
+           .map(([k, v]) => `${k}=${encodeURIComponent(v)}`);
+         return parts.length ? '?' + parts.join('&') : '';
+       }
+  %>
+    <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-5 text-sm">
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="text-slate-500 shrink-0">Estado:</span>
+        <% const filters = [['','Todas'],['pending','Pendientes'],['approved','Aprobadas'],['rejected','Rechazadas'],['cancelled','Canceladas']] %>
+        <% filters.forEach(([val, lbl]) => { %>
+          <a href="/solicitudes<%= buildQs({ status: val }) %>"
+             class="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap <%= filterStatus === val ? 'bg-ink-800 text-white shadow-card' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50' %>">
+            <%= lbl %>
+          </a>
+        <% }) %>
+      </div>
+      <div class="flex items-center gap-2 sm:ml-auto">
+        <label class="text-slate-500 shrink-0 text-xs">Agente:</label>
+        <select onchange="location.href='/solicitudes' + (this.value ? ('<%= filterStatus ? '?status=' + filterStatus + '&' : '?' %>agent=' + encodeURIComponent(this.value)) : '<%= filterStatus ? '?status=' + filterStatus : '' %>')"
+                class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white">
+          <option value="">Todos</option>
+          <% agentOptions.forEach(a => { %>
+            <option value="<%= a.slack_id %>" <%= filterAgent === a.slack_id ? 'selected' : '' %>><%= a.name %></option>
+          <% }) %>
+        </select>
+        <% if (filterAgent) { %>
+          <a href="/solicitudes<%= buildQs({ agent: '' }) %>" class="text-xs text-slate-500 hover:text-rose-600" title="Quitar filtro">×</a>
+        <% } %>
+      </div>
     </div>
   <% } %>
 
