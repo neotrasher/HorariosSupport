@@ -195,16 +195,12 @@ function resolvePreset(key: string, now: DateTime): { start: DateTime; end: Date
 
 function formatRangeLabel(start: DateTime, end: DateTime): string {
   const sameMonth = start.year === end.year && start.month === end.month;
-  const sameYear = start.year === end.year;
   // Whole month?
   if (sameMonth && start.day === 1 && end.day === end.endOf('month').day) {
     return start.setLocale('es').toFormat('LLLL yyyy');
   }
-  // Same year/different days
-  if (sameYear) {
-    return `${start.toFormat('yyyy-LL-dd')} → ${end.toFormat('yyyy-LL-dd')}`;
-  }
-  return `${start.toFormat('yyyy-LL-dd')} → ${end.toFormat('yyyy-LL-dd')}`;
+  // dd/MM/yyyy display range
+  return `${start.toFormat('dd/LL/yyyy')} → ${end.toFormat('dd/LL/yyyy')}`;
 }
 
 function aggregate(rows: ReturnType<typeof buildReports>) {

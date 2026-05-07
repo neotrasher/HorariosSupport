@@ -47,7 +47,7 @@
         <tbody class="divide-y divide-slate-100">
           <% backups.forEach(b => { %>
             <tr class="hover:bg-slate-50">
-              <td class="px-4 py-2 font-mono text-slate-700"><%= b.date %></td>
+              <td class="px-4 py-2 font-mono text-slate-700"><%= fmtDate(b.date) %></td>
               <td class="px-4 py-2 font-mono text-xs text-slate-500"><%= b.name %></td>
               <td class="px-4 py-2 text-right font-mono text-slate-600"><%= fmtSize(b.sizeBytes) %></td>
               <td class="px-4 py-2 text-right">

@@ -104,11 +104,11 @@
               </td>
               <td class="px-3 py-3 text-slate-700 text-xs">
                 <% if (r.start_date === r.end_date) { %>
-                  <span class="font-mono"><%= r.start_date %></span>
+                  <span class="font-mono"><%= fmtDate(r.start_date) %></span>
                 <% } else { %>
-                  <span class="font-mono"><%= r.start_date %></span>
+                  <span class="font-mono"><%= fmtDate(r.start_date) %></span>
                   <span class="text-slate-400">→</span>
-                  <span class="font-mono"><%= r.end_date %></span>
+                  <span class="font-mono"><%= fmtDate(r.end_date) %></span>
                 <% } %>
                 <span class="text-slate-400 ml-1">(<%= r.days %>d)</span>
               </td>
@@ -122,7 +122,7 @@
                   <div class="text-[10px] text-slate-500 mt-1 italic"><%= r.rejection_reason %></div>
                 <% } %>
               </td>
-              <td class="px-3 py-3 text-slate-500 text-xs"><%= r.createdLocal %></td>
+              <td class="px-3 py-3 text-slate-500 text-xs"><%= fmtDateTime(r.createdLocal) %></td>
               <td class="px-4 py-3 text-right whitespace-nowrap">
                 <% if (r.status === 'pending') { %>
                   <% const canResolve = isManager && (r.requester_slack_id !== user.slack_id || user.role === 'admin'); %>
@@ -186,9 +186,9 @@
           </div>
           <div class="text-xs text-slate-700 mb-1">
             <% if (r.start_date === r.end_date) { %>
-              <span class="font-mono"><%= r.start_date %></span>
+              <span class="font-mono"><%= fmtDate(r.start_date) %></span>
             <% } else { %>
-              <span class="font-mono"><%= r.start_date %></span> <span class="text-slate-400">→</span> <span class="font-mono"><%= r.end_date %></span>
+              <span class="font-mono"><%= fmtDate(r.start_date) %></span> <span class="text-slate-400">→</span> <span class="font-mono"><%= fmtDate(r.end_date) %></span>
             <% } %>
             <span class="text-slate-400">(<%= r.days %>d)</span>
           </div>
@@ -199,7 +199,7 @@
             <p class="text-[11px] text-rose-700 italic mt-1">Rechazo: <%= r.rejection_reason %></p>
           <% } %>
           <div class="mt-3 pt-2 border-t border-slate-100 flex flex-col gap-2">
-            <span class="text-[10px] text-slate-400"><%= r.createdLocal %></span>
+            <span class="text-[10px] text-slate-400"><%= fmtDateTime(r.createdLocal) %></span>
             <% const canResolveM = isManager && (r.requester_slack_id !== user.slack_id || user.role === 'admin'); %>
             <% const canCancelM = r.status === 'pending' && (r.requester_slack_id === user.slack_id || isManager); %>
             <% const showActions = (r.status === 'pending' && (canResolveM || canCancelM)) || isManager; %>

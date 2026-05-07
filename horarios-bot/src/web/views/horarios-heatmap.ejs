@@ -104,7 +104,7 @@
             %>
               <td class="text-center font-mono font-semibold"
                   style="background: <%= col.bg %>; color: <%= col.text %>; padding: 6px 0;"
-                  title="<%= date %> <%= String(h).padStart(2,'0') %>:00 UTC · <%= c %> agente<%= c === 1 ? '' : 's' %>">
+                  title="<%= fmtDate(date) %> <%= String(h).padStart(2,'0') %>:00 UTC · <%= c %> agente<%= c === 1 ? '' : 's' %>">
                 <%= c || '' %>
               </td>
             <% } %>

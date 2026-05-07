@@ -97,7 +97,7 @@
                     <span class="w-1.5 h-1.5 rounded-full <%= s.dot %>"></span>
                     <%= actionLabels[r.action] || r.action %>
                   </span>
-                  <span class="text-[10px] text-slate-400 font-mono ml-auto"><%= r.tsLabel %></span>
+                  <span class="text-[10px] text-slate-400 font-mono ml-auto"><%= fmtDateTime(r.tsLabel) %></span>
                 </div>
                 <p class="text-sm text-slate-700"><%= r.summary %></p>
                 <% if (r.payload) { %>

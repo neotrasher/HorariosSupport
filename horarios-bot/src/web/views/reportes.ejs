@@ -232,21 +232,21 @@
               <td class="px-3 py-3 text-right text-slate-700 font-medium"><%= r.shifts %></td>
               <td class="px-3 py-3 text-right text-emerald-700 font-medium"><%= r.completed %></td>
               <td class="px-3 py-3 text-right <%= r.unmarked.count > 0 ? 'text-rose-700 font-semibold cursor-help' : 'text-slate-400' %>"
-                  <% if (r.unmarked.count > 0) { %>title="<%= r.unmarked.dates.join(', ') %>"<% } %>>
+                  <% if (r.unmarked.count > 0) { %>title="<%= r.unmarked.dates.map(d => fmtDate(d)).join(', ') %>"<% } %>>
                 <%= r.unmarked.count %>
               </td>
               <td class="px-3 py-3 text-right <%= r.late.count > 0 ? 'text-amber-700 font-medium cursor-help' : 'text-slate-400' %>"
-                  <% if (r.late.count > 0) { %>title="<%= r.late.incidents.map(i => i.date + ' (+' + i.min + 'm)').join(', ') %>"<% } %>>
+                  <% if (r.late.count > 0) { %>title="<%= r.late.incidents.map(i => fmtDate(i.date) + ' (+' + i.min + 'm)').join(', ') %>"<% } %>>
                 <%= r.late.count %>
               </td>
               <td class="px-3 py-3 text-right text-slate-500 text-xs font-mono"><%= r.late.totalMin || '—' %></td>
               <td class="px-3 py-3 text-right <%= r.breakExcess.count > 0 ? 'text-orange-700 font-medium cursor-help' : 'text-slate-400' %>"
-                  <% if (r.breakExcess.count > 0) { %>title="<%= r.breakExcess.incidents.map(i => i.date + ' (+' + i.min + 'm)').join(', ') %>"<% } %>>
+                  <% if (r.breakExcess.count > 0) { %>title="<%= r.breakExcess.incidents.map(i => fmtDate(i.date) + ' (+' + i.min + 'm)').join(', ') %>"<% } %>>
                 <%= r.breakExcess.count %>
               </td>
               <td class="px-3 py-3 text-right text-slate-500 text-xs font-mono"><%= r.breakExcess.totalMin || '—' %></td>
               <td class="px-3 py-3 text-right <%= r.autoClockouts.count > 0 ? 'text-amber-700 font-medium cursor-help' : 'text-slate-400' %>"
-                  <% if (r.autoClockouts.count > 0) { %>title="<%= r.autoClockouts.dates.join(', ') %>"<% } %>>
+                  <% if (r.autoClockouts.count > 0) { %>title="<%= r.autoClockouts.dates.map(d => fmtDate(d)).join(', ') %>"<% } %>>
                 <%= r.autoClockouts.count %>
               </td>
               <td class="px-3 py-3 text-right text-slate-700"><%= r.permisoDays || '—' %></td>

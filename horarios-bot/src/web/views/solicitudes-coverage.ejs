@@ -24,7 +24,7 @@
     <p class="text-sm text-slate-500 mt-1">
       <span class="font-semibold text-slate-700"><%= report.requesterName %></span>
       <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ml-1 <%= deptCls(report.requesterDept) %>"><%= report.requesterDept %></span>
-      · <%= report.type %> del <%= report.startDate %> al <%= report.endDate %>
+      · <%= report.type %> del <%= fmtDate(report.startDate) %> al <%= fmtDate(report.endDate) %>
     </p>
   </div>
 
@@ -64,7 +64,7 @@
     <% if (!d.shift) { %>
       <div class="bg-slate-50/60 rounded-lg border border-slate-200 px-4 py-2 mb-2 flex items-center justify-between">
         <div class="text-xs">
-          <span class="font-mono text-slate-600"><%= d.date %></span>
+          <span class="font-mono text-slate-600"><%= fmtDate(d.date) %></span>
           <% if (d.isWeekend) { %><span class="ml-1 text-[10px] text-slate-400">(fin de semana)</span><% } %>
         </div>
         <span class="text-[10px] text-slate-400">Sin turno · libre</span>
@@ -72,7 +72,7 @@
     <% } else { %>
       <div class="bg-white rounded-xl border border-slate-200 shadow-card mb-3 overflow-hidden">
         <header class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center gap-3">
-          <div class="font-mono text-sm font-semibold text-slate-900"><%= d.date %></div>
+          <div class="font-mono text-sm font-semibold text-slate-900"><%= fmtDate(d.date) %></div>
           <% if (d.isWeekend) { %><span class="text-[10px] text-slate-400">(fin de semana)</span><% } %>
           <span class="ml-auto inline-flex items-center gap-1.5 text-xs">
             <span class="px-1.5 py-0.5 rounded text-[10px] font-bold <%= deptCls(d.shift.dept) %>"><%= d.shift.dept %></span>

@@ -38,9 +38,27 @@ export function startWeb(slackApp: SlackApp | null = null) {
   app.use(express.urlencoded({ extended: true }));
   app.use(express.json());
 
-  // Inject path into views so the nav can highlight active links
+  // Inject path + date format helpers into views
+  // fmtDate('2026-05-07') → '07/05/2026'
+  // fmtDateTime('2026-05-07 14:30') → '07/05/2026 14:30'
+  function fmtDate(s: any): string {
+    if (!s) return '';
+    const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : String(s);
+  }
+  function fmtDateTime(s: any): string {
+    if (!s) return '';
+    const date = fmtDate(s);
+    if (!date) return '';
+    const t = String(s).match(/(\d{2}:\d{2})/);
+    // Preserve trailing UTC label if present
+    const utcSuffix = String(s).includes('UTC') ? ' UTC' : '';
+    return t ? `${date} ${t[1]}${utcSuffix}` : date;
+  }
   app.use((req, res, next) => {
     res.locals.currentPath = req.path;
+    res.locals.fmtDate = fmtDate;
+    res.locals.fmtDateTime = fmtDateTime;
     next();
   });
 

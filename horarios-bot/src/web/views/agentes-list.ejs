@@ -50,7 +50,7 @@
           <div class="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[11px] text-slate-600">
             <% if (a.email_company) { %><span>📧 <%= a.email_company %></span><% } %>
             <% if (a.phone) { %><span>📞 <%= a.phone %></span><% } %>
-            <% if (a.start_date) { %><span class="text-slate-400">↗ <%= a.start_date %></span><% } %>
+            <% if (a.start_date) { %><span class="text-slate-400">↗ <%= fmtDate(a.start_date) %></span><% } %>
             <% if (bal && bal.entitled !== null) { %>
               <span class="font-mono <%= bal.available <= 0 ? 'text-rose-700' : bal.available <= 3 ? 'text-amber-700' : 'text-emerald-700' %>">🌴 <%= bal.used %>/<%= bal.entitled %></span>
             <% } %>
@@ -108,10 +108,10 @@
               <% if (!isAdmin) { %>
                 <td class="px-3 py-2 text-slate-600 text-xs"><%= a.email_company || '—' %></td>
                 <td class="px-3 py-2 text-slate-600 text-xs"><%= a.phone || '—' %></td>
-                <td class="px-3 py-2 text-slate-600 text-xs"><%= a.start_date || '—' %></td>
+                <td class="px-3 py-2 text-slate-600 text-xs"><%= a.start_date ? fmtDate(a.start_date) : '—' %></td>
               <% } else { %>
                 <!-- Fecha ingreso (read-only en la tabla; editable desde el detalle) -->
-                <td class="px-3 py-2 text-slate-600 text-xs"><%= a.start_date || '—' %></td>
+                <td class="px-3 py-2 text-slate-600 text-xs"><%= a.start_date ? fmtDate(a.start_date) : '—' %></td>
                 <!-- Salario anterior (historico, read-only) -->
                 <td class="px-3 py-2 text-right text-xs font-mono text-slate-500">
                   <%= a.salary_previous != null ? Number(a.salary_previous).toLocaleString() : '—' %>
@@ -135,7 +135,7 @@
                   </td>
                   <td class="px-2 py-1 text-right text-[10px] text-slate-500">
                     <% if (a.last_salary_adjustment_date) { %>
-                      <%= a.last_salary_adjustment_date %>
+                      <%= fmtDate(a.last_salary_adjustment_date) %>
                       <% if (a.last_adjustment_pct != null) { %>
                         <div class="text-slate-400"><%= a.last_adjustment_pct %>%</div>
                       <% } %>
