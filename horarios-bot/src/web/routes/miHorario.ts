@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { DateTime } from 'luxon';
 import { config } from '../../config';
-import { getAgentBySlackId } from '../../services/agents';
+import { getAgentBySlackId, updateAgentFields } from '../../services/agents';
 import {
   getShiftsForAgentRange, getDaysOffForAgentRange, shiftWindow
 } from '../../services/schedule';
@@ -145,4 +145,32 @@ miHorarioRouter.get('/', (req, res) => {
     vacationBalance,
     punctuality
   });
+});
+
+/**
+ * Self-service: agent updates their own timezone (no need to ask the manager).
+ * Empty string clears the override (falls back to system default).
+ */
+miHorarioRouter.post('/timezone', (req, res) => {
+  const user = (req.session as any).user;
+  const agent = getAgentBySlackId(user.slack_id);
+  if (!agent) {
+    res.status(404).render('error', { message: 'Agente no vinculado.', user });
+    return;
+  }
+  const tz = (req.body.timezone as string || '').trim();
+  // Whitelist: must be one of the supported IANA names (or empty to clear)
+  const ALLOWED = [
+    '', 'UTC',
+    'America/Bogota', 'America/Caracas', 'America/Mexico_City',
+    'America/Argentina/Buenos_Aires', 'America/Lima', 'America/Santiago',
+    'America/Sao_Paulo', 'America/New_York', 'America/Los_Angeles',
+    'Europe/Madrid'
+  ];
+  if (!ALLOWED.includes(tz)) {
+    res.status(400).render('error', { message: 'Zona horaria no soportada.', user });
+    return;
+  }
+  updateAgentFields(agent.slack_id, { timezone: tz || null });
+  res.redirect('/mi-horario#tz-section');
 });
