@@ -4,6 +4,7 @@ import { config } from '../../config';
 import { listAgents } from '../../services/agents';
 import { getAllShiftsForDate, shiftWindow } from '../../services/schedule';
 import { getShiftState } from '../../services/punches';
+import { computeAdminInsights } from '../../services/adminInsights';
 
 export const dashboardRouter = Router();
 
@@ -109,11 +110,17 @@ dashboardRouter.get('/', (req, res) => {
     total: agents.length
   };
 
+  // Admin/manager-only insights panel — computed only when needed
+  const isPriv = user.role === 'manager' || user.role === 'admin';
+  const insights = isPriv ? computeAdminInsights() : null;
+
   res.render('dashboard', {
     user,
     now: now.toFormat('yyyy-LL-dd HH:mm'),
     rows,
     counts,
-    isManager: user.role === 'manager'
+    isManager: user.role === 'manager',
+    isAdmin: user.role === 'admin',
+    insights
   });
 });

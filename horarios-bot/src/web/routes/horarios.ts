@@ -181,7 +181,7 @@ horariosRouter.post('/edit', async (req, res) => {
 
 horariosRouter.get('/', (req, res) => {
   const user = (req.session as any).user;
-  const view = ((req.query.view as string) || 'day') as ViewMode;
+  const view = ((req.query.view as string) || 'week') as ViewMode;
 
   if (view === 'day') return renderDay(req, res, user);
   if (view === 'week') return renderWeek(req, res, user);

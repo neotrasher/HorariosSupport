@@ -14,6 +14,172 @@
     </div>
   </div>
 
+  <!-- Admin/Manager Insights -->
+  <% if (insights) {
+       function gradeCls(g) {
+         return g === 'A' ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+              : g === 'B' ? 'bg-lime-50 text-lime-700 ring-lime-200'
+              : g === 'C' ? 'bg-amber-50 text-amber-700 ring-amber-200'
+              : g === 'D' ? 'bg-orange-50 text-orange-700 ring-orange-200'
+              : g === 'F' ? 'bg-rose-50 text-rose-700 ring-rose-200'
+              : 'bg-slate-50 text-slate-500 ring-slate-200';
+       }
+       function deptCls(d) {
+         return d === 'L1' ? 'bg-blue-100 text-blue-700'
+              : d === 'L2' ? 'bg-violet-100 text-violet-700'
+              : 'bg-slate-100 text-slate-600';
+       }
+       const teamAvg = insights.teamScoreAvg;
+       const teamCls = teamAvg === null ? 'text-slate-400'
+                     : teamAvg >= 85 ? 'text-emerald-700'
+                     : teamAvg >= 70 ? 'text-amber-700'
+                     : 'text-rose-700';
+  %>
+  <section class="mb-6">
+    <!-- KPI strip: 4 highlights -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+      <a href="/reportes?preset=last-30" class="block relative bg-white rounded-xl border border-slate-200 shadow-card p-4 hover:shadow-card-hover transition-shadow overflow-hidden">
+        <div class="absolute top-0 left-0 right-0 h-1 <%= teamAvg !== null && teamAvg >= 85 ? 'bg-emerald-500' : teamAvg !== null && teamAvg >= 70 ? 'bg-amber-500' : 'bg-rose-500' %>"></div>
+        <div class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Score promedio (90d)</div>
+        <div class="text-3xl font-extrabold mt-1 <%= teamCls %>">
+          <% if (teamAvg === null) { %>—<% } else { %><%= teamAvg %><span class="text-sm text-slate-400 font-bold">/100</span><% } %>
+        </div>
+        <div class="text-[10px] text-slate-400 mt-0.5"><%= insights.teamScoreEvaluated %> agentes con datos</div>
+      </a>
+
+      <a href="/solicitudes?status=pending" class="block relative bg-white rounded-xl border border-slate-200 shadow-card p-4 hover:shadow-card-hover transition-shadow overflow-hidden">
+        <div class="absolute top-0 left-0 right-0 h-1 <%= insights.pendingRequests > 0 ? 'bg-sky-500' : 'bg-slate-300' %>"></div>
+        <div class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Solicitudes pendientes</div>
+        <div class="text-3xl font-extrabold mt-1 <%= insights.pendingRequests > 0 ? 'text-sky-700' : 'text-slate-300' %>"><%= insights.pendingRequests %></div>
+        <div class="text-[10px] text-slate-400 mt-0.5">requieren aprobación</div>
+      </a>
+
+      <div class="relative bg-white rounded-xl border border-slate-200 shadow-card p-4 overflow-hidden">
+        <div class="absolute top-0 left-0 right-0 h-1 bg-slate-400"></div>
+        <div class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Esta semana</div>
+        <div class="text-3xl font-extrabold mt-1 text-slate-700"><%= insights.shiftsThisWeek %></div>
+        <div class="text-[10px] text-slate-400 mt-0.5">turnos · <%= insights.unmarkedThisWeek %> sin marcar · <%= insights.lateThisWeek %> tarde</div>
+      </div>
+
+      <a href="/auditoria" class="block relative bg-white rounded-xl border border-slate-200 shadow-card p-4 hover:shadow-card-hover transition-shadow overflow-hidden">
+        <div class="absolute top-0 left-0 right-0 h-1 bg-violet-500"></div>
+        <div class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Atención requerida</div>
+        <div class="text-3xl font-extrabold mt-1 <%= insights.needsAttention.length > 0 ? 'text-rose-700' : 'text-slate-300' %>"><%= insights.needsAttention.length %></div>
+        <div class="text-[10px] text-slate-400 mt-0.5">agentes con score D/F</div>
+      </a>
+    </div>
+
+    <!-- Insights row -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+      <!-- Top performers -->
+      <% if (insights.topPerformers.length > 0) { %>
+      <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
+        <header class="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="text-xs uppercase tracking-wider font-bold text-slate-500">🏆 Top puntualidad (90d)</h3>
+        </header>
+        <ul class="divide-y divide-slate-50">
+          <% insights.topPerformers.forEach((a, idx) => { %>
+            <li class="px-4 py-2 flex items-center gap-3">
+              <span class="w-5 text-center font-bold text-slate-300 text-sm"><%= idx + 1 %></span>
+              <span class="flex-1 truncate text-sm text-slate-800"><%= a.name %></span>
+              <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide <%= deptCls(a.dept) %>"><%= a.dept %></span>
+              <span class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ring-1 <%= gradeCls(a.grade) %>">
+                <span class="font-mono"><%= a.score %></span>·<%= a.grade %>
+              </span>
+            </li>
+          <% }) %>
+        </ul>
+      </div>
+      <% } %>
+
+      <!-- Needs attention -->
+      <% if (insights.needsAttention.length > 0) { %>
+      <div class="bg-white rounded-xl border border-rose-200 shadow-card overflow-hidden">
+        <header class="px-4 py-2.5 border-b border-rose-100 bg-rose-50/40 flex items-center justify-between">
+          <h3 class="text-xs uppercase tracking-wider font-bold text-rose-700">⚠ Atención requerida</h3>
+        </header>
+        <ul class="divide-y divide-slate-50">
+          <% insights.needsAttention.forEach(a => { %>
+            <li class="px-4 py-2 flex items-center gap-3">
+              <span class="flex-1 truncate text-sm text-slate-800"><%= a.name %></span>
+              <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide <%= deptCls(a.dept) %>"><%= a.dept %></span>
+              <span class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ring-1 <%= gradeCls(a.grade) %>">
+                <span class="font-mono"><%= a.score %></span>·<%= a.grade %>
+              </span>
+              <span class="text-[10px] text-slate-400"><%= a.pastShifts %>t</span>
+            </li>
+          <% }) %>
+        </ul>
+      </div>
+      <% } %>
+
+      <!-- Vacaciones críticas -->
+      <% if (insights.vacationCritical.length > 0) { %>
+      <div class="bg-white rounded-xl border border-amber-200 shadow-card overflow-hidden">
+        <header class="px-4 py-2.5 border-b border-amber-100 bg-amber-50/40 flex items-center justify-between">
+          <h3 class="text-xs uppercase tracking-wider font-bold text-amber-700">🌴 Vacaciones casi agotadas</h3>
+        </header>
+        <ul class="divide-y divide-slate-50">
+          <% insights.vacationCritical.slice(0, 5).forEach(a => { %>
+            <li class="px-4 py-2 flex items-center gap-3">
+              <a href="/agentes/<%= a.slack_id %>" class="flex-1 truncate text-sm text-slate-800 hover:underline"><%= a.name %></a>
+              <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide <%= deptCls(a.dept) %>"><%= a.dept %></span>
+              <span class="font-mono text-xs <%= a.available <= 0 ? 'text-rose-700 font-bold' : 'text-amber-700' %>"><%= a.used %>/<%= a.entitled %></span>
+              <span class="text-[10px] text-slate-400"><%= a.available %> disp.</span>
+            </li>
+          <% }) %>
+        </ul>
+        <% if (insights.vacationCritical.length > 5) { %>
+          <div class="px-4 py-2 text-[10px] text-slate-400 border-t border-slate-50">+ <%= insights.vacationCritical.length - 5 %> más</div>
+        <% } %>
+      </div>
+      <% } %>
+
+      <!-- Próximas evaluaciones -->
+      <% if (insights.upcomingEvaluations.length > 0) { %>
+      <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
+        <header class="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="text-xs uppercase tracking-wider font-bold text-slate-500">📋 Próximas evaluaciones (30d)</h3>
+        </header>
+        <ul class="divide-y divide-slate-50">
+          <% insights.upcomingEvaluations.slice(0, 5).forEach(a => { %>
+            <li class="px-4 py-2 flex items-center gap-3">
+              <a href="/agentes/<%= a.slack_id %>" class="flex-1 truncate text-sm text-slate-800 hover:underline"><%= a.name %></a>
+              <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide <%= deptCls(a.dept) %>"><%= a.dept %></span>
+              <span class="font-mono text-[10px] text-slate-500"><%= a.date %></span>
+              <span class="text-[10px] font-bold <%= a.daysUntil <= 7 ? 'text-rose-700' : a.daysUntil <= 15 ? 'text-amber-700' : 'text-slate-500' %>">
+                <%= a.daysUntil === 0 ? 'hoy' : 'en ' + a.daysUntil + 'd' %>
+              </span>
+            </li>
+          <% }) %>
+        </ul>
+      </div>
+      <% } %>
+
+      <!-- Cumpleaños -->
+      <% if (insights.upcomingBirthdays.length > 0) { %>
+      <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
+        <header class="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="text-xs uppercase tracking-wider font-bold text-slate-500">🎂 Cumpleaños (30d)</h3>
+        </header>
+        <ul class="divide-y divide-slate-50">
+          <% insights.upcomingBirthdays.slice(0, 5).forEach(a => { %>
+            <li class="px-4 py-2 flex items-center gap-3">
+              <span class="flex-1 truncate text-sm text-slate-800"><%= a.name %></span>
+              <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide <%= deptCls(a.dept) %>"><%= a.dept %></span>
+              <span class="font-mono text-[10px] text-slate-500"><%= a.date.slice(5) %></span>
+              <span class="text-[10px] font-bold <%= a.daysUntil <= 7 ? 'text-pink-600' : 'text-slate-500' %>">
+                <%= a.daysUntil === 0 ? '¡hoy!' : 'en ' + a.daysUntil + 'd' %>
+              </span>
+            </li>
+          <% }) %>
+        </ul>
+      </div>
+      <% } %>
+    </div>
+  </section>
+  <% } %>
+
   <!-- Stats grid -->
   <%
     const stats = [
