@@ -3,9 +3,20 @@ import { db } from '../db';
 import { config, SHIFTS } from '../config';
 import { Agent, listAllAgents } from './agents';
 
+export type PunctualityScore = {
+  /** 0-100, null when no data (no past shifts in range). */
+  score: number | null;
+  /** A / B / C / D / F or null. */
+  grade: 'A' | 'B' | 'C' | 'D' | 'F' | null;
+  /** Past shifts evaluated (denominator). */
+  pastShifts: number;
+};
+
 export type AgentReport = {
   agent: Agent;
   shifts: number;
+  /** Shifts whose end time is already in the past (denominator for punctuality). */
+  pastShifts: number;
   completed: number;
   late: { count: number; totalMin: number; incidents: { date: string; min: number }[] };
   breakExcess: { count: number; totalMin: number; incidents: { date: string; min: number }[] };
@@ -15,7 +26,40 @@ export type AgentReport = {
   vacationDays: number;
   otherOffDays: number;
   hoursWorked: number;
+  punctuality: PunctualityScore;
 };
+
+/**
+ * Compute a punctuality score (0-100) from already-aggregated metrics.
+ * Penalty weights:
+ *   • unmarked      → 1.0  (no clock-in at all)
+ *   • late          → 0.4  (clocked in but past lateThreshold)
+ *   • autoClockout  → 0.5  (forgot to clock out, system did it)
+ * Letter grade: A ≥95, B ≥85, C ≥70, D ≥50, F <50.
+ */
+export function computePunctuality(opts: {
+  pastShifts: number;
+  unmarked: number;
+  late: number;
+  autoClockouts: number;
+}): PunctualityScore {
+  if (opts.pastShifts <= 0) {
+    return { score: null, grade: null, pastShifts: 0 };
+  }
+  const penalty =
+    1.0 * opts.unmarked +
+    0.4 * opts.late +
+    0.5 * opts.autoClockouts;
+  const raw = 100 * (1 - penalty / opts.pastShifts);
+  const score = Math.max(0, Math.min(100, Math.round(raw)));
+  let grade: PunctualityScore['grade'];
+  if (score >= 95) grade = 'A';
+  else if (score >= 85) grade = 'B';
+  else if (score >= 70) grade = 'C';
+  else if (score >= 50) grade = 'D';
+  else grade = 'F';
+  return { score, grade, pastShifts: opts.pastShifts };
+}
 
 type PunchRow = {
   slack_id: string;
@@ -88,13 +132,14 @@ export function buildReports(startStr: string, endStr: string): AgentReport[] {
   for (const a of agents) {
     byAgent.set(a.slack_id, {
       agent: a,
-      shifts: 0, completed: 0,
+      shifts: 0, pastShifts: 0, completed: 0,
       late: { count: 0, totalMin: 0, incidents: [] },
       breakExcess: { count: 0, totalMin: 0, incidents: [] },
       unmarked: { count: 0, dates: [] },
       autoClockouts: { count: 0, dates: [] },
       permisoDays: 0, vacationDays: 0, otherOffDays: 0,
-      hoursWorked: 0
+      hoursWorked: 0,
+      punctuality: { score: null, grade: null, pastShifts: 0 }
     });
   }
 
@@ -117,6 +162,7 @@ export function buildReports(startStr: string, endStr: string): AgentReport[] {
 
     // Skip metrics for future shifts (no opportunity to be late/complete yet)
     if (now < shiftEnd) continue;
+    bucket.pastShifts++;
 
     const clockIn = punchIndex.get(punchKey(agent.slack_id, row.date, row.shift_id, 'clock_in'));
     const clockOut = punchIndex.get(punchKey(agent.slack_id, row.date, row.shift_id, 'clock_out'));
@@ -179,9 +225,15 @@ export function buildReports(startStr: string, endStr: string): AgentReport[] {
     else bucket.otherOffDays++;
   }
 
-  // Round hoursWorked to 2 decimals
+  // Round hoursWorked to 2 decimals + compute punctuality score
   for (const b of byAgent.values()) {
     b.hoursWorked = +b.hoursWorked.toFixed(2);
+    b.punctuality = computePunctuality({
+      pastShifts: b.pastShifts,
+      unmarked: b.unmarked.count,
+      late: b.late.count,
+      autoClockouts: b.autoClockouts.count
+    });
   }
 
   return Array.from(byAgent.values())

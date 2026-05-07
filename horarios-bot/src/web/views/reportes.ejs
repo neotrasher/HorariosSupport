@@ -183,6 +183,7 @@
           <tr>
             <th class="text-left px-3 py-3 font-semibold text-slate-500">Agente</th>
             <th class="text-left px-3 py-3 font-semibold text-slate-500">Dept</th>
+            <th class="text-center px-3 py-3 font-semibold text-slate-500" title="Score 0-100. Penaliza: sin-marcar (1.0), tarde (0.4), auto-clockout (0.5). Solo turnos pasados.">Score</th>
             <th class="text-right px-3 py-3 font-semibold text-slate-500">Turnos</th>
             <th class="text-right px-3 py-3 font-semibold text-slate-500">Compl.</th>
             <th class="text-right px-3 py-3 font-semibold text-slate-500">Sin marcar</th>
@@ -208,6 +209,25 @@
                   <%= r.agent.dept === 'L1' ? 'bg-blue-100 text-blue-700' : r.agent.dept === 'L2' ? 'bg-violet-100 text-violet-700' : 'bg-slate-100 text-slate-600' %>">
                   <%= r.agent.dept %>
                 </span>
+              </td>
+              <td class="px-3 py-3 text-center">
+                <% if (r.punctuality.score === null) { %>
+                  <span class="text-[10px] text-slate-300">—</span>
+                <% } else {
+                     const g = r.punctuality.grade;
+                     const cls = g === 'A' ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                               : g === 'B' ? 'bg-lime-50 text-lime-700 ring-lime-200'
+                               : g === 'C' ? 'bg-amber-50 text-amber-700 ring-amber-200'
+                               : g === 'D' ? 'bg-orange-50 text-orange-700 ring-orange-200'
+                               : 'bg-rose-50 text-rose-700 ring-rose-200';
+                %>
+                  <span class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ring-1 <%= cls %>"
+                        title="Pasados: <%= r.punctuality.pastShifts %> · sin marcar: <%= r.unmarked.count %> · tarde: <%= r.late.count %> · auto-out: <%= r.autoClockouts.count %>">
+                    <span class="font-mono"><%= r.punctuality.score %></span>
+                    <span class="opacity-70">·</span>
+                    <span><%= r.punctuality.grade %></span>
+                  </span>
+                <% } %>
               </td>
               <td class="px-3 py-3 text-right text-slate-700 font-medium"><%= r.shifts %></td>
               <td class="px-3 py-3 text-right text-emerald-700 font-medium"><%= r.completed %></td>

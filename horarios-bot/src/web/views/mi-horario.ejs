@@ -19,7 +19,7 @@
   </div>
 
   <% if (agent) { %>
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
       <div class="relative bg-white rounded-xl border border-slate-200 shadow-card p-4 overflow-hidden">
         <div class="absolute top-0 left-0 right-0 h-1 bg-emerald-500"></div>
         <div class="text-[11px] uppercase tracking-wider font-bold text-slate-400">Turnos del mes</div>
@@ -30,6 +30,28 @@
         <div class="text-[11px] uppercase tracking-wider font-bold text-slate-400">Dias libres</div>
         <div class="text-3xl font-extrabold mt-1 text-slate-700"><%= totalDaysOff %></div>
       </div>
+      <% if (typeof punctuality !== 'undefined' && punctuality && punctuality.score !== null) {
+           const g = punctuality.grade;
+           const stripCls = g === 'A' ? 'bg-emerald-500'
+                          : g === 'B' ? 'bg-lime-500'
+                          : g === 'C' ? 'bg-amber-500'
+                          : g === 'D' ? 'bg-orange-500'
+                          : 'bg-rose-500';
+           const txtCls  = g === 'A' ? 'text-emerald-700'
+                          : g === 'B' ? 'text-lime-700'
+                          : g === 'C' ? 'text-amber-700'
+                          : g === 'D' ? 'text-orange-700'
+                          : 'text-rose-700';
+      %>
+      <div class="relative bg-white rounded-xl border border-slate-200 shadow-card p-4 overflow-hidden" title="Score 0-100. Penaliza sin marcar / tarde / auto-clockout. Últimos 90 días.">
+        <div class="absolute top-0 left-0 right-0 h-1 <%= stripCls %>"></div>
+        <div class="text-[11px] uppercase tracking-wider font-bold text-slate-400">Puntualidad 90d</div>
+        <div class="text-3xl font-extrabold mt-1 <%= txtCls %>">
+          <%= punctuality.score %><span class="text-lg text-slate-400 font-bold">·<%= punctuality.grade %></span>
+        </div>
+        <div class="text-[10px] text-slate-400 mt-0.5"><%= punctuality.pastShifts %> turno<%= punctuality.pastShifts === 1 ? '' : 's' %> evaluado<%= punctuality.pastShifts === 1 ? '' : 's' %></div>
+      </div>
+      <% } %>
       <% if (vacationBalance) { %>
       <div class="relative bg-white rounded-xl border border-slate-200 shadow-card p-4 overflow-hidden">
         <div class="absolute top-0 left-0 right-0 h-1 <%= (vacationBalance.available !== null && vacationBalance.available <= 0) ? 'bg-rose-500' : 'bg-amber-500' %>"></div>

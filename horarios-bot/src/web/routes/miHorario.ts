@@ -7,6 +7,7 @@ import {
 } from '../../services/schedule';
 import { getTokenForAgent } from '../../services/calendarTokens';
 import { vacationDaysUsedInYear } from '../../services/timeOff';
+import { buildReports } from '../../services/reports';
 
 export const miHorarioRouter = Router();
 
@@ -100,6 +101,23 @@ miHorarioRouter.get('/', (req, res) => {
   // Calendar sync token (may be null if not yet generated)
   const calToken = agent ? getTokenForAgent(user.slack_id) : null;
 
+  // Punctuality score over the last 90 days (rolling)
+  const nowUtc = DateTime.utc();
+  const punctualitySinceStr = nowUtc.minus({ days: 90 }).toFormat('yyyy-LL-dd');
+  const punctualityEndStr = nowUtc.toFormat('yyyy-LL-dd');
+  let punctuality: { score: number | null; grade: string | null; pastShifts: number } | null = null;
+  if (agent) {
+    const reportRow = buildReports(punctualitySinceStr, punctualityEndStr)
+      .find(r => r.agent.slack_id === agent.slack_id);
+    if (reportRow) {
+      punctuality = {
+        score: reportRow.punctuality.score,
+        grade: reportRow.punctuality.grade,
+        pastShifts: reportRow.punctuality.pastShifts
+      };
+    }
+  }
+
   // Vacation balance (current calendar year)
   const year = DateTime.utc().year;
   const vacationBalance = agent ? {
@@ -124,6 +142,7 @@ miHorarioRouter.get('/', (req, res) => {
     isEmpty,
     localTz,
     calToken: calToken?.token ?? null,
-    vacationBalance
+    vacationBalance,
+    punctuality
   });
 });
