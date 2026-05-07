@@ -23,6 +23,25 @@ import { requireManager } from './auth';
 export function buildSolicitudesRouter(slackApp: App | null): Router {
   const router = Router();
 
+  /**
+   * Resolve the redirect target after a mutating action: prefer the page the
+   * user came from (so filters like ?agent=...&status=... stay applied),
+   * fall back to /solicitudes. Validates same-origin to prevent open redirects.
+   */
+  function backTo(req: any): string {
+    const ref = (req.headers.referer || '') as string;
+    try {
+      const u = new URL(ref);
+      // Only honor referers that point to the solicitudes LIST (/solicitudes
+      // with optional query). For sub-pages like /nueva or /:id/coverage we
+      // fall back to the list to avoid re-showing the form / coverage view.
+      if (u.pathname === '/solicitudes') {
+        return '/solicitudes' + (u.search || '');
+      }
+    } catch {}
+    return '/solicitudes';
+  }
+
   router.get('/', (req, res) => {
     const user = (req.session as any).user;
     const filterStatus = (req.query.status as string) as TimeOffStatus | undefined;
@@ -222,7 +241,7 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
       }
     }
 
-    res.redirect('/solicitudes');
+    res.redirect(backTo(req));
   });
 
   router.post('/:id/cancel', (req, res) => {
@@ -271,7 +290,7 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
       }
     })();
 
-    res.redirect('/solicitudes');
+    res.redirect(backTo(req));
   });
 
   // Smart coverage suggestions for a pending time-off request (manager/admin only).
@@ -303,7 +322,7 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
     const id = parseInt(req.params.id, 10);
     const r = getRequest(id);
     if (!r || r.status !== 'pending') {
-      res.redirect('/solicitudes');
+      res.redirect(backTo(req));
       return;
     }
     // Admin can self-approve; manager cannot.
@@ -332,7 +351,7 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
     });
 
     if (slackApp) await broadcastWebResolution(slackApp, id, 'approved', user.slack_id);
-    res.redirect('/solicitudes');
+    res.redirect(backTo(req));
   });
 
   router.post('/:id/reject', requireManager, async (req, res) => {
@@ -341,7 +360,7 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
     const reasonInput = (req.body.rejection_reason as string || '').trim() || null;
     const r = getRequest(id);
     if (!r || r.status !== 'pending') {
-      res.redirect('/solicitudes');
+      res.redirect(backTo(req));
       return;
     }
     // #4a: admin can self-reject (consistency with self-approve). Manager cannot.
@@ -362,7 +381,7 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
     }
 
     if (slackApp) await broadcastWebResolution(slackApp, id, 'rejected', user.slack_id, reasonInput);
-    res.redirect('/solicitudes');
+    res.redirect(backTo(req));
   });
 
   router.post('/:id/delete', requireManager, async (req, res) => {
@@ -370,7 +389,7 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
     const id = parseInt(req.params.id, 10);
     const r = getRequest(id);
     if (!r) {
-      res.redirect('/solicitudes');
+      res.redirect(backTo(req));
       return;
     }
     // If approved, look up plannerId so days_off rollback is possible
@@ -409,7 +428,7 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
       }
     }
 
-    res.redirect('/solicitudes');
+    res.redirect(backTo(req));
   });
 
   return router;
