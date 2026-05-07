@@ -33,15 +33,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 /* LAYOUT */
 .body{display:flex;height:calc(100vh - 50px)}
-.sidebar{width:200px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.sidebar{width:230px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
 .sb-hdr{padding:8px 10px 6px;border-bottom:1px solid var(--border);background:#f7fafc}
 .sb-title{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
 .sb-body{overflow-y:auto;flex:1;padding:6px}
 .sb-dept-title{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding:6px 4px 3px;margin-top:4px;border-bottom:1px solid var(--border)}
-.emp-row{display:flex;align-items:center;gap:6px;padding:5px 5px;border-radius:6px;cursor:default;transition:background .1s}
+.emp-row{display:flex;flex-direction:column;gap:3px;padding:5px 6px;border-radius:6px;cursor:pointer;transition:background .1s,box-shadow .12s}
+.emp-row-top{display:flex;align-items:center;gap:6px;width:100%}
+.emp-row-bot{display:flex;align-items:center;gap:4px;padding-left:15px;flex-wrap:wrap}
 .emp-row:hover{background:var(--bg)}
+.emp-row.filter-on{background:#dbeafe;box-shadow:inset 0 0 0 1.5px #3b82f6}
+.emp-row.filter-on:hover{background:#bfdbfe}
+.emp-do-btn{width:22px;height:22px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;transition:all .12s;flex-shrink:0;line-height:1;padding:0}
+.emp-do-btn:hover{background:#f59e0b;border-color:#d97706;color:#fff}
+.filter-bar{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;margin:4px 0 8px;background:#dbeafe;border:1px solid #3b82f6;border-radius:6px;font-size:11px;color:#1e3a8a;font-weight:600}
+.filter-bar-clear{cursor:pointer;background:#3b82f6;color:#fff;border:none;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:700;font-family:inherit}
+.filter-bar-clear:hover{background:#1d4ed8}
 .emp-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
-.emp-row-name{font-size:11px;font-weight:500;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.emp-row-name{font-size:12px;font-weight:600;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .emp-stats{display:flex;gap:2px;flex-shrink:0}
 .st{font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px;background:var(--bg)}
 
@@ -82,7 +91,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 /* Days off */
 .emp-row{cursor:pointer}
-.emp-do-row{display:flex;gap:3px;margin-top:3px;flex-wrap:wrap}
+.emp-do-row{display:flex;gap:3px;flex-wrap:wrap}
 .do-tag{font-size:9px;font-weight:700;color:#7b341e;background:#fed7aa;padding:1px 4px;border-radius:3px;white-space:nowrap}
 .do-tag-empty{font-size:9px;color:#cbd5e0;padding:1px 3px}
 .chip-warn{outline:2px solid #f6ad55;outline-offset:1px}
@@ -109,10 +118,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .do-daybtn{width:30px;height:30px;border-radius:6px;border:2px solid var(--border);background:var(--surface);font-size:12px;font-weight:700;color:#4a5568;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;user-select:none}
 .do-daybtn:hover{border-color:#a0aec0;background:var(--bg)}
 .do-daybtn.off{background:#fed7aa;border-color:#f6ad55;color:#7b341e}
+/* Quick-shift modal styles */
+.qs-add-btn{width:22px;height:22px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;transition:all .12s;flex-shrink:0;line-height:1;padding:0}
+.qs-add-btn:hover{background:#3b82f6;border-color:#1d4ed8;color:#fff}
+.qs-section{margin-bottom:14px}
+.qs-lbl{font-size:11px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px}
+.qs-pills{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.qs-pill{display:flex;flex-direction:column;align-items:center;padding:8px 4px;border:2px solid;border-radius:8px;background:var(--surface);cursor:pointer;transition:all .12s;font-size:11px;font-weight:600;color:var(--text);font-family:inherit}
+.qs-pill:hover{transform:translateY(-1px)}
+.qs-pill-dept{font-size:10px;opacity:.65;line-height:1.2}
+.qs-pill-sh{font-size:14px;font-weight:800;line-height:1.4}
+.qs-pill-time{font-size:9px;opacity:.55;font-family:ui-monospace,monospace}
+.qs-pill.sel .qs-pill-dept,.qs-pill.sel .qs-pill-time{opacity:.9}
+.qs-days{display:flex;gap:6px;flex-wrap:wrap}
+.qs-daybtn{width:36px;height:36px;border-radius:8px;border:2px solid var(--border);background:var(--surface);font-size:13px;font-weight:700;color:#4a5568;cursor:pointer;transition:all .12s;display:flex;align-items:center;justify-content:center;font-family:inherit}
+.qs-daybtn:hover:not(.disabled){border-color:#a0aec0}
+.qs-daybtn.sel{background:#3b82f6;border-color:#1d4ed8;color:#fff}
+.qs-daybtn.disabled{opacity:.3;cursor:not-allowed;background:#f3f4f6}
+.qs-cyc-row{display:flex;gap:14px;font-size:12px;color:var(--text);flex-wrap:wrap}
+.qs-radio{display:flex;align-items:center;gap:5px;cursor:pointer}
+.qs-note-inp{width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;box-sizing:border-box}
 .do-cnt{font-size:10px;font-weight:700;color:var(--muted);min-width:20px}
 
 /* CHIPS */
-.chip{display:inline-flex;align-items:center;gap:2px;padding:2px 6px 2px 7px;border-radius:12px;font-size:11px;font-weight:700;color:#fff;white-space:nowrap;user-select:none;box-shadow:0 1px 2px rgba(0,0,0,.15);max-width:110px}
+.chip{display:inline-flex;align-items:center;gap:2px;padding:2px 6px 2px 7px;border-radius:12px;font-size:11px;font-weight:700;color:#fff;white-space:nowrap;user-select:none;box-shadow:0 1px 2px rgba(0,0,0,.15);max-width:110px;transition:opacity .12s}
+.chip.dimmed{opacity:.18}
 .chip-name{overflow:hidden;text-overflow:ellipsis;flex:1}
 .chip-x{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;background:rgba(255,255,255,.25);cursor:pointer;font-size:9px;flex-shrink:0;line-height:1}
 .chip-x:hover{background:rgba(255,255,255,.5)}
@@ -237,6 +267,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
+<!-- Quick-shift modal -->
+<div class="overlay" id="ovQS">
+  <div class="modal" style="width:480px">
+    <div class="modal-hdr">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div id="qsEmpDot" style="width:12px;height:12px;border-radius:50%;flex-shrink:0"></div>
+        <div>
+          <div class="modal-title" id="qsEmpName"></div>
+          <div class="modal-sub">Agregar turno · multi-día</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-body" id="qsBdy"></div>
+    <div class="modal-ftr">
+      <button class="btn btn-ghost" id="btnQSClose">Cancelar</button>
+      <button class="btn btn-primary" id="btnQSApply">Aplicar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Days-off modal -->
 <div class="overlay" id="ovDO">
   <div class="modal" style="width:340px">
@@ -304,6 +354,20 @@ let EMPLOYEES = [
 
 // schedule[cycle][deptId][day][shiftId] = { emps: [id,...], note: '' }
 let schedule = {};
+
+// Filter: empty Set = no filter (show all). Otherwise only those agents stay visible.
+let filteredEmps = new Set();
+
+function toggleEmpFilter(empId) {
+  if (filteredEmps.has(empId)) filteredEmps.delete(empId);
+  else filteredEmps.add(empId);
+  render();
+}
+
+function clearEmpFilter() {
+  filteredEmps.clear();
+  render();
+}
 
 function initSchedule() {
   for (const cy of CYCLES) {
@@ -409,13 +473,19 @@ function buildCell(deptId, day, shiftId) {
   cell.className = 'gcell' + (shiftId==='E' ? ' gcell-E' : '');
   const data = schedule[currentCycle][deptId][day][shiftId];
 
+  // Resolve shift color (chip color = shift type, not agent)
+  const dept = DEPTS.find(d => d.id === deptId);
+  const sh = dept ? dept.shifts.find(s => s.id === shiftId) : null;
+  const shiftColor = sh ? sh.color : '#64748b';
+
   for (const eid of data.emps) {
     const emp = EMPLOYEES.find(e=>e.id===eid);
     if (!emp) continue;
     const chip = document.createElement('div');
     const onDayOff = isOffDay(emp.id, day);
-    chip.className = 'chip' + (onDayOff ? ' chip-warn' : '');
-    chip.style.background = emp.color;
+    const isDimmed = filteredEmps.size > 0 && !filteredEmps.has(emp.id);
+    chip.className = 'chip' + (onDayOff ? ' chip-warn' : '') + (isDimmed ? ' dimmed' : '');
+    chip.style.background = shiftColor;
     chip.title = onDayOff ? `⚠ ${emp.name} tiene libre este día` : emp.name;
     // Show dept tag if cross-dept assignment
     const deptTag = emp.dept !== deptId && emp.dept !== 'S'
@@ -641,6 +711,18 @@ function toggleDayOff(empId, cycle, day) {
 function renderSidebar() {
   const body = document.getElementById('sbBody');
   body.innerHTML = '';
+
+  // Filter banner (visible only when filter is active)
+  if (filteredEmps.size > 0) {
+    const bar = document.createElement('div');
+    bar.className = 'filter-bar';
+    const names = EMPLOYEES.filter(e => filteredEmps.has(e.id)).map(e => e.name).join(', ');
+    bar.innerHTML = `<span>🔍 Filtrando: <strong>${escHtml(names)}</strong></span>
+      <button class="filter-bar-clear" type="button">Limpiar</button>`;
+    bar.querySelector('.filter-bar-clear').addEventListener('click', clearEmpFilter);
+    body.appendChild(bar);
+  }
+
   const stats = calcStats();
   const groups = [{id:'L2',label:'Equipo L2'},{id:'L1',label:'Equipo L1'}];
 
@@ -653,8 +735,8 @@ function renderSidebar() {
     for (const emp of EMPLOYEES.filter(e=>e.dept===g.id)) {
       const st = stats[emp.id]||{M:0,T:0,N:0,E:0};
       const row = document.createElement('div');
-      row.className = 'emp-row';
-      row.title = `${emp.name} — ${emp.dept}`;
+      row.className = 'emp-row' + (filteredEmps.has(emp.id) ? ' filter-on' : '');
+      row.title = `${emp.name} — ${emp.dept} · click para filtrar`;
       const shiftsToShow = ['M','T','N','E'];
       const statHtml = shiftsToShow.map(s=>`<span class="st">${s}${st[s]||0}</span>`).join('');
       const doTags = CYCLES.map(cy => {
@@ -663,13 +745,26 @@ function renderSidebar() {
           ? `<span class="do-tag">${cy}:${d.join(',')}</span>`
           : `<span class="do-tag-empty">${cy}:—</span>`;
       }).join('');
-      row.innerHTML = `<div class="emp-dot" style="background:${emp.color}"></div>
-        <div style="flex:1;min-width:0">
+      row.innerHTML = `
+        <div class="emp-row-top">
+          <div class="emp-dot" style="background:${emp.color}"></div>
           <div class="emp-row-name">${emp.name}</div>
-          <div class="emp-do-row">${doTags}</div>
+          <button class="emp-do-btn" data-emp="${emp.id}" title="Días libres del ciclo">📅</button>
+          <button class="qs-add-btn" data-emp="${emp.id}" title="Agregar turno multi-día">+</button>
         </div>
-        <div class="emp-stats">${statHtml}</div>`;
-      row.addEventListener('click', () => openDaysOffModal(emp.id));
+        <div class="emp-row-bot">
+          <div class="emp-do-row">${doTags}</div>
+          <div class="emp-stats">${statHtml}</div>
+        </div>`;
+      row.querySelector('.emp-do-btn').addEventListener('click', e => {
+        e.stopPropagation();
+        openDaysOffModal(emp.id);
+      });
+      row.querySelector('.qs-add-btn').addEventListener('click', e => {
+        e.stopPropagation();
+        openQuickShiftModal(emp.id);
+      });
+      row.addEventListener('click', () => toggleEmpFilter(emp.id));
       body.appendChild(row);
     }
   }
@@ -685,6 +780,161 @@ function calcStats() {
         for (const eid of cy[dept.id][day][sh.id].emps)
           if (s[eid]) s[eid][sh.id]=(s[eid][sh.id]||0)+1;
   return s;
+}
+
+// ── QUICK-SHIFT MODAL (multi-day) ────────────────────────────────────────────
+let qsState = { empId: null, shift: null, days: new Set(), allCycles: false, note: '' };
+
+function openQuickShiftModal(empId) {
+  const emp = EMPLOYEES.find(e => e.id === empId);
+  if (!emp) return;
+  qsState = { empId, shift: null, days: new Set(), allCycles: false, note: '' };
+  document.getElementById('qsEmpName').textContent = emp.name;
+  document.getElementById('qsEmpDot').style.background = emp.color;
+  renderQSBody();
+  document.getElementById('ovQS').classList.add('show');
+}
+
+function renderQSBody() {
+  const body = document.getElementById('qsBdy');
+  const emp = EMPLOYEES.find(e => e.id === qsState.empId);
+  if (!emp) return;
+  body.innerHTML = '';
+
+  // Section: Turno (8 pills, 4 L1 + 4 L2)
+  const sTurno = document.createElement('div');
+  sTurno.className = 'qs-section';
+  const lblTurno = document.createElement('div');
+  lblTurno.className = 'qs-lbl';
+  lblTurno.textContent = 'Turno';
+  sTurno.appendChild(lblTurno);
+  const pillsBox = document.createElement('div');
+  pillsBox.className = 'qs-pills';
+  for (const dept of DEPTS) {
+    for (const sh of dept.shifts) {
+      const pill = document.createElement('button');
+      pill.className = 'qs-pill';
+      pill.style.borderColor = sh.color;
+      const isSel = qsState.shift && qsState.shift.deptId === dept.id && qsState.shift.shiftId === sh.id;
+      if (isSel) {
+        pill.classList.add('sel');
+        pill.style.background = sh.color;
+        pill.style.color = '#fff';
+      }
+      pill.innerHTML = `<span class="qs-pill-dept">${dept.id}</span>
+        <span class="qs-pill-sh">${sh.id} · ${sh.label}</span>
+        <span class="qs-pill-time">${sh.time}</span>`;
+      pill.addEventListener('click', () => {
+        qsState.shift = { deptId: dept.id, shiftId: sh.id };
+        renderQSBody();
+      });
+      pillsBox.appendChild(pill);
+    }
+  }
+  sTurno.appendChild(pillsBox);
+  body.appendChild(sTurno);
+
+  // Section: Días
+  const sDays = document.createElement('div');
+  sDays.className = 'qs-section';
+  const lblDays = document.createElement('div');
+  lblDays.className = 'qs-lbl';
+  lblDays.textContent = qsState.allCycles ? 'Aplicar a días (skipea descansos por ciclo)' : `Aplicar a días · Sem ${currentCycle}`;
+  sDays.appendChild(lblDays);
+  const daysBox = document.createElement('div');
+  daysBox.className = 'qs-days';
+  // Disable a day button only if it's a rest day in CURRENT cycle (and we're applying single-cycle).
+  // For all-cycles mode, rest days per cycle are skipped at apply time, so leave enabled.
+  const restCurrent = qsState.allCycles ? null : (daysOff[emp.id]?.[currentCycle] || []);
+  for (const day of DAYS) {
+    const btn = document.createElement('button');
+    btn.className = 'qs-daybtn' + (qsState.days.has(day) ? ' sel' : '');
+    btn.textContent = day;
+    btn.title = DAY_FULL[day];
+    if (restCurrent && restCurrent.includes(day)) {
+      btn.classList.add('disabled');
+      btn.title = `${DAY_FULL[day]} · día libre del ciclo ${currentCycle}`;
+    }
+    btn.addEventListener('click', () => {
+      if (btn.classList.contains('disabled')) return;
+      if (qsState.days.has(day)) qsState.days.delete(day);
+      else qsState.days.add(day);
+      renderQSBody();
+    });
+    daysBox.appendChild(btn);
+  }
+  sDays.appendChild(daysBox);
+  body.appendChild(sDays);
+
+  // Section: Ciclos
+  const sCycles = document.createElement('div');
+  sCycles.className = 'qs-section';
+  sCycles.innerHTML = `
+    <div class="qs-lbl">Ciclos</div>
+    <div class="qs-cyc-row">
+      <label class="qs-radio"><input type="radio" name="qsCyc" value="current" ${!qsState.allCycles ? 'checked' : ''}> Solo Sem ${currentCycle}</label>
+      <label class="qs-radio"><input type="radio" name="qsCyc" value="all" ${qsState.allCycles ? 'checked' : ''}> Todos los ciclos (A+B+C+D)</label>
+    </div>`;
+  sCycles.querySelectorAll('input[name="qsCyc"]').forEach(input => {
+    input.addEventListener('change', e => {
+      qsState.allCycles = e.target.value === 'all';
+      renderQSBody();
+    });
+  });
+  body.appendChild(sCycles);
+
+  // Section: Nota
+  const sNote = document.createElement('div');
+  sNote.className = 'qs-section';
+  sNote.innerHTML = `<div class="qs-lbl">Nota (opcional)</div>
+    <input type="text" class="qs-note-inp" placeholder="ej: cobertura" value="${escHtml(qsState.note)}">`;
+  sNote.querySelector('input').addEventListener('input', e => { qsState.note = e.target.value; });
+  body.appendChild(sNote);
+
+  // Update apply button label/disabled
+  const counter = countQSCells();
+  const btn = document.getElementById('btnQSApply');
+  btn.textContent = counter > 0 ? `Aplicar (${counter})` : 'Aplicar';
+  btn.disabled = !(qsState.shift && qsState.days.size > 0);
+  btn.style.opacity = btn.disabled ? '.5' : '1';
+}
+
+function countQSCells() {
+  if (!qsState.shift || qsState.days.size === 0) return 0;
+  const cycles = qsState.allCycles ? CYCLES : [currentCycle];
+  let n = 0;
+  for (const cy of cycles) {
+    for (const day of qsState.days) {
+      const off = daysOff[qsState.empId]?.[cy] || [];
+      if (off.includes(day)) continue;
+      const cell = schedule[cy][qsState.shift.deptId][day][qsState.shift.shiftId];
+      if (!cell.emps.includes(qsState.empId)) n++;
+    }
+  }
+  return n;
+}
+
+function applyQuickShift() {
+  if (!qsState.shift || qsState.days.size === 0) return;
+  const cycles = qsState.allCycles ? CYCLES : [currentCycle];
+  let added = 0, skipped = 0;
+  for (const cy of cycles) {
+    for (const day of qsState.days) {
+      const off = daysOff[qsState.empId]?.[cy] || [];
+      if (off.includes(day)) { skipped++; continue; }
+      const cell = schedule[cy][qsState.shift.deptId][day][qsState.shift.shiftId];
+      if (!cell.emps.includes(qsState.empId)) {
+        cell.emps.push(qsState.empId);
+        added++;
+      }
+      if (qsState.note && !cell.note) cell.note = qsState.note;
+    }
+  }
+  document.getElementById('ovQS').classList.remove('show');
+  render(); autosave();
+  let msg = `✓ Turno agregado en ${added} celda${added !== 1 ? 's' : ''}`;
+  if (skipped > 0) msg += ` · ${skipped} skipeada${skipped !== 1 ? 's' : ''} (descanso)`;
+  showToast(msg);
 }
 
 // ── MODAL ─────────────────────────────────────────────────────────────────────
@@ -962,6 +1212,9 @@ document.getElementById('btnMClose').addEventListener('click', closeModal);
 document.getElementById('btnMSave').addEventListener('click', saveModal);
 document.getElementById('btnCopyClose').addEventListener('click', ()=>document.getElementById('ovCopy').classList.remove('show'));
 document.getElementById('btnDOClose').addEventListener('click', ()=>{ document.getElementById('ovDO').classList.remove('show'); renderSidebar(); });
+document.getElementById('btnQSClose').addEventListener('click', ()=>{ document.getElementById('ovQS').classList.remove('show'); });
+document.getElementById('btnQSApply').addEventListener('click', applyQuickShift);
+document.getElementById('ovQS').addEventListener('click', e => { if (e.target === document.getElementById('ovQS')) document.getElementById('ovQS').classList.remove('show'); });
 document.getElementById('ovDO').addEventListener('click', e=>{ if(e.target===document.getElementById('ovDO')){ document.getElementById('ovDO').classList.remove('show'); renderSidebar(); } });
 
 document.getElementById('ovCell').addEventListener('click', e=>{
