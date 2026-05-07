@@ -13,7 +13,7 @@ export type SettingDef = {
   key: string;
   label: string;
   type: 'int' | 'string';
-  group: 'attendance' | 'cycle' | 'slack' | 'misc';
+  group: 'attendance' | 'cycle' | 'slack' | 'misc' | 'rrhh';
   apply: (value: any) => void; // mutate config
   current: () => any;
   hint?: string;
@@ -87,6 +87,13 @@ export const SETTING_DEFS: SettingDef[] = [
     apply: v => { (config as any).attendanceChannelId = v; },
     current: () => config.attendanceChannelId,
     hint: 'Canal donde el bot publica el resumen diario.'
+  },
+  {
+    key: 'evaluationReminderDays', label: 'Recordatorio de evaluación (días antes)', type: 'int', group: 'rrhh',
+    apply: v => { (config as any).evaluationReminderDays = v; },
+    current: () => config.evaluationReminderDays,
+    hint: 'Cuántos días antes de next_evaluation_date se envía DM a los admins.',
+    min: 1, max: 90
   },
   {
     key: 'displayTimezone', label: 'Timezone para mostrar', type: 'string', group: 'misc',

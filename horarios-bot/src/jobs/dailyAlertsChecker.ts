@@ -86,15 +86,16 @@ export async function runDailyAlertsChecker(app: App): Promise<void> {
     }
   }
 
-  // ── 📋 Evaluation reminders (7 days before) ──────────────────────────
-  const targetDate = today.plus({ days: 7 }).toFormat('yyyy-LL-dd');
+  // ── 📋 Evaluation reminders (config.evaluationReminderDays before) ───
+  const reminderDays = config.evaluationReminderDays;
+  const targetDate = today.plus({ days: reminderDays }).toFormat('yyyy-LL-dd');
   for (const a of agents) {
     if (!a.next_evaluation_date) continue;
     if (a.next_evaluation_date !== targetDate) continue;
     if (alreadySent('evaluation_reminder', a.slack_id, todayStr)) continue;
 
     const text =
-      `📋 Recordatorio de evaluación · *${a.name}* (${a.dept}) tiene su próxima evaluación el *${a.next_evaluation_date}* (en 7 días).` +
+      `📋 Recordatorio de evaluación · *${a.name}* (${a.dept}) tiene su próxima evaluación el *${a.next_evaluation_date}* (en ${reminderDays} días).` +
       `\n• Slack: <@${a.slack_id}>` +
       (a.last_evaluation_date ? `\n• Última evaluación: ${a.last_evaluation_date}` : '');
 
