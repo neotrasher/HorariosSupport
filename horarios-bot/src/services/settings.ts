@@ -96,6 +96,30 @@ export const SETTING_DEFS: SettingDef[] = [
     min: 1, max: 90
   },
   {
+    key: 'birthdayMention', label: 'Mención en cumpleaños', type: 'string', group: 'rrhh',
+    apply: v => { (config as any).birthdayMention = v; },
+    current: () => config.birthdayMention,
+    hint: 'Texto Slack que se antepone. Ej: <!subteam^S012345> para @support, <!channel>, <!here>. Vacío = sin mención.'
+  },
+  {
+    key: 'anniversaryMention', label: 'Mención en aniversario laboral', type: 'string', group: 'rrhh',
+    apply: v => { (config as any).anniversaryMention = v; },
+    current: () => config.anniversaryMention,
+    hint: 'Igual que cumpleaños. Si está vacío, usa el de cumpleaños.'
+  },
+  {
+    key: 'birthdayGifUrls', label: 'GIFs de cumpleaños (URLs)', type: 'string', group: 'rrhh',
+    apply: v => { (config as any).birthdayGifUrls = v; },
+    current: () => config.birthdayGifUrls,
+    hint: 'URLs separadas por coma. Tip: en giphy.com → click GIF → "Copy GIF link". Se elige una al azar.'
+  },
+  {
+    key: 'anniversaryGifUrls', label: 'GIFs de aniversario (URLs)', type: 'string', group: 'rrhh',
+    apply: v => { (config as any).anniversaryGifUrls = v; },
+    current: () => config.anniversaryGifUrls,
+    hint: 'URLs separadas por coma. Vacío = sin GIF.'
+  },
+  {
     key: 'punctualityWeightUnmarked', label: 'Peso: sin marcar', type: 'float', group: 'puntualidad',
     apply: v => { (config as any).punctualityWeightUnmarked = v; },
     current: () => config.punctualityWeightUnmarked,

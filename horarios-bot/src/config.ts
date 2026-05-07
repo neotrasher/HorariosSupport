@@ -35,6 +35,15 @@ export const config = {
   autoClockoutWindowMin: parseInt(process.env.AUTO_CLOCKOUT_WINDOW_MIN || '120', 10),
   // Days before next_evaluation_date when admins receive a reminder DM
   evaluationReminderDays: parseInt(process.env.EVALUATION_REMINDER_DAYS || '15', 10),
+  // Slack text prepended to birthday/anniversary posts. Use mention syntax:
+  //   <!channel>          → notifies channel
+  //   <!subteam^S012345>  → notifies a user group (e.g. @support)
+  //   Empty               → no mention
+  birthdayMention:    process.env.BIRTHDAY_MENTION    || '',
+  anniversaryMention: process.env.ANNIVERSARY_MENTION || '',
+  // Comma-separated GIF URLs (Giphy/Tenor direct .gif links). Pick random per post.
+  birthdayGifUrls:    process.env.BIRTHDAY_GIF_URLS    || '',
+  anniversaryGifUrls: process.env.ANNIVERSARY_GIF_URLS || '',
   // Days to keep automatic DB backups before pruning
   dbBackupRetentionDays: parseInt(process.env.DB_BACKUP_RETENTION_DAYS || '30', 10),
   // Punctuality score weights — applied as: penalty = unmarked*Wu + late*Wl + autoClockout*Wa
