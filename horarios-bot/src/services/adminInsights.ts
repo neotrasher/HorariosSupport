@@ -32,6 +32,11 @@ export interface InsightUpcomingDate extends InsightAgentMini {
   daysUntil: number;
 }
 
+export interface InsightUpcomingAnniversary extends InsightUpcomingDate {
+  /** Years they will celebrate (today.year - start_year). Null if no year. */
+  years: number | null;
+}
+
 export interface AdminInsights {
   pendingRequests: number;
   teamScoreAvg: number | null;          // 0-100 or null
@@ -41,6 +46,7 @@ export interface AdminInsights {
   vacationCritical: InsightVacation[];  // <= 3 days available
   upcomingEvaluations: InsightUpcomingDate[];  // within next 30 days
   upcomingBirthdays: InsightUpcomingDate[];    // within next 30 days
+  upcomingAnniversaries: InsightUpcomingAnniversary[];  // within next 30 days
   shiftsThisWeek: number;
   unmarkedThisWeek: number;
   lateThisWeek: number;
@@ -131,9 +137,10 @@ export function computeAdminInsights(): AdminInsights {
   }
   vacationCritical.sort((a, b) => a.available - b.available);
 
-  // ── Upcoming evaluations + birthdays (next 30 days) ─────────────────
+  // ── Upcoming evaluations + birthdays + anniversaries (next 30 days) ──
   const upcomingEvaluations: InsightUpcomingDate[] = [];
   const upcomingBirthdays: InsightUpcomingDate[] = [];
+  const upcomingAnniversaries: InsightUpcomingAnniversary[] = [];
   for (const a of agents) {
     if (a.next_evaluation_date) {
       const d = daysUntilDate(a.next_evaluation_date, today);
@@ -155,9 +162,33 @@ export function computeAdminInsights(): AdminInsights {
         });
       }
     }
+    if (a.start_date) {
+      const d = daysUntilAnnual(a.start_date, today);
+      if (d >= 0 && d <= 30) {
+        // Compute years they will celebrate. If start_date has no year, years=null.
+        const fullYear = a.start_date.match(/^(\d{4})-/);
+        const startYear = fullYear ? parseInt(fullYear[1], 10) : null;
+        let years: number | null = null;
+        if (startYear !== null) {
+          // The next anniversary date is `today + d` days from now; compute its year
+          const nextAnniv = today.plus({ days: d });
+          years = nextAnniv.year - startYear;
+        }
+        // Skip first day (years=0) — not really an anniversary yet
+        if (years === null || years >= 1) {
+          upcomingAnniversaries.push({
+            ...agentMini(a),
+            date: a.start_date,
+            daysUntil: d,
+            years
+          });
+        }
+      }
+    }
   }
   upcomingEvaluations.sort((a, b) => a.daysUntil - b.daysUntil);
   upcomingBirthdays.sort((a, b) => a.daysUntil - b.daysUntil);
+  upcomingAnniversaries.sort((a, b) => a.daysUntil - b.daysUntil);
 
   // ── Week stats (current ISO week) ───────────────────────────────────
   const weekStart = today.startOf('week').toFormat('yyyy-LL-dd');
@@ -181,6 +212,7 @@ export function computeAdminInsights(): AdminInsights {
     vacationCritical,
     upcomingEvaluations,
     upcomingBirthdays,
+    upcomingAnniversaries,
     shiftsThisWeek,
     unmarkedThisWeek,
     lateThisWeek
