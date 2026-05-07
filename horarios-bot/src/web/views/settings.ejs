@@ -13,7 +13,12 @@
 %>
 
 <main class="max-w-3xl mx-auto px-4 py-6">
-  <h2 class="text-xl font-semibold text-slate-900 mb-1">Configuracion</h2>
+  <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-1">
+    <h2 class="text-xl font-semibold text-slate-900">Configuracion</h2>
+    <a href="/slack-helpers/usergroups" class="text-xs text-sky-700 hover:text-sky-900 font-semibold self-start sm:self-auto">
+      🔍 Ver IDs de user groups Slack →
+    </a>
+  </div>
   <p class="text-xs text-slate-500 mb-6">Solo admin. Los cambios se aplican en caliente (sin reiniciar) a cron jobs y rutas.</p>
 
   <% if (flash) { %>
