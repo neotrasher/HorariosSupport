@@ -42,6 +42,7 @@
               <th class="text-right px-3 py-2 font-medium text-slate-600">Ult ajuste</th>
               <th class="text-center px-3 py-2 font-medium text-slate-600"></th>
             <% } %>
+            <th class="text-center px-3 py-2 font-medium text-slate-600" title="Saldo de vacaciones <%= balanceYear %>">Vac. <%= balanceYear %></th>
             <th class="text-left px-3 py-2 font-medium text-slate-600">Estado</th>
           </tr>
         </thead>
@@ -109,6 +110,20 @@
                 </form>
               <% } %>
 
+              <td class="px-3 py-2 text-center">
+                <% const bal = balanceByAgent[a.slack_id]; %>
+                <% if (!bal || bal.entitled === null) { %>
+                  <span class="text-[10px] text-slate-400 font-mono"><%= bal ? bal.used : 0 %><span class="text-slate-300">/—</span></span>
+                <% } else { %>
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold ring-1
+                    <% if (bal.available <= 0) { %>bg-rose-50 text-rose-700 ring-rose-200
+                    <% } else if (bal.available <= 3) { %>bg-amber-50 text-amber-700 ring-amber-200
+                    <% } else { %>bg-emerald-50 text-emerald-700 ring-emerald-200<% } %>"
+                    title="Usados: <%= bal.used %> · Disponibles: <%= bal.available %> · Total: <%= bal.entitled %>">
+                    <%= bal.used %>/<%= bal.entitled %>
+                  </span>
+                <% } %>
+              </td>
               <td class="px-3 py-2 text-xs">
                 <span class="pill inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold ring-1
                   <%= a.active ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-slate-100 text-slate-500 ring-slate-200' %>">

@@ -6,6 +6,7 @@ import {
   getShiftsForAgentRange, getDaysOffForAgentRange, shiftWindow
 } from '../../services/schedule';
 import { getTokenForAgent } from '../../services/calendarTokens';
+import { vacationDaysUsedInYear } from '../../services/timeOff';
 
 export const miHorarioRouter = Router();
 
@@ -99,6 +100,17 @@ miHorarioRouter.get('/', (req, res) => {
   // Calendar sync token (may be null if not yet generated)
   const calToken = agent ? getTokenForAgent(user.slack_id) : null;
 
+  // Vacation balance (current calendar year)
+  const year = DateTime.utc().year;
+  const vacationBalance = agent ? {
+    year,
+    used: vacationDaysUsedInYear(agent.slack_id, year),
+    entitled: agent.vacation_days_per_year ?? null,
+    available: agent.vacation_days_per_year != null
+      ? agent.vacation_days_per_year - vacationDaysUsedInYear(agent.slack_id, year)
+      : null
+  } : null;
+
   res.render('mi-horario', {
     user,
     agent,
@@ -111,6 +123,7 @@ miHorarioRouter.get('/', (req, res) => {
     totalDaysOff,
     isEmpty,
     localTz,
-    calToken: calToken?.token ?? null
+    calToken: calToken?.token ?? null,
+    vacationBalance
   });
 });

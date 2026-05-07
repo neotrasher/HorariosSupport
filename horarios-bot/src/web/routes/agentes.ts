@@ -17,7 +17,23 @@ agentesRouter.get('/', (req, res) => {
   const user = (req.session as any).user;
   const includeInactive = req.query.inactive === '1';
   const agents = listAllAgents(includeInactive);
-  res.render('agentes-list', { user, agents, includeInactive, isAdmin: user.role === 'admin' });
+  // Compute vacation balance for each agent (current year)
+  const year = DateTime.utc().year;
+  const balanceByAgent: Record<string, { used: number; entitled: number | null; available: number | null }> = {};
+  for (const a of agents) {
+    const used = vacationDaysUsedInYear(a.slack_id, year);
+    const entitled = a.vacation_days_per_year ?? null;
+    balanceByAgent[a.slack_id] = {
+      used,
+      entitled,
+      available: entitled === null ? null : entitled - used
+    };
+  }
+  res.render('agentes-list', {
+    user, agents, includeInactive,
+    isAdmin: user.role === 'admin',
+    balanceByAgent, balanceYear: year
+  });
 });
 
 agentesRouter.get('/nuevo', (req, res) => {

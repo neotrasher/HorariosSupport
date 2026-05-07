@@ -19,7 +19,7 @@
   </div>
 
   <% if (agent) { %>
-    <div class="grid grid-cols-3 gap-3 mb-4">
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
       <div class="relative bg-white rounded-xl border border-slate-200 shadow-card p-4 overflow-hidden">
         <div class="absolute top-0 left-0 right-0 h-1 bg-emerald-500"></div>
         <div class="text-[11px] uppercase tracking-wider font-bold text-slate-400">Turnos del mes</div>
@@ -30,6 +30,19 @@
         <div class="text-[11px] uppercase tracking-wider font-bold text-slate-400">Dias libres</div>
         <div class="text-3xl font-extrabold mt-1 text-slate-700"><%= totalDaysOff %></div>
       </div>
+      <% if (vacationBalance) { %>
+      <div class="relative bg-white rounded-xl border border-slate-200 shadow-card p-4 overflow-hidden">
+        <div class="absolute top-0 left-0 right-0 h-1 <%= (vacationBalance.available !== null && vacationBalance.available <= 0) ? 'bg-rose-500' : 'bg-amber-500' %>"></div>
+        <div class="text-[11px] uppercase tracking-wider font-bold text-slate-400">Vacaciones <%= vacationBalance.year %></div>
+        <% if (vacationBalance.entitled === null) { %>
+          <div class="text-3xl font-extrabold mt-1 text-amber-700"><%= vacationBalance.used %><span class="text-lg text-slate-400 font-bold">d</span></div>
+          <div class="text-[10px] text-slate-400 mt-0.5">usados · sin asignacion anual</div>
+        <% } else { %>
+          <div class="text-3xl font-extrabold mt-1 <%= vacationBalance.available <= 0 ? 'text-rose-700' : 'text-amber-700' %>"><%= vacationBalance.available %><span class="text-lg text-slate-400 font-bold">/<%= vacationBalance.entitled %></span></div>
+          <div class="text-[10px] text-slate-400 mt-0.5">disponibles · usados <%= vacationBalance.used %></div>
+        <% } %>
+      </div>
+      <% } %>
       <div class="relative bg-white rounded-xl border border-slate-200 shadow-card p-4 overflow-hidden">
         <div class="absolute top-0 left-0 right-0 h-1 bg-sky-500"></div>
         <div class="text-[11px] uppercase tracking-wider font-bold text-slate-400">Tu zona</div>
