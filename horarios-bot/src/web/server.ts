@@ -58,6 +58,28 @@ export function startWeb(slackApp: SlackApp | null = null) {
     res.json({ ok: true, ts: new Date().toISOString() });
   });
 
+  // Public static files (PWA manifest, icons, service worker) — no auth
+  // In dev (ts-node): __dirname = src/web → public is ../../public
+  // In prod (dist/web): also ../../public from project root
+  const publicDir = fs.existsSync(path.join(__dirname, '..', '..', 'public'))
+    ? path.join(__dirname, '..', '..', 'public')
+    : path.join(__dirname, '..', '..', '..', 'public');
+  app.use('/static', express.static(publicDir, {
+    maxAge: '1h',
+    setHeaders: (res, filePath) => {
+      // Service worker should never be aggressively cached
+      if (filePath.endsWith('sw.js')) {
+        res.setHeader('Cache-Control', 'no-cache');
+      }
+    }
+  }));
+  // Service worker MUST be served from root scope (not /static/) to control all routes
+  app.get('/sw.js', (_req, res) => {
+    res.setHeader('Content-Type', 'application/javascript');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.sendFile(path.join(publicDir, 'sw.js'));
+  });
+
   // Public ICS calendar feed — no auth required (protected by UUID token in URL)
   app.use('/cal', calendarRouter);
 

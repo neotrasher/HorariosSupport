@@ -1,0 +1,47 @@
+{
+  "name": "Horarios Support",
+  "short_name": "Horarios",
+  "description": "Workforce management para el equipo de support",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f5f7fa",
+  "theme_color": "#0f1825",
+  "lang": "es",
+  "categories": ["productivity", "business"],
+  "icons": [
+    {
+      "src": "/static/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mi horario",
+      "short_name": "Mi horario",
+      "url": "/mi-horario",
+      "description": "Ver tu calendario de turnos"
+    },
+    {
+      "name": "Solicitudes",
+      "short_name": "Solicitudes",
+      "url": "/solicitudes",
+      "description": "Permisos y vacaciones"
+    },
+    {
+      "name": "Horarios",
+      "short_name": "Horarios",
+      "url": "/horarios",
+      "description": "Vista del equipo"
+    }
+  ]
+}

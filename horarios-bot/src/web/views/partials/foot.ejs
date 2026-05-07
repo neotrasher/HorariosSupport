@@ -1,4 +1,13 @@
 </div><!-- /.app-main -->
 </div><!-- /.app-shell -->
+<script>
+  // Register service worker for PWA installability + offline fallback
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        .catch(err => console.warn('SW registration failed:', err));
+    });
+  }
+</script>
 </body>
 </html>
