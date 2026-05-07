@@ -117,6 +117,12 @@ export const SETTING_DEFS: SettingDef[] = [
     min: 0, max: 2
   },
   {
+    key: 'punctualityStartDate', label: 'Fecha inicio del score (YYYY-MM-DD)', type: 'string', group: 'puntualidad',
+    apply: v => { (config as any).punctualityStartDate = v; },
+    current: () => config.punctualityStartDate,
+    hint: 'Turnos antes de esta fecha se ignoran (útil cuando el bot aún no estaba activo). Vacío = contar todos.'
+  },
+  {
     key: 'dbBackupRetentionDays', label: 'Retención de backups (días)', type: 'int', group: 'misc',
     apply: v => { (config as any).dbBackupRetentionDays = v; },
     current: () => config.dbBackupRetentionDays,
@@ -187,6 +193,9 @@ export function validateAndApply(key: string, raw: string): { ok: true; value: a
   }
   if (def.key === 'anchorDate') {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return { ok: false, error: 'YYYY-MM-DD' };
+  }
+  if (def.key === 'punctualityStartDate') {
+    if (raw && !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return { ok: false, error: 'YYYY-MM-DD o vacío' };
   }
   return { ok: true, value: raw };
 }

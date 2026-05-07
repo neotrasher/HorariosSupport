@@ -41,6 +41,10 @@ export const config = {
   punctualityWeightUnmarked:    parseFloat(process.env.PUNCT_WEIGHT_UNMARKED     || '1.0'),
   punctualityWeightLate:        parseFloat(process.env.PUNCT_WEIGHT_LATE         || '0.4'),
   punctualityWeightAutoClockout:parseFloat(process.env.PUNCT_WEIGHT_AUTO_CLOCKOUT|| '0.5'),
+  // Earliest date (UTC YYYY-MM-DD) to count shifts toward the punctuality score.
+  // Shifts before this are completely ignored — useful when the bot wasn't yet
+  // live for the team. Empty string = no cutoff, count all historical shifts.
+  punctualityStartDate:         process.env.PUNCTUALITY_START_DATE || '',
   web: {
     port: parseInt(process.env.WEB_PORT || '3000', 10),
     slackClientId: process.env.SLACK_WEB_CLIENT_ID || '',

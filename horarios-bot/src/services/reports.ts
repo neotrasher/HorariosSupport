@@ -15,13 +15,18 @@ export type PunctualityScore = {
 export type AgentReport = {
   agent: Agent;
   shifts: number;
-  /** Shifts whose end time is already in the past (denominator for punctuality). */
+  /** Shifts whose end time is already in the past (informational; not used for score). */
   pastShifts: number;
   completed: number;
   late: { count: number; totalMin: number; incidents: { date: string; min: number }[] };
   breakExcess: { count: number; totalMin: number; incidents: { date: string; min: number }[] };
   unmarked: { count: number; dates: string[] };
   autoClockouts: { count: number; dates: string[] };
+  /** Score-only counters: respect config.punctualityStartDate cutoff. */
+  scoreShifts: number;
+  scoreUnmarked: number;
+  scoreLate: number;
+  scoreAutoClockouts: number;
   permisoDays: number;
   vacationDays: number;
   otherOffDays: number;
@@ -137,6 +142,7 @@ export function buildReports(startStr: string, endStr: string): AgentReport[] {
       breakExcess: { count: 0, totalMin: 0, incidents: [] },
       unmarked: { count: 0, dates: [] },
       autoClockouts: { count: 0, dates: [] },
+      scoreShifts: 0, scoreUnmarked: 0, scoreLate: 0, scoreAutoClockouts: 0,
       permisoDays: 0, vacationDays: 0, otherOffDays: 0,
       hoursWorked: 0,
       punctuality: { score: null, grade: null, pastShifts: 0 }
@@ -164,6 +170,12 @@ export function buildReports(startStr: string, endStr: string): AgentReport[] {
     if (now < shiftEnd) continue;
     bucket.pastShifts++;
 
+    // Score cutoff: shifts before config.punctualityStartDate don't affect the
+    // punctuality score (useful when bot wasn't tracking yet). Historical
+    // counters above are unaffected.
+    const countsForScore = !config.punctualityStartDate || row.date >= config.punctualityStartDate;
+    if (countsForScore) bucket.scoreShifts++;
+
     const clockIn = punchIndex.get(punchKey(agent.slack_id, row.date, row.shift_id, 'clock_in'));
     const clockOut = punchIndex.get(punchKey(agent.slack_id, row.date, row.shift_id, 'clock_out'));
     const breakIn = punchIndex.get(punchKey(agent.slack_id, row.date, row.shift_id, 'break_in'));
@@ -172,6 +184,7 @@ export function buildReports(startStr: string, endStr: string): AgentReport[] {
     if (!clockIn) {
       bucket.unmarked.count++;
       bucket.unmarked.dates.push(row.date);
+      if (countsForScore) bucket.scoreUnmarked++;
       continue;
     }
 
@@ -182,6 +195,7 @@ export function buildReports(startStr: string, endStr: string): AgentReport[] {
       bucket.late.count++;
       bucket.late.totalMin += lateMin;
       bucket.late.incidents.push({ date: row.date, min: lateMin });
+      if (countsForScore) bucket.scoreLate++;
     }
 
     if (clockOut) {
@@ -197,6 +211,7 @@ export function buildReports(startStr: string, endStr: string): AgentReport[] {
       if (clockOut.source === 'auto') {
         bucket.autoClockouts.count++;
         bucket.autoClockouts.dates.push(row.date);
+        if (countsForScore) bucket.scoreAutoClockouts++;
       }
     }
 
@@ -225,14 +240,15 @@ export function buildReports(startStr: string, endStr: string): AgentReport[] {
     else bucket.otherOffDays++;
   }
 
-  // Round hoursWorked to 2 decimals + compute punctuality score
+  // Round hoursWorked to 2 decimals + compute punctuality score (using
+  // the score-specific counters that respect punctualityStartDate cutoff)
   for (const b of byAgent.values()) {
     b.hoursWorked = +b.hoursWorked.toFixed(2);
     b.punctuality = computePunctuality({
-      pastShifts: b.pastShifts,
-      unmarked: b.unmarked.count,
-      late: b.late.count,
-      autoClockouts: b.autoClockouts.count
+      pastShifts: b.scoreShifts,
+      unmarked: b.scoreUnmarked,
+      late: b.scoreLate,
+      autoClockouts: b.scoreAutoClockouts
     });
   }
 
