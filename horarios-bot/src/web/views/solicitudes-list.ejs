@@ -14,6 +14,18 @@
     if (s === 'rejected')  return 'bg-rose-500';
     return 'bg-slate-400';
   };
+  // Map swap-specific statuses to {label, badge style, dot}
+  const swapStatusInfo = (s) => {
+    switch (s) {
+      case 'pending_partner':   return { label: 'Esperando compañero',  cls: 'bg-amber-50 text-amber-800 ring-amber-200',     dot: 'bg-amber-500' };
+      case 'pending_approval':  return { label: 'Esperando manager',    cls: 'bg-sky-50 text-sky-800 ring-sky-200',           dot: 'bg-sky-500' };
+      case 'approved':          return { label: 'Aprobado',             cls: 'bg-emerald-50 text-emerald-800 ring-emerald-200', dot: 'bg-emerald-500' };
+      case 'rejected_partner':  return { label: 'Rechazado por compañero', cls: 'bg-rose-50 text-rose-800 ring-rose-200',     dot: 'bg-rose-500' };
+      case 'rejected_approver': return { label: 'Rechazado por manager', cls: 'bg-rose-50 text-rose-800 ring-rose-200',       dot: 'bg-rose-500' };
+      case 'cancelled':         return { label: 'Cancelado',            cls: 'bg-slate-100 text-slate-600 ring-slate-200',    dot: 'bg-slate-400' };
+      default:                  return { label: s,                      cls: 'bg-slate-100 text-slate-600 ring-slate-200',    dot: 'bg-slate-400' };
+    }
+  };
 %>
 
 <main class="max-w-6xl mx-auto px-4 sm:px-6 py-6">
@@ -33,6 +45,154 @@
       <span class="text-base leading-none">+</span> Nueva solicitud
     </a>
   </div>
+
+  <!-- Tabs: tiempo libre / cambios de turnos -->
+  <div class="flex items-center gap-1 mb-5 border-b border-slate-200">
+    <a href="/solicitudes"
+       class="px-4 py-2 text-sm font-semibold border-b-2 -mb-px transition-colors flex items-center gap-2
+              <%= view === 'timeoff' ? 'border-ink-800 text-ink-800' : 'border-transparent text-slate-500 hover:text-slate-800' %>">
+      📅 Permisos y vacaciones
+      <% if (isManager && pendingCount > 0) { %>
+        <span class="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-amber-100 text-amber-700"><%= pendingCount %></span>
+      <% } %>
+    </a>
+    <a href="/solicitudes?view=swaps"
+       class="px-4 py-2 text-sm font-semibold border-b-2 -mb-px transition-colors flex items-center gap-2
+              <%= view === 'swaps' ? 'border-ink-800 text-ink-800' : 'border-transparent text-slate-500 hover:text-slate-800' %>">
+      ↔ Cambios de turnos
+      <% if (isManager && pendingSwapsCount > 0) { %>
+        <span class="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-sky-100 text-sky-700"><%= pendingSwapsCount %></span>
+      <% } %>
+    </a>
+  </div>
+
+  <% if (view === 'swaps') { %>
+    <!-- Swap filters -->
+    <% if (isManager) {
+         function buildSwapQs(overrides) {
+           const params = { view: 'swaps', status: filterStatus, agent: filterAgent, ...overrides };
+           const parts = Object.entries(params)
+             .filter(([k, v]) => v !== '' && v !== undefined && v !== null)
+             .map(([k, v]) => `${k}=${encodeURIComponent(v)}`);
+           return parts.length ? '?' + parts.join('&') : '';
+         }
+    %>
+      <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-5 text-sm">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-slate-500 shrink-0">Estado:</span>
+          <% const swFilters = [['','Todos'],['pending_partner','Esperando comp.'],['pending_approval','Esperando mgr.'],['approved','Aprobados'],['rejected_partner','Rech. comp.'],['rejected_approver','Rech. mgr.'],['cancelled','Cancelados']] %>
+          <% swFilters.forEach(([val, lbl]) => { %>
+            <a href="/solicitudes<%= buildSwapQs({ status: val }) %>"
+               class="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap <%= filterStatus === val ? 'bg-ink-800 text-white shadow-card' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50' %>">
+              <%= lbl %>
+            </a>
+          <% }) %>
+        </div>
+        <div class="flex items-center gap-2 sm:ml-auto">
+          <label class="text-slate-500 shrink-0 text-xs">Agente:</label>
+          <select onchange="location.href='/solicitudes?view=swaps' + (this.value ? ('<%= filterStatus ? '&status=' + filterStatus + '&' : '&' %>agent=' + encodeURIComponent(this.value)) : '<%= filterStatus ? '&status=' + filterStatus : '' %>')"
+                  class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white">
+            <option value="">Todos</option>
+            <% agentOptions.forEach(a => { %>
+              <option value="<%= a.slack_id %>" <%= filterAgent === a.slack_id ? 'selected' : '' %>><%= a.name %></option>
+            <% }) %>
+          </select>
+          <% if (filterAgent) { %>
+            <a href="/solicitudes<%= buildSwapQs({ agent: '' }) %>" class="text-xs text-slate-500 hover:text-rose-600" title="Quitar filtro">×</a>
+          <% } %>
+        </div>
+      </div>
+    <% } %>
+
+    <% if (swaps.length === 0) { %>
+      <div class="bg-white rounded-xl border border-slate-200 shadow-card p-12 text-center">
+        <div class="text-4xl mb-2 opacity-30">↔</div>
+        <p class="text-sm text-slate-400">Sin cambios de turnos</p>
+        <p class="text-xs text-slate-400 mt-1">Los swaps se piden desde Slack con <code class="bg-slate-100 px-1.5 py-0.5 rounded">/horario-swap</code></p>
+      </div>
+    <% } else { %>
+      <!-- Desktop: tabla -->
+      <div class="hidden md:block bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
+        <table class="w-full text-sm">
+          <thead class="bg-slate-50/60 border-b border-slate-200 text-xs uppercase tracking-wider">
+            <tr>
+              <th class="text-left px-4 py-3 font-semibold text-slate-500">Solicitante</th>
+              <th class="text-left px-3 py-3 font-semibold text-slate-500">Su turno</th>
+              <th class="text-left px-3 py-3 font-semibold text-slate-500">Compañero</th>
+              <th class="text-left px-3 py-3 font-semibold text-slate-500">Su turno</th>
+              <th class="text-left px-3 py-3 font-semibold text-slate-500">Estado</th>
+              <th class="text-left px-3 py-3 font-semibold text-slate-500">Creado</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <% swaps.forEach(s => { const si = swapStatusInfo(s.status); %>
+              <tr class="hover:bg-slate-50/60">
+                <td class="px-4 py-3 font-medium text-slate-900"><%= s.requesterName %></td>
+                <td class="px-3 py-3 text-xs">
+                  <div class="font-mono text-slate-700"><%= fmtDate(s.requester_date) %></div>
+                  <div class="text-slate-500 mt-0.5"><%= s.requesterSnapshotLabel %></div>
+                </td>
+                <td class="px-3 py-3 font-medium text-slate-900"><%= s.partnerName %></td>
+                <td class="px-3 py-3 text-xs">
+                  <div class="font-mono text-slate-700"><%= fmtDate(s.partner_date) %></div>
+                  <div class="text-slate-500 mt-0.5"><%= s.partnerSnapshotLabel %></div>
+                </td>
+                <td class="px-3 py-3">
+                  <span class="pill inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= si.cls %>">
+                    <span class="w-1.5 h-1.5 rounded-full <%= si.dot %>"></span>
+                    <%= si.label %>
+                  </span>
+                  <% if (s.note) { %>
+                    <div class="text-[10px] text-slate-400 mt-1 max-w-xs truncate" title="<%= s.note %>">📝 <%= s.note %></div>
+                  <% } %>
+                  <% if (s.rejection_reason) { %>
+                    <div class="text-[10px] text-rose-500 mt-1 max-w-xs truncate" title="<%= s.rejection_reason %>">✗ <%= s.rejection_reason %></div>
+                  <% } %>
+                </td>
+                <td class="px-3 py-3 text-slate-500 text-xs"><%= fmtDateTime(s.createdLocal) %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Mobile: cards -->
+      <div class="md:hidden space-y-2">
+        <% swaps.forEach(s => { const si = swapStatusInfo(s.status); %>
+          <div class="bg-white rounded-xl border border-slate-200 shadow-card p-3">
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <span class="pill inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= si.cls %>">
+                <span class="w-1.5 h-1.5 rounded-full <%= si.dot %>"></span>
+                <%= si.label %>
+              </span>
+              <span class="text-[10px] text-slate-400"><%= fmtDateTime(s.createdLocal) %></span>
+            </div>
+            <div class="text-xs space-y-2">
+              <div>
+                <div class="font-semibold text-slate-900"><%= s.requesterName %></div>
+                <div class="text-slate-600"><span class="font-mono"><%= fmtDate(s.requester_date) %></span> · <%= s.requesterSnapshotLabel %></div>
+              </div>
+              <div class="text-center text-slate-400">↔</div>
+              <div>
+                <div class="font-semibold text-slate-900"><%= s.partnerName %></div>
+                <div class="text-slate-600"><span class="font-mono"><%= fmtDate(s.partner_date) %></span> · <%= s.partnerSnapshotLabel %></div>
+              </div>
+            </div>
+            <% if (s.note) { %>
+              <div class="text-[11px] text-slate-500 mt-2 pt-2 border-t border-slate-100">📝 <%= s.note %></div>
+            <% } %>
+            <% if (s.rejection_reason) { %>
+              <div class="text-[11px] text-rose-600 mt-2 pt-2 border-t border-slate-100">✗ <%= s.rejection_reason %></div>
+            <% } %>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+    <p class="text-xs text-slate-400 mt-4">
+      Los cambios de turno se inician desde Slack con <code class="bg-slate-100 px-1.5 py-0.5 rounded">/horario-swap</code>.
+      Solo se aprueban cuando el compañero acepta y luego un manager confirma.
+    </p>
+  <% } else { %>
 
   <% if (isManager) {
        // Helper: build a query string preserving other active filters
@@ -237,5 +397,6 @@
       <% }) %>
     </ul>
   <% } %>
+  <% } %><!-- /view === timeoff -->
 </main>
 <%- include('partials/foot') %>

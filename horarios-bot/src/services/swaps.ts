@@ -254,6 +254,36 @@ function sameSnapshot(a: AssignmentSnapshot, b: AssignmentSnapshot): boolean {
   return true;
 }
 
+/** Pending swaps that still need partner accept or manager approval. */
+export function listPendingSwaps(): SwapRequest[] {
+  return db.prepare(`
+    SELECT * FROM swap_requests
+    WHERE status IN ('pending_partner', 'pending_approval')
+    ORDER BY created_at DESC
+  `).all() as SwapRequest[];
+}
+
+/** All swaps, newest first. Optional status filter. */
+export function listAllSwaps(opts: { status?: SwapStatus } = {}): SwapRequest[] {
+  if (opts.status) {
+    return db.prepare(`
+      SELECT * FROM swap_requests WHERE status = ? ORDER BY created_at DESC
+    `).all(opts.status) as SwapRequest[];
+  }
+  return db.prepare(`
+    SELECT * FROM swap_requests ORDER BY created_at DESC
+  `).all() as SwapRequest[];
+}
+
+/** Swaps where the user appears as either requester or partner. */
+export function listSwapsForUser(slackId: string): SwapRequest[] {
+  return db.prepare(`
+    SELECT * FROM swap_requests
+    WHERE requester_slack_id = ? OR partner_slack_id = ?
+    ORDER BY created_at DESC
+  `).all(slackId, slackId) as SwapRequest[];
+}
+
 /** Reassign an existing assignment record from one agent to another. */
 function reassign(a: Assignment, fromPlannerId: number, toPlannerId: number) {
   if (a.kind === 'shift') {

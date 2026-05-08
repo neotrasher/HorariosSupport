@@ -12,6 +12,10 @@ import {
 import { logAudit } from '../../services/audit';
 import { suggestCoverage } from '../../services/coverage';
 import {
+  listAllSwaps, listSwapsForUser, listPendingSwaps,
+  describeSnapshot, AssignmentSnapshot, SwapStatus
+} from '../../services/swaps';
+import {
   timeOffApproverBlocks, timeOffRequesterBlocks, timeOffResolvedBlocks
 } from '../../ui/blocks';
 import { requireManager } from './auth';
@@ -44,32 +48,67 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
 
   router.get('/', (req, res) => {
     const user = (req.session as any).user;
-    const filterStatus = (req.query.status as string) as TimeOffStatus | undefined;
+    const view = (req.query.view as string) === 'swaps' ? 'swaps' : 'timeoff';
+    const filterStatus = (req.query.status as string) || '';
     const filterAgent = ((req.query.agent as string) || '').trim();
 
     const isPriv = user.role === 'manager' || user.role === 'admin';
-    let requests;
-    if (isPriv) {
-      requests = filterStatus ? listAll({ status: filterStatus }) : listAll();
-      if (filterAgent) requests = requests.filter(r => r.requester_slack_id === filterAgent);
+
+    // Always compute counts for the tab badges (cheap)
+    const pendingTimeOffCount = listPending().length;
+    const pendingSwapsCount = listPendingSwaps().length;
+
+    let requests: any[] = [];
+    let swaps: any[] = [];
+
+    if (view === 'swaps') {
+      let rawSwaps = isPriv
+        ? (filterStatus ? listAllSwaps({ status: filterStatus as SwapStatus }) : listAllSwaps())
+        : listSwapsForUser(user.slack_id);
+      if (isPriv && filterAgent) {
+        rawSwaps = rawSwaps.filter(s =>
+          s.requester_slack_id === filterAgent || s.partner_slack_id === filterAgent
+        );
+      }
+      swaps = rawSwaps.map(s => {
+        const reqA = getAgentBySlackId(s.requester_slack_id);
+        const partA = getAgentBySlackId(s.partner_slack_id);
+        let reqSnap: AssignmentSnapshot | null = null;
+        let partSnap: AssignmentSnapshot | null = null;
+        try { reqSnap = JSON.parse(s.requester_snapshot); } catch {}
+        try { partSnap = JSON.parse(s.partner_snapshot); } catch {}
+        return {
+          ...s,
+          requesterName: reqA?.name || s.requester_slack_id,
+          partnerName: partA?.name || s.partner_slack_id,
+          requesterSnapshotLabel: reqSnap ? describeSnapshot(reqSnap) : '—',
+          partnerSnapshotLabel: partSnap ? describeSnapshot(partSnap) : '—',
+          createdLocal: DateTime.fromSQL(s.created_at, { zone: 'utc' }).toFormat('yyyy-LL-dd HH:mm') + ' UTC'
+        };
+      });
     } else {
-      requests = listByRequester(user.slack_id);
+      let rawRequests;
+      if (isPriv) {
+        rawRequests = filterStatus
+          ? listAll({ status: filterStatus as TimeOffStatus })
+          : listAll();
+        if (filterAgent) rawRequests = rawRequests.filter(r => r.requester_slack_id === filterAgent);
+      } else {
+        rawRequests = listByRequester(user.slack_id);
+      }
+      requests = rawRequests.map(r => {
+        const a = getAgentBySlackId(r.requester_slack_id);
+        const days = Math.round(
+          (new Date(r.end_date).getTime() - new Date(r.start_date).getTime()) / 86400000
+        ) + 1;
+        return {
+          ...r,
+          requesterName: a?.name || r.requester_slack_id,
+          days,
+          createdLocal: DateTime.fromSQL(r.created_at, { zone: 'utc' }).toFormat('yyyy-LL-dd HH:mm') + ' UTC'
+        };
+      });
     }
-
-    const pendingCount = listPending().length;
-
-    const enriched = requests.map(r => {
-      const a = getAgentBySlackId(r.requester_slack_id);
-      const days = Math.round(
-        (new Date(r.end_date).getTime() - new Date(r.start_date).getTime()) / 86400000
-      ) + 1;
-      return {
-        ...r,
-        requesterName: a?.name || r.requester_slack_id,
-        days,
-        createdLocal: DateTime.fromSQL(r.created_at, { zone: 'utc' }).toFormat('yyyy-LL-dd HH:mm') + ' UTC'
-      };
-    });
 
     // For privileged users, list of agents with at least one request (for the filter dropdown)
     const agentOptions = isPriv
@@ -81,11 +120,14 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
 
     res.render('solicitudes-list', {
       user,
-      requests: enriched,
+      view,
+      requests,
+      swaps,
+      pendingCount: pendingTimeOffCount,
+      pendingSwapsCount,
       filterStatus: filterStatus || '',
       filterAgent,
       agentOptions,
-      pendingCount,
       isManager: isPriv
     });
   });
