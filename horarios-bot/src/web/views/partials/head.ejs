@@ -286,11 +286,59 @@
     html.dark .text-yellow-700 { color: #facc15 !important; }
     html.dark .ring-yellow-300 { --tw-ring-color: rgba(234, 179, 8, 0.5) !important; }
     html.dark .ring-yellow-400 { --tw-ring-color: #eab308 !important; }
-    html.dark .bg-emerald-100, html.dark .bg-blue-100, html.dark .bg-violet-100,
-    html.dark .bg-amber-100, html.dark .bg-rose-100, html.dark .bg-sky-100,
-    html.dark .bg-purple-100, html.dark .bg-cyan-100, html.dark .bg-pink-100 {
-      filter: brightness(0.65);
-    }
+    /* Agent chips (bg-X-100 + text-X-800 + ring-X-300). Use semi-transparent
+       fill + bright text + visible ring so chips read clearly on dark bg. */
+    html.dark .bg-emerald-100  { background-color: rgba(16, 185, 129, 0.18) !important; }
+    html.dark .bg-blue-100     { background-color: rgba(59, 130, 246, 0.18) !important; }
+    html.dark .bg-rose-100     { background-color: rgba(244, 63, 94, 0.18) !important; }
+    html.dark .bg-amber-100    { background-color: rgba(245, 158, 11, 0.18) !important; }
+    html.dark .bg-purple-100   { background-color: rgba(168, 85, 247, 0.18) !important; }
+    html.dark .bg-cyan-100     { background-color: rgba(6, 182, 212, 0.18) !important; }
+    html.dark .bg-pink-100     { background-color: rgba(236, 72, 153, 0.18) !important; }
+    html.dark .bg-lime-100     { background-color: rgba(132, 204, 22, 0.20) !important; }
+    html.dark .bg-orange-100   { background-color: rgba(249, 115, 22, 0.20) !important; }
+    html.dark .bg-teal-100     { background-color: rgba(20, 184, 166, 0.20) !important; }
+    html.dark .bg-violet-100   { background-color: rgba(139, 92, 246, 0.20) !important; }
+    html.dark .bg-fuchsia-100  { background-color: rgba(217, 70, 239, 0.20) !important; }
+    html.dark .bg-sky-100      { background-color: rgba(14, 165, 233, 0.18) !important; }
+
+    /* Chip text colors (X-800 → bright variants) */
+    html.dark .text-emerald-800  { color: #6ee7b7 !important; }
+    html.dark .text-blue-800     { color: #93c5fd !important; }
+    html.dark .text-rose-800     { color: #fda4af !important; }
+    html.dark .text-amber-800    { color: #fcd34d !important; }
+    html.dark .text-purple-800   { color: #d8b4fe !important; }
+    html.dark .text-cyan-800     { color: #67e8f9 !important; }
+    html.dark .text-pink-800     { color: #f9a8d4 !important; }
+    html.dark .text-lime-800     { color: #bef264 !important; }
+    html.dark .text-orange-800   { color: #fdba74 !important; }
+    html.dark .text-teal-800     { color: #5eead4 !important; }
+    html.dark .text-violet-800   { color: #c4b5fd !important; }
+    html.dark .text-fuchsia-800  { color: #f0abfc !important; }
+    html.dark .text-sky-800      { color: #7dd3fc !important; }
+    html.dark .text-blue-900, html.dark .text-amber-900 { color: #f1f5f9 !important; }
+
+    /* Chip rings — keep them visible at the right hue */
+    html.dark .ring-emerald-300  { --tw-ring-color: rgba(110, 231, 183, 0.5) !important; }
+    html.dark .ring-blue-300     { --tw-ring-color: rgba(147, 197, 253, 0.5) !important; }
+    html.dark .ring-rose-300     { --tw-ring-color: rgba(253, 164, 175, 0.5) !important; }
+    html.dark .ring-amber-300    { --tw-ring-color: rgba(252, 211, 77, 0.5) !important; }
+    html.dark .ring-purple-300   { --tw-ring-color: rgba(216, 180, 254, 0.5) !important; }
+    html.dark .ring-cyan-300     { --tw-ring-color: rgba(103, 232, 249, 0.5) !important; }
+    html.dark .ring-pink-300     { --tw-ring-color: rgba(249, 168, 212, 0.5) !important; }
+    html.dark .ring-lime-300     { --tw-ring-color: rgba(190, 242, 100, 0.5) !important; }
+    html.dark .ring-orange-300   { --tw-ring-color: rgba(253, 186, 116, 0.5) !important; }
+    html.dark .ring-teal-300     { --tw-ring-color: rgba(94, 234, 212, 0.5) !important; }
+    html.dark .ring-violet-300   { --tw-ring-color: rgba(196, 181, 253, 0.5) !important; }
+    html.dark .ring-fuchsia-300  { --tw-ring-color: rgba(240, 171, 252, 0.5) !important; }
+
+    /* Ink palette (custom brand color) — invert for dark */
+    html.dark .text-ink-800   { color: #f1f5f9 !important; }
+    html.dark .text-ink-700   { color: #cbd5e1 !important; }
+    html.dark .border-ink-800 { border-color: #f1f5f9 !important; }
+    html.dark .bg-ink-800     { background-color: #475569 !important; }
+    html.dark .bg-ink-700     { background-color: #334155 !important; }
+    html.dark .hover\:bg-ink-700:hover { background-color: #475569 !important; }
 
     /* Strong text colors stay strong but a tad brighter */
     html.dark .text-emerald-700 { color: #4ade80 !important; }
