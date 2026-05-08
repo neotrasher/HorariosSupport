@@ -65,6 +65,8 @@ export const config = {
   dbPath: process.env.DB_PATH || './data/bot.db',
   anchorDate: process.env.ANCHOR_DATE || '2026-04-27',
   anchorCycle: (process.env.ANCHOR_CYCLE || 'A') as 'A' | 'B' | 'C' | 'D',
+  // Cycle length in weeks: 3 (A/B/C) or 4 (A/B/C/D). Editable in /settings.
+  cycleLength: parseInt(process.env.CYCLE_LENGTH || '4', 10) as 3 | 4,
   // IANA timezone shown alongside UTC in status/hoy headers (e.g. America/Bogota)
   displayTimezone: process.env.DISPLAY_TIMEZONE || 'UTC',
   logLevel: process.env.LOG_LEVEL || 'info',
@@ -77,6 +79,15 @@ export const DAY_FULL: Record<string, string> = {
   V: 'Viernes', S: 'Sábado', D: 'Domingo'
 };
 export const CYCLES = ['A', 'B', 'C', 'D'] as const;
+
+/**
+ * Active cycle letters based on config.cycleLength. If 3, returns ['A','B','C'];
+ * if 4, returns the full ['A','B','C','D']. Use this for any "iterate cycles"
+ * loop or "is this cycle valid?" check.
+ */
+export function activeCycles(): readonly ('A' | 'B' | 'C' | 'D')[] {
+  return CYCLES.slice(0, config.cycleLength) as readonly ('A' | 'B' | 'C' | 'D')[];
+}
 
 // Shift definitions per dept (UTC hours, end_hour 24 = midnight next day)
 export type ShiftDef = { id: string; label: string; startHour: number; endHour: number };

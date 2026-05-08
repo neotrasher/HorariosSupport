@@ -83,6 +83,13 @@ export const SETTING_DEFS: SettingDef[] = [
     current: () => config.anchorCycle
   },
   {
+    key: 'cycleLength', label: 'Duración del ciclo (semanas)', type: 'int', group: 'cycle',
+    apply: v => { (config as any).cycleLength = v; },
+    current: () => config.cycleLength,
+    hint: '3 = ciclo A/B/C · 4 = ciclo A/B/C/D. Cambiar acá NO borra datos guardados de la cuarta semana — quedan ignorados hasta que vuelvas a 4.',
+    min: 3, max: 4
+  },
+  {
     key: 'attendanceChannelId', label: 'Canal de asistencia (Slack ID)', type: 'string', group: 'slack',
     apply: v => { (config as any).attendanceChannelId = v; },
     current: () => config.attendanceChannelId,
@@ -213,7 +220,8 @@ export function validateAndApply(key: string, raw: string): { ok: true; value: a
     return { ok: true, value: n };
   }
   if (def.key === 'anchorCycle') {
-    if (!['A', 'B', 'C', 'D'].includes(raw)) return { ok: false, error: 'must be A/B/C/D' };
+    const allowed = ['A', 'B', 'C', 'D'].slice(0, config.cycleLength);
+    if (!allowed.includes(raw)) return { ok: false, error: `must be one of ${allowed.join('/')}` };
   }
   if (def.key === 'anchorDate') {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return { ok: false, error: 'YYYY-MM-DD' };

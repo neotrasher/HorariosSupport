@@ -4,6 +4,7 @@ import { expandPlanner, applyExpansion, ExpansionResult } from '../../services/p
 import { getPlannerState, setPlannerState } from '../../services/plannerState';
 import { listAllAgents } from '../../services/agents';
 import { requireManager } from './auth';
+import { activeCycles } from '../../config';
 
 export const plannerRouter = Router();
 
@@ -27,7 +28,8 @@ plannerRouter.get('/', (req, res) => {
   res.render('planner-editor', {
     user,
     defaultStart: nextMonday.toFormat('yyyy-LL-dd'),
-    defaultEnd: defaultEnd.toFormat('yyyy-LL-dd')
+    defaultEnd: defaultEnd.toFormat('yyyy-LL-dd'),
+    activeCycles: activeCycles()
   });
 });
 

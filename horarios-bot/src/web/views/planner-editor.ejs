@@ -562,7 +562,9 @@
 
 const DAYS = ['L','M','C','J','V','S','D'];
 const DAY_FULL = {L:'Lunes',M:'Martes',C:'Miércoles',J:'Jueves',V:'Viernes',S:'Sábado',D:'Domingo'};
-const CYCLES = ['A','B','C','D'];
+// Active cycles come from server config (3 = A/B/C, 4 = A/B/C/D).
+// Saved data for inactive cycles is preserved in DB but ignored at render time.
+const CYCLES = <%- JSON.stringify(activeCycles) %>;
 
 const DEPTS = [
   { id:'L2', label:'Horario L2', shifts:[

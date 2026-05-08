@@ -10,15 +10,18 @@ export function dayCodeFromDate(d: DateTime): string {
   return entry ? entry[0] : 'L';
 }
 
-/** Cycle (A/B/C/D) for the Monday-week containing the given UTC date — used for display only. */
+/** Cycle letter (A/B/C[/D]) for the Monday-week containing the given UTC date.
+ *  Modulo respects config.cycleLength so 3-week and 4-week cycles both work. */
 export function cycleForDate(d: DateTime): 'A' | 'B' | 'C' | 'D' {
   const anchor = DateTime.fromISO(config.anchorDate, { zone: 'utc' }).startOf('day');
   const target = d.toUTC().startOf('day');
   const targetMonday = target.minus({ days: target.weekday - 1 });
   const anchorMonday = anchor.minus({ days: anchor.weekday - 1 });
   const weeks = Math.floor(targetMonday.diff(anchorMonday, 'weeks').weeks);
-  const anchorIdx = CYCLES.indexOf(config.anchorCycle);
-  const idx = ((anchorIdx + weeks) % 4 + 4) % 4;
+  const len = config.cycleLength;
+  const active = CYCLES.slice(0, len);
+  const anchorIdx = Math.max(0, active.indexOf(config.anchorCycle));
+  const idx = ((anchorIdx + weeks) % len + len) % len;
   return CYCLES[idx];
 }
 

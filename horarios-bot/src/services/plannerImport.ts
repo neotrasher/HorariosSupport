@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon';
 import { db } from '../db';
-import { CYCLES } from '../config';
+import { activeCycles } from '../config';
 import {
   cycleForDate, dayCodeFromDate, clearScheduleRange,
   insertScheduleEntry, insertDayOffEntry
@@ -56,7 +56,7 @@ export function expandPlanner(json: PlannerJson, startStr: string, endStr: strin
       if (isNaN(pid)) continue;
       const cycleMap = new Map<string, Set<string>>();
       for (const [cy, days] of Object.entries(perCycle)) {
-        if (!CYCLES.includes(cy as any)) continue;
+        if (!activeCycles().includes(cy as any)) continue;
         cycleMap.set(cy, new Set(Array.isArray(days) ? days : []));
       }
       dayOffLookup.set(pid, cycleMap);
