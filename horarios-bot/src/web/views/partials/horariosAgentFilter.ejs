@@ -1,74 +1,125 @@
 <!--
-  Agent highlight filter for /horarios day+week views.
-  Picks one agent (by planner_id) and dims all other chips so the manager
-  can quickly track one person across the schedule. Persists in
-  localStorage so it survives day/week navigation.
+  Multi-select agent highlight filter for /horarios day+week views.
+  Lets the manager pick one or more agents and dims everyone else's chips.
+  Persists in localStorage so it survives day/week navigation.
 
   Requires `allAgents` in scope (array of {plannerId, name, dept}).
 -->
-<div class="flex items-center gap-2 text-xs flex-wrap">
-  <label for="agentFilter" class="text-slate-500 shrink-0">Resaltar agente:</label>
-  <select id="agentFilter" class="border border-slate-300 rounded-lg px-2 py-1.5 bg-white text-xs">
-    <option value="">— Todos —</option>
-    <% allAgents.forEach(a => { %>
-      <option value="<%= a.plannerId %>"><%= a.name %> (<%= a.dept %>)</option>
-    <% }) %>
-  </select>
-  <button type="button" id="agentFilterClear" class="hidden text-[11px] text-slate-500 hover:text-rose-600">× limpiar</button>
+<div class="relative inline-block text-xs" id="agentFilterRoot">
+  <button type="button" id="agentFilterBtn"
+    class="border border-slate-300 rounded-lg px-3 py-1.5 bg-white text-xs flex items-center gap-2 hover:bg-slate-50">
+    <span class="text-slate-500">Resaltar:</span>
+    <span id="agentFilterLabel" class="font-semibold text-slate-700">Todos</span>
+    <span class="text-slate-400">▾</span>
+  </button>
+  <div id="agentFilterPanel" class="hidden absolute z-30 mt-1 w-64 max-h-80 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-card-hover">
+    <div class="px-3 py-2 border-b border-slate-100 flex items-center justify-between gap-2 sticky top-0 bg-white">
+      <button type="button" id="agentFilterAll"  class="text-[11px] text-slate-500 hover:text-slate-900">Todos</button>
+      <button type="button" id="agentFilterNone" class="text-[11px] text-slate-500 hover:text-slate-900">Ninguno</button>
+    </div>
+    <ul class="py-1">
+      <% allAgents.forEach(a => { %>
+        <li>
+          <label class="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer text-xs">
+            <input type="checkbox" class="agent-filter-cb accent-ink-800" value="<%= a.plannerId %>">
+            <span class="flex-1 truncate text-slate-700"><%= a.name %></span>
+            <span class="text-[10px] uppercase font-bold tracking-wide
+              <%= a.dept === 'L1' ? 'text-blue-600' : a.dept === 'L2' ? 'text-violet-600' : 'text-slate-400' %>"><%= a.dept %></span>
+          </label>
+        </li>
+      <% }) %>
+    </ul>
+  </div>
 </div>
 
 <style>
-  /* Apply when a filter is active. Dim all chips that don't match the
-     selected planner_id; the matching chip stays full opacity + ring. */
+  /* When filter is active, dim all chips that don't match. Matching chips
+     stay full opacity + soft amber ring. */
   .agent-filter-on [data-chip]              { opacity: 0.20; transition: opacity 0.15s; }
   .agent-filter-on [data-chip].chip-match   { opacity: 1; }
   .agent-filter-on [data-chip].chip-match .chip-link,
   .agent-filter-on [data-chip].chip-match > span:first-child {
     box-shadow: 0 0 0 2px #f59e0b, 0 0 8px rgba(245, 158, 11, 0.4);
   }
-  /* Also dim OFF-section agent pills (they have data-pid too) */
   .agent-filter-on .off-pill              { opacity: 0.20; transition: opacity 0.15s; }
   .agent-filter-on .off-pill.chip-match   { opacity: 1; box-shadow: 0 0 0 2px #f59e0b; }
 </style>
 
 <script>
 (function() {
-  const KEY = 'horariosAgentFilterPid';
-  const sel = document.getElementById('agentFilter');
-  const clearBtn = document.getElementById('agentFilterClear');
-  if (!sel) return;
+  const KEY = 'horariosAgentFilterPids'; // CSV of planner_ids
+  const root = document.getElementById('agentFilterRoot');
+  const btn = document.getElementById('agentFilterBtn');
+  const label = document.getElementById('agentFilterLabel');
+  const panel = document.getElementById('agentFilterPanel');
+  const cbs = Array.from(document.querySelectorAll('.agent-filter-cb'));
+  const allBtn = document.getElementById('agentFilterAll');
+  const noneBtn = document.getElementById('agentFilterNone');
+  if (!btn) return;
 
-  function apply(pid) {
-    const root = document.body;
-    const chips = document.querySelectorAll('[data-chip], .off-pill');
-    if (!pid) {
-      root.classList.remove('agent-filter-on');
-      chips.forEach(c => c.classList.remove('chip-match'));
-      clearBtn.classList.add('hidden');
-      return;
-    }
-    root.classList.add('agent-filter-on');
-    chips.forEach(c => {
-      if (c.dataset.pid === String(pid)) c.classList.add('chip-match');
-      else c.classList.remove('chip-match');
-    });
-    clearBtn.classList.remove('hidden');
+  function selectedSet() {
+    return new Set(cbs.filter(cb => cb.checked).map(cb => cb.value));
   }
 
-  // Restore persisted choice
+  function applyHighlight() {
+    const sel = selectedSet();
+    const body = document.body;
+    const all = document.querySelectorAll('[data-chip], .off-pill');
+    if (sel.size === 0) {
+      body.classList.remove('agent-filter-on');
+      all.forEach(el => el.classList.remove('chip-match'));
+      label.textContent = 'Todos';
+      label.className = 'font-semibold text-slate-700';
+      return;
+    }
+    body.classList.add('agent-filter-on');
+    all.forEach(el => {
+      if (sel.has(el.dataset.pid)) el.classList.add('chip-match');
+      else el.classList.remove('chip-match');
+    });
+    if (sel.size === 1) {
+      const cb = cbs.find(c => c.checked);
+      const txt = cb?.parentElement?.querySelector('span')?.textContent?.trim() || '1 agente';
+      label.textContent = txt;
+    } else {
+      label.textContent = sel.size + ' agentes';
+    }
+    label.className = 'font-semibold text-amber-700';
+  }
+
+  function persist() {
+    const v = cbs.filter(c => c.checked).map(c => c.value).join(',');
+    try { v ? localStorage.setItem(KEY, v) : localStorage.removeItem(KEY); } catch(e) {}
+  }
+
+  // Restore
   let saved = '';
   try { saved = localStorage.getItem(KEY) || ''; } catch(e) {}
-  if (saved) { sel.value = saved; apply(saved); }
+  if (saved) {
+    const set = new Set(saved.split(','));
+    cbs.forEach(cb => { cb.checked = set.has(cb.value); });
+    applyHighlight();
+  }
 
-  sel.addEventListener('change', () => {
-    const v = sel.value;
-    try { v ? localStorage.setItem(KEY, v) : localStorage.removeItem(KEY); } catch(e) {}
-    apply(v);
+  // Wire up
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    panel.classList.toggle('hidden');
   });
-  clearBtn.addEventListener('click', () => {
-    sel.value = '';
-    try { localStorage.removeItem(KEY); } catch(e) {}
-    apply('');
+  document.addEventListener('click', e => {
+    if (!root.contains(e.target)) panel.classList.add('hidden');
+  });
+  cbs.forEach(cb => cb.addEventListener('change', () => {
+    persist();
+    applyHighlight();
+  }));
+  allBtn.addEventListener('click', () => {
+    cbs.forEach(c => c.checked = true);
+    persist(); applyHighlight();
+  });
+  noneBtn.addEventListener('click', () => {
+    cbs.forEach(c => c.checked = false);
+    persist(); applyHighlight();
   });
 })();
 </script>
