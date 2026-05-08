@@ -140,7 +140,11 @@ export function startWeb(slackApp: SlackApp | null = null) {
   });
 
   const port = config.web.port;
-  app.listen(port, () => {
-    console.log(`🌐 Web server on http://localhost:${port}`);
+  // Bind to localhost only — Caddy reverse-proxies from public 80/443 to here.
+  // Prevents bypassing HTTPS / Caddy by hitting the IP:port directly.
+  // Override with WEB_BIND=0.0.0.0 if you ever need to expose for debugging.
+  const host = process.env.WEB_BIND || '127.0.0.1';
+  app.listen(port, host, () => {
+    console.log(`🌐 Web server on http://${host}:${port}`);
   });
 }
