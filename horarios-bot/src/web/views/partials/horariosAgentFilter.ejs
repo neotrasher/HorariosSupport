@@ -1,0 +1,74 @@
+<!--
+  Agent highlight filter for /horarios day+week views.
+  Picks one agent (by planner_id) and dims all other chips so the manager
+  can quickly track one person across the schedule. Persists in
+  localStorage so it survives day/week navigation.
+
+  Requires `allAgents` in scope (array of {plannerId, name, dept}).
+-->
+<div class="flex items-center gap-2 text-xs flex-wrap">
+  <label for="agentFilter" class="text-slate-500 shrink-0">Resaltar agente:</label>
+  <select id="agentFilter" class="border border-slate-300 rounded-lg px-2 py-1.5 bg-white text-xs">
+    <option value="">— Todos —</option>
+    <% allAgents.forEach(a => { %>
+      <option value="<%= a.plannerId %>"><%= a.name %> (<%= a.dept %>)</option>
+    <% }) %>
+  </select>
+  <button type="button" id="agentFilterClear" class="hidden text-[11px] text-slate-500 hover:text-rose-600">× limpiar</button>
+</div>
+
+<style>
+  /* Apply when a filter is active. Dim all chips that don't match the
+     selected planner_id; the matching chip stays full opacity + ring. */
+  .agent-filter-on [data-chip]              { opacity: 0.20; transition: opacity 0.15s; }
+  .agent-filter-on [data-chip].chip-match   { opacity: 1; }
+  .agent-filter-on [data-chip].chip-match .chip-link,
+  .agent-filter-on [data-chip].chip-match > span:first-child {
+    box-shadow: 0 0 0 2px #f59e0b, 0 0 8px rgba(245, 158, 11, 0.4);
+  }
+  /* Also dim OFF-section agent pills (they have data-pid too) */
+  .agent-filter-on .off-pill              { opacity: 0.20; transition: opacity 0.15s; }
+  .agent-filter-on .off-pill.chip-match   { opacity: 1; box-shadow: 0 0 0 2px #f59e0b; }
+</style>
+
+<script>
+(function() {
+  const KEY = 'horariosAgentFilterPid';
+  const sel = document.getElementById('agentFilter');
+  const clearBtn = document.getElementById('agentFilterClear');
+  if (!sel) return;
+
+  function apply(pid) {
+    const root = document.body;
+    const chips = document.querySelectorAll('[data-chip], .off-pill');
+    if (!pid) {
+      root.classList.remove('agent-filter-on');
+      chips.forEach(c => c.classList.remove('chip-match'));
+      clearBtn.classList.add('hidden');
+      return;
+    }
+    root.classList.add('agent-filter-on');
+    chips.forEach(c => {
+      if (c.dataset.pid === String(pid)) c.classList.add('chip-match');
+      else c.classList.remove('chip-match');
+    });
+    clearBtn.classList.remove('hidden');
+  }
+
+  // Restore persisted choice
+  let saved = '';
+  try { saved = localStorage.getItem(KEY) || ''; } catch(e) {}
+  if (saved) { sel.value = saved; apply(saved); }
+
+  sel.addEventListener('change', () => {
+    const v = sel.value;
+    try { v ? localStorage.setItem(KEY, v) : localStorage.removeItem(KEY); } catch(e) {}
+    apply(v);
+  });
+  clearBtn.addEventListener('click', () => {
+    sel.value = '';
+    try { localStorage.removeItem(KEY); } catch(e) {}
+    apply('');
+  });
+})();
+</script>

@@ -58,13 +58,16 @@
     </div>
   <% } %>
 
-  <!-- TZ toggle -->
-  <div class="flex items-center gap-2 mb-4">
-    <span class="text-xs text-slate-500 font-medium">Mostrar horas en:</span>
-    <div class="inline-flex rounded-lg border border-slate-200 bg-white text-xs overflow-hidden shadow-card" id="tzToggle">
-      <button type="button" data-tz="utc" class="tz-btn px-3 py-1.5 font-semibold bg-ink-800 text-white">UTC</button>
-      <button type="button" data-tz="local" class="tz-btn px-3 py-1.5 font-semibold border-l border-slate-200 text-slate-600 hover:bg-slate-50"><%= localTz %></button>
+  <!-- TZ toggle + agent filter -->
+  <div class="flex items-center gap-4 mb-4 flex-wrap">
+    <div class="flex items-center gap-2">
+      <span class="text-xs text-slate-500 font-medium">Mostrar horas en:</span>
+      <div class="inline-flex rounded-lg border border-slate-200 bg-white text-xs overflow-hidden shadow-card" id="tzToggle">
+        <button type="button" data-tz="utc" class="tz-btn px-3 py-1.5 font-semibold bg-ink-800 text-white">UTC</button>
+        <button type="button" data-tz="local" class="tz-btn px-3 py-1.5 font-semibold border-l border-slate-200 text-slate-600 hover:bg-slate-50"><%= localTz %></button>
+      </div>
     </div>
+    <%- include('partials/horariosAgentFilter', { allAgents }) %>
   </div>
 
   <!-- ───────────────── Mobile: stacked by day ───────────────── -->
@@ -279,14 +282,14 @@
                       <% const cls = o.isVac ? 'bg-cyan-50 text-cyan-800 ring-cyan-300' : 'bg-amber-50 text-amber-800 ring-amber-300'; %>
                       <% const ico = o.isVac ? '🏖️' : '📝'; %>
                       <% if (isManager) { %>
-                        <a href="/horarios/agente/<%= o.plannerId %>"
-                           class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 hover:ring-2 <%= cls %>"
+                        <a href="/horarios/agente/<%= o.plannerId %>" data-pid="<%= o.plannerId %>"
+                           class="off-pill pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 hover:ring-2 <%= cls %>"
                            title="<%= o.name %> · <%= o.reason || 'time off' %>">
                           <span class="text-[9px]"><%= ico %></span>
                           <span class="line-through opacity-80"><%= o.name.split(' ')[0] %></span>
                         </a>
                       <% } else { %>
-                        <span class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= cls %>"
+                        <span class="off-pill pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= cls %>" data-pid="<%= o.plannerId %>"
                               title="<%= o.name %> · <%= o.reason || 'time off' %>">
                           <span class="text-[9px]"><%= ico %></span>
                           <span class="line-through opacity-80"><%= o.name.split(' ')[0] %></span>
