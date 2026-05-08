@@ -11,16 +11,24 @@ export function dayCodeFromDate(d: DateTime): string {
 }
 
 /** Cycle letter (A/B/C[/D]) for the Monday-week containing the given UTC date.
- *  Modulo respects config.cycleLength so 3-week and 4-week cycles both work. */
+ *  Honors cycleSwitchoverDate: dates before the switchover use the legacy
+ *  cycle config; dates on/after use the current one. */
 export function cycleForDate(d: DateTime): 'A' | 'B' | 'C' | 'D' {
-  const anchor = DateTime.fromISO(config.anchorDate, { zone: 'utc' }).startOf('day');
   const target = d.toUTC().startOf('day');
+  const dateStr = target.toFormat('yyyy-LL-dd');
+
+  // Pick which epoch applies
+  const useLegacy = !!config.cycleSwitchoverDate && dateStr < config.cycleSwitchoverDate;
+  const len     = useLegacy ? config.legacyCycleLength : config.cycleLength;
+  const aDate   = useLegacy ? (config.legacyAnchorDate || config.anchorDate) : config.anchorDate;
+  const aCycle  = useLegacy ? config.legacyAnchorCycle  : config.anchorCycle;
+
+  const anchor = DateTime.fromISO(aDate, { zone: 'utc' }).startOf('day');
   const targetMonday = target.minus({ days: target.weekday - 1 });
   const anchorMonday = anchor.minus({ days: anchor.weekday - 1 });
   const weeks = Math.floor(targetMonday.diff(anchorMonday, 'weeks').weeks);
-  const len = config.cycleLength;
   const active = CYCLES.slice(0, len);
-  const anchorIdx = Math.max(0, active.indexOf(config.anchorCycle));
+  const anchorIdx = Math.max(0, active.indexOf(aCycle));
   const idx = ((anchorIdx + weeks) % len + len) % len;
   return CYCLES[idx];
 }

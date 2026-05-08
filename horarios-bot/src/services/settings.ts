@@ -86,8 +86,33 @@ export const SETTING_DEFS: SettingDef[] = [
     key: 'cycleLength', label: 'Duración del ciclo (semanas)', type: 'int', group: 'cycle',
     apply: v => { (config as any).cycleLength = v; },
     current: () => config.cycleLength,
-    hint: '3 = ciclo A/B/C · 4 = ciclo A/B/C/D. Cambiar acá NO borra datos guardados de la cuarta semana — quedan ignorados hasta que vuelvas a 4.',
+    hint: '3 = ciclo A/B/C · 4 = ciclo A/B/C/D. Aplica desde la fecha de switchover (si está set). Para iniciar limpio, usá el botón "Iniciar nuevo ciclo".',
     min: 3, max: 4
+  },
+  {
+    key: 'cycleSwitchoverDate', label: 'Fecha de switchover de ciclo (YYYY-MM-DD)', type: 'string', group: 'cycle',
+    apply: v => { (config as any).cycleSwitchoverDate = v; },
+    current: () => config.cycleSwitchoverDate,
+    hint: 'Antes de esta fecha se usan los valores legacy*; desde acá en adelante, los valores actuales. Vacío = sin switchover.'
+  },
+  {
+    key: 'legacyCycleLength', label: 'Legacy: Duración del ciclo (semanas)', type: 'int', group: 'cycle',
+    apply: v => { (config as any).legacyCycleLength = v; },
+    current: () => config.legacyCycleLength,
+    hint: 'Snapshot del cycleLength anterior. Solo aplica a fechas < switchover.',
+    min: 3, max: 4
+  },
+  {
+    key: 'legacyAnchorDate', label: 'Legacy: Fecha ancla', type: 'string', group: 'cycle',
+    apply: v => { (config as any).legacyAnchorDate = v; },
+    current: () => config.legacyAnchorDate,
+    hint: 'Snapshot del anchorDate anterior. Solo aplica a fechas < switchover.'
+  },
+  {
+    key: 'legacyAnchorCycle', label: 'Legacy: Ciclo ancla', type: 'string', group: 'cycle',
+    apply: v => { (config as any).legacyAnchorCycle = v; },
+    current: () => config.legacyAnchorCycle,
+    hint: 'Snapshot del anchorCycle anterior. Solo aplica a fechas < switchover.'
   },
   {
     key: 'attendanceChannelId', label: 'Canal de asistencia (Slack ID)', type: 'string', group: 'slack',

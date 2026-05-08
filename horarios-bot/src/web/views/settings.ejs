@@ -22,6 +22,60 @@
     </div>
   <% } %>
 
+  <!-- Cycle switchover ─ una acción de un click para arrancar un ciclo nuevo -->
+  <%
+    const cycleRow      = rows.find(r => r.key === 'cycleLength');
+    const switchoverRow = rows.find(r => r.key === 'cycleSwitchoverDate');
+    const anchorRow     = rows.find(r => r.key === 'anchorCycle');
+    const anchorDateRow = rows.find(r => r.key === 'anchorDate');
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  %>
+  <section id="cycle-switchover" class="bg-white rounded-lg border border-slate-200 shadow-card mb-6">
+    <header class="px-4 py-3 bg-slate-50 border-b border-slate-200">
+      <h3 class="font-semibold text-slate-900">🔄 Iniciar nuevo ciclo de turnos</h3>
+      <p class="text-xs text-slate-500 mt-1">
+        Arranca un patrón nuevo (3 o 4 semanas) desde una fecha futura. Las fechas anteriores siguen
+        mostrando el ciclo actual sin cambios. Útil cuando cambias la rotación pero no querés que
+        las semanas pasadas se reetiqueten.
+      </p>
+    </header>
+    <div class="px-4 py-4">
+      <div class="text-xs text-slate-500 mb-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div><span class="text-slate-400">Actual:</span> <span class="font-mono"><%= cycleRow?.value %> sem</span></div>
+        <div><span class="text-slate-400">Anchor:</span> <span class="font-mono"><%= anchorRow?.value %> · <%= anchorDateRow?.value %></span></div>
+        <div><span class="text-slate-400">Switchover:</span> <span class="font-mono"><%= switchoverRow?.value || '—' %></span></div>
+      </div>
+      <form method="post" action="/settings/cycle-switchover" class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end"
+            data-confirm="Esto inicia un nuevo ciclo desde la fecha indicada. Los horarios anteriores siguen igual, pero a partir de esa fecha se aplica la nueva rotación. ¿Continuar?"
+            data-confirm-tone="warn" data-confirm-text="Iniciar nuevo ciclo">
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Iniciar desde</label>
+          <input type="date" name="switchover_date" value="<%= tomorrow %>" required
+                 class="block w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Duración nueva</label>
+          <select name="new_cycle_length" class="block w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm">
+            <option value="3">3 semanas (A/B/C)</option>
+            <option value="4" selected>4 semanas (A/B/C/D)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Anclar en</label>
+          <select name="new_anchor_cycle" class="block w-full border border-slate-300 rounded-lg px-2 py-1.5 text-sm">
+            <option value="A" selected>A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+            <option value="D">D</option>
+          </select>
+        </div>
+        <button type="submit" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-semibold">
+          Iniciar nuevo ciclo
+        </button>
+      </form>
+    </div>
+  </section>
+
   <form method="post" action="/settings" class="space-y-6">
     <% Object.keys(groupTitles).forEach(g => { %>
       <% const items = rows.filter(r => r.group === g); %>

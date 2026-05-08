@@ -67,6 +67,13 @@ export const config = {
   anchorCycle: (process.env.ANCHOR_CYCLE || 'A') as 'A' | 'B' | 'C' | 'D',
   // Cycle length in weeks: 3 (A/B/C) or 4 (A/B/C/D). Editable in /settings.
   cycleLength: parseInt(process.env.CYCLE_LENGTH || '4', 10) as 3 | 4,
+  // Switchover date: when set (YYYY-MM-DD), dates BEFORE it use the legacy*
+  // config below; dates ON OR AFTER use the current cycleLength/anchorDate/
+  // anchorCycle. Empty string = no switchover (always use current).
+  cycleSwitchoverDate: process.env.CYCLE_SWITCHOVER_DATE || '',
+  legacyCycleLength: parseInt(process.env.LEGACY_CYCLE_LENGTH || '4', 10) as 3 | 4,
+  legacyAnchorDate: process.env.LEGACY_ANCHOR_DATE || '',
+  legacyAnchorCycle: (process.env.LEGACY_ANCHOR_CYCLE || 'A') as 'A' | 'B' | 'C' | 'D',
   // IANA timezone shown alongside UTC in status/hoy headers (e.g. America/Bogota)
   displayTimezone: process.env.DISPLAY_TIMEZONE || 'UTC',
   logLevel: process.env.LOG_LEVEL || 'info',
