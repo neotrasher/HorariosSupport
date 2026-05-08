@@ -1,7 +1,7 @@
 <%- include('partials/head') %>
 <%- include('partials/nav', { user }) %>
 
-<main class="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+<main class="max-w-[1700px] mx-auto px-4 sm:px-6 py-6">
   <!-- Page header -->
   <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
     <div class="min-w-0">
@@ -37,7 +37,7 @@
   %>
   <section class="mb-6">
     <!-- KPI strip: 4 highlights -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
       <a href="/reportes?preset=last-30" class="block relative bg-white rounded-xl border border-slate-200 shadow-card p-4 hover:shadow-card-hover transition-shadow overflow-hidden">
         <div class="absolute top-0 left-0 right-0 h-1 <%= teamAvg !== null && teamAvg >= 85 ? 'bg-emerald-500' : teamAvg !== null && teamAvg >= 70 ? 'bg-amber-500' : 'bg-rose-500' %>"></div>
         <div class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Score promedio (90d)</div>
@@ -70,7 +70,7 @@
     </div>
 
     <!-- Insights row -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-4">
       <!-- Top performers -->
       <% if (insights.topPerformers.length > 0) { %>
       <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden">
@@ -221,17 +221,17 @@
       slate:   { ring: 'ring-slate-200',   text: 'text-slate-700',   bg: 'bg-slate-100',   border: 'border-slate-200',    dot: 'bg-slate-400'   }
     };
   %>
-  <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-8">
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
     <% stats.forEach(s => { const c = accentMap[s.accent]; %>
       <div class="relative bg-white rounded-xl border border-slate-200 shadow-card p-4 overflow-hidden group transition-shadow hover:shadow-card-hover">
         <!-- Accent strip on top -->
         <div class="absolute top-0 left-0 right-0 h-1 <%= c.dot %>"></div>
-        <div class="flex items-start justify-between">
-          <div>
-            <div class="text-[11px] uppercase tracking-wider font-bold text-slate-400"><%= s.label %></div>
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0 flex-1">
+            <div class="text-[11px] uppercase tracking-wider font-bold text-slate-400 truncate"><%= s.label %></div>
             <div class="text-3xl font-extrabold mt-1 <%= s.value > 0 ? c.text : 'text-slate-300' %>"><%= s.value %></div>
           </div>
-          <div class="w-8 h-8 rounded-lg <%= c.bg %> <%= c.text %> flex items-center justify-center text-base font-bold ring-1 <%= c.ring %>">
+          <div class="w-9 h-9 rounded-lg <%= c.bg %> <%= c.text %> flex items-center justify-center text-base font-bold ring-1 <%= c.ring %> shrink-0">
             <%= s.icon %>
           </div>
         </div>
