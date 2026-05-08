@@ -73,6 +73,7 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
       swaps = rawSwaps.map(s => {
         const reqA = getAgentBySlackId(s.requester_slack_id);
         const partA = getAgentBySlackId(s.partner_slack_id);
+        const apprA = s.approver_slack_id ? getAgentBySlackId(s.approver_slack_id) : null;
         let reqSnap: AssignmentSnapshot | null = null;
         let partSnap: AssignmentSnapshot | null = null;
         try { reqSnap = JSON.parse(s.requester_snapshot); } catch {}
@@ -81,6 +82,10 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
           ...s,
           requesterName: reqA?.name || s.requester_slack_id,
           partnerName: partA?.name || s.partner_slack_id,
+          approverName: apprA?.name || (s.approver_slack_id || null),
+          approvalAtLocal: s.approval_at
+            ? DateTime.fromSQL(s.approval_at, { zone: 'utc' }).toFormat('yyyy-LL-dd HH:mm') + ' UTC'
+            : null,
           requesterSnapshotLabel: reqSnap ? describeSnapshot(reqSnap) : '—',
           partnerSnapshotLabel: partSnap ? describeSnapshot(partSnap) : '—',
           createdLocal: DateTime.fromSQL(s.created_at, { zone: 'utc' }).toFormat('yyyy-LL-dd HH:mm') + ' UTC'
@@ -98,12 +103,17 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
       }
       requests = rawRequests.map(r => {
         const a = getAgentBySlackId(r.requester_slack_id);
+        const apprA = r.approver_slack_id ? getAgentBySlackId(r.approver_slack_id) : null;
         const days = Math.round(
           (new Date(r.end_date).getTime() - new Date(r.start_date).getTime()) / 86400000
         ) + 1;
         return {
           ...r,
           requesterName: a?.name || r.requester_slack_id,
+          approverName: apprA?.name || (r.approver_slack_id || null),
+          approvalAtLocal: r.approval_at
+            ? DateTime.fromSQL(r.approval_at, { zone: 'utc' }).toFormat('yyyy-LL-dd HH:mm') + ' UTC'
+            : null,
           days,
           createdLocal: DateTime.fromSQL(r.created_at, { zone: 'utc' }).toFormat('yyyy-LL-dd HH:mm') + ' UTC'
         };

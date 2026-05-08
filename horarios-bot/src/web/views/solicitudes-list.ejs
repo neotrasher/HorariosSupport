@@ -142,6 +142,11 @@
                     <span class="w-1.5 h-1.5 rounded-full <%= si.dot %>"></span>
                     <%= si.label %>
                   </span>
+                  <% if (s.approverName && (s.status === 'approved' || s.status === 'rejected_approver')) { %>
+                    <div class="text-[10px] text-slate-500 mt-1" title="<%= s.approvalAtLocal ? fmtDateTime(s.approvalAtLocal) : '' %>">
+                      por <span class="font-semibold text-slate-700"><%= s.approverName %></span>
+                    </div>
+                  <% } %>
                   <% if (s.note) { %>
                     <div class="text-[10px] text-slate-400 mt-1 max-w-xs truncate" title="<%= s.note %>">📝 <%= s.note %></div>
                   <% } %>
@@ -160,12 +165,15 @@
       <div class="md:hidden space-y-2">
         <% swaps.forEach(s => { const si = swapStatusInfo(s.status); %>
           <div class="bg-white rounded-xl border border-slate-200 shadow-card p-3">
-            <div class="flex items-center justify-between gap-2 mb-2">
+            <div class="flex items-center justify-between gap-2 mb-2 flex-wrap">
               <span class="pill inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= si.cls %>">
                 <span class="w-1.5 h-1.5 rounded-full <%= si.dot %>"></span>
                 <%= si.label %>
               </span>
-              <span class="text-[10px] text-slate-400"><%= fmtDateTime(s.createdLocal) %></span>
+              <% if (s.approverName && (s.status === 'approved' || s.status === 'rejected_approver')) { %>
+                <span class="text-[10px] text-slate-500">por <span class="font-semibold text-slate-700"><%= s.approverName %></span></span>
+              <% } %>
+              <span class="text-[10px] text-slate-400 ml-auto"><%= fmtDateTime(s.createdLocal) %></span>
             </div>
             <div class="text-xs space-y-2">
               <div>
@@ -278,8 +286,13 @@
                   <span class="w-1.5 h-1.5 rounded-full <%= statusDot(r.status) %>"></span>
                   <%= r.status %>
                 </span>
+                <% if (r.approverName && (r.status === 'approved' || r.status === 'rejected')) { %>
+                  <div class="text-[10px] text-slate-500 mt-1" title="<%= r.approvalAtLocal ? fmtDateTime(r.approvalAtLocal) : '' %>">
+                    por <span class="font-semibold text-slate-700"><%= r.approverName %></span>
+                  </div>
+                <% } %>
                 <% if (r.status === 'rejected' && r.rejection_reason) { %>
-                  <div class="text-[10px] text-slate-500 mt-1 italic"><%= r.rejection_reason %></div>
+                  <div class="text-[10px] text-slate-500 mt-1 italic">"<%= r.rejection_reason %>"</div>
                 <% } %>
               </td>
               <td class="px-3 py-3 text-slate-500 text-xs"><%= fmtDateTime(r.createdLocal) %></td>
@@ -341,6 +354,9 @@
                   <span class="w-1.5 h-1.5 rounded-full <%= statusDot(r.status) %>"></span>
                   <%= r.status %>
                 </span>
+                <% if (r.approverName && (r.status === 'approved' || r.status === 'rejected')) { %>
+                  <span class="text-[10px] text-slate-500">por <span class="font-semibold text-slate-700"><%= r.approverName %></span></span>
+                <% } %>
               </div>
             </div>
           </div>
