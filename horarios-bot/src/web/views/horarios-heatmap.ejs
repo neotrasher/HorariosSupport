@@ -56,22 +56,22 @@
 
   <!-- Resumen -->
   <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-    <div class="bg-white rounded-xl border border-slate-200 shadow-card p-3">
-      <div class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Pico de cobertura</div>
-      <div class="text-2xl font-extrabold text-emerald-700 mt-1"><%= heatmap.maxCount %><span class="text-sm text-slate-400 font-bold"> ag/h</span></div>
+    <div class="bg-white rounded-xl border border-slate-200 shadow-card p-3" title="Mayor cantidad de agentes que trabajaron al mismo tiempo en alguna hora del mes.">
+      <div class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Pico (max agentes simultáneos)</div>
+      <div class="text-2xl font-extrabold text-emerald-700 mt-1"><%= heatmap.maxCount %> <span class="text-sm text-slate-400 font-bold">agentes</span></div>
     </div>
-    <div class="bg-white rounded-xl border border-slate-200 shadow-card p-3">
-      <div class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Mínimo</div>
-      <div class="text-2xl font-extrabold <%= heatmap.minCount === 0 ? 'text-rose-700' : 'text-slate-700' %> mt-1"><%= heatmap.minCount %><span class="text-sm text-slate-400 font-bold"> ag/h</span></div>
+    <div class="bg-white rounded-xl border border-slate-200 shadow-card p-3" title="Menor cobertura en alguna hora del mes. 0 = hubo al menos una hora sin nadie.">
+      <div class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Mínimo simultáneos</div>
+      <div class="text-2xl font-extrabold <%= heatmap.minCount === 0 ? 'text-rose-700' : 'text-slate-700' %> mt-1"><%= heatmap.minCount %> <span class="text-sm text-slate-400 font-bold">agentes</span></div>
     </div>
-    <div class="bg-white rounded-xl border border-slate-200 shadow-card p-3">
+    <div class="bg-white rounded-xl border border-slate-200 shadow-card p-3" title="Hora UTC con más cobertura promedio en el mes.">
       <div class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Hora punta</div>
       <div class="text-2xl font-extrabold text-sky-700 mt-1"><%= String(peakHour).padStart(2, '0') %>:00</div>
     </div>
-    <div class="bg-white rounded-xl border border-slate-200 shadow-card p-3">
-      <div class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Total agente·hora</div>
+    <div class="bg-white rounded-xl border border-slate-200 shadow-card p-3" title="Suma total de horas-persona del mes (cada hora trabajada por cada agente cuenta 1).">
+      <div class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Horas-persona del mes</div>
       <% const grandTotal = Object.values(heatmap.totalsByDate).reduce((s,v)=>s+v,0); %>
-      <div class="text-2xl font-extrabold text-slate-700 mt-1"><%= grandTotal %></div>
+      <div class="text-2xl font-extrabold text-slate-700 mt-1"><%= grandTotal %><span class="text-sm text-slate-400 font-bold"> hs</span></div>
     </div>
   </div>
 
@@ -132,6 +132,11 @@
     <span class="inline-flex items-center gap-1"><span class="w-4 h-4 rounded" style="background: rgb(220 252 231);"></span> medio</span>
     <span class="inline-flex items-center gap-1"><span class="w-4 h-4 rounded" style="background: rgb(167 243 208);"></span> alto (pico)</span>
   </div>
-  <p class="text-xs text-slate-400 mt-2">Horas en UTC. Los turnos que cruzan medianoche se distribuyen entre los días afectados.</p>
+  <div class="text-xs text-slate-400 mt-3 space-y-1">
+    <p><strong>Cada celda</strong> = cuántos agentes están trabajando esa hora ese día.</p>
+    <p><strong>Σ por día</strong> = total de horas-persona del día (suma de las 24 columnas).</p>
+    <p><strong>Σ por hora</strong> = total de horas-persona acumuladas en esa hora a lo largo del mes.</p>
+    <p>Horas en UTC. Turnos que cruzan medianoche se distribuyen entre los días afectados.</p>
+  </div>
 </main>
 <%- include('partials/foot') %>
