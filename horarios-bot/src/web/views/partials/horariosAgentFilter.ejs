@@ -92,13 +92,21 @@
     try { v ? localStorage.setItem(KEY, v) : localStorage.removeItem(KEY); } catch(e) {}
   }
 
-  // Restore
+  // Restore checkboxes immediately (so the dropdown shows the saved state)
   let saved = '';
   try { saved = localStorage.getItem(KEY) || ''; } catch(e) {}
   if (saved) {
     const set = new Set(saved.split(','));
     cbs.forEach(cb => { cb.checked = set.has(cb.value); });
-    applyHighlight();
+  }
+  // Apply highlight AFTER the DOM is fully rendered — the chips below this
+  // partial don't exist yet when this inline script first runs.
+  function init() { applyHighlight(); }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    // Defer to next tick so any pending HTML in the same block is parsed
+    setTimeout(init, 0);
   }
 
   // Wire up
