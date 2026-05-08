@@ -18,11 +18,16 @@
 
 <!-- Sidebar (desktop default, mobile drawer when .open) -->
 <aside id="appSidebar" class="app-sidebar">
+  <!-- Collapse toggle (desktop only, hidden via CSS on mobile) -->
+  <button id="navCollapseToggle" type="button" aria-label="Plegar/desplegar barra lateral" title="Plegar/desplegar barra lateral">
+    ‹
+  </button>
+
   <!-- Brand -->
-  <div class="px-5 py-4 border-b border-slate-200">
-    <a href="/" class="flex items-center gap-2.5">
-      <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-ink-800 text-white text-sm shadow-card">⏱</span>
-      <div class="leading-tight">
+  <div class="px-5 py-4 border-b border-slate-200 nav-brand-block">
+    <a href="/" class="flex items-center gap-2.5 nav-brand">
+      <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-ink-800 text-white text-sm shadow-card shrink-0">⏱</span>
+      <div class="leading-tight brand-text">
         <div class="font-bold text-slate-900 text-sm">Horarios</div>
         <div class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Support</div>
       </div>
@@ -31,55 +36,55 @@
 
   <!-- Nav links -->
   <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-    <a href="/" class="<%= ncls(path === '/') %>">
-      <span class="navlink-icon">▦</span> Dashboard
+    <a href="/" class="<%= ncls(path === '/') %>" title="Dashboard">
+      <span class="navlink-icon">▦</span><span class="navlink-label"> Dashboard</span>
     </a>
     <% if (user.role !== 'viewer') { %>
-      <a href="/mi-horario" class="<%= ncls(isActive('/mi-horario')) %>">
-        <span class="navlink-icon">◷</span> Mi horario
+      <a href="/mi-horario" class="<%= ncls(isActive('/mi-horario')) %>" title="Mi horario">
+        <span class="navlink-icon">◷</span><span class="navlink-label"> Mi horario</span>
       </a>
-      <a href="/horarios" class="<%= ncls(isActive('/horarios')) %>">
-        <span class="navlink-icon">▤</span> Horarios
+      <a href="/horarios" class="<%= ncls(isActive('/horarios')) %>" title="Horarios">
+        <span class="navlink-icon">▤</span><span class="navlink-label"> Horarios</span>
       </a>
-      <a href="/solicitudes" class="<%= ncls(isActive('/solicitudes')) %>">
-        <span class="navlink-icon">✎</span> Solicitudes
+      <a href="/solicitudes" class="<%= ncls(isActive('/solicitudes')) %>" title="Solicitudes">
+        <span class="navlink-icon">✎</span><span class="navlink-label"> Solicitudes</span>
       </a>
     <% } %>
     <% if (user.role === 'manager' || user.role === 'admin') { %>
-      <div class="pt-3 pb-1 px-3 text-[10px] uppercase tracking-wider font-bold text-slate-400">Gestion</div>
-      <a href="/agentes" class="<%= ncls(isActive('/agentes')) %>">
-        <span class="navlink-icon">◉</span> Agentes
+      <div class="pt-3 pb-1 px-3 text-[10px] uppercase tracking-wider font-bold text-slate-400 nav-section-label">Gestion</div>
+      <a href="/agentes" class="<%= ncls(isActive('/agentes')) %>" title="Agentes">
+        <span class="navlink-icon">◉</span><span class="navlink-label"> Agentes</span>
       </a>
-      <a href="/reportes" class="<%= ncls(isActive('/reportes')) %>">
-        <span class="navlink-icon">◧</span> Reportes
+      <a href="/reportes" class="<%= ncls(isActive('/reportes')) %>" title="Reportes">
+        <span class="navlink-icon">◧</span><span class="navlink-label"> Reportes</span>
       </a>
-      <a href="/planner" class="<%= ncls(isActive('/planner')) %> hidden md:flex" title="Solo desktop">
-        <span class="navlink-icon">▥</span> Planner
+      <a href="/planner" class="<%= ncls(isActive('/planner')) %> hidden md:flex" title="Planner (solo desktop)">
+        <span class="navlink-icon">▥</span><span class="navlink-label"> Planner</span>
       </a>
     <% } %>
     <% if (user.role === 'admin') { %>
-      <div class="pt-3 pb-1 px-3 text-[10px] uppercase tracking-wider font-bold text-slate-400">Sistema</div>
-      <a href="/settings" class="<%= ncls(isActive('/settings')) %>">
-        <span class="navlink-icon">⚙</span> Configuracion
+      <div class="pt-3 pb-1 px-3 text-[10px] uppercase tracking-wider font-bold text-slate-400 nav-section-label">Sistema</div>
+      <a href="/settings" class="<%= ncls(isActive('/settings')) %>" title="Configuracion">
+        <span class="navlink-icon">⚙</span><span class="navlink-label"> Configuracion</span>
       </a>
-      <a href="/auditoria" class="<%= ncls(isActive('/auditoria')) %>">
-        <span class="navlink-icon">⏱</span> Auditoria
+      <a href="/auditoria" class="<%= ncls(isActive('/auditoria')) %>" title="Auditoria">
+        <span class="navlink-icon">⏱</span><span class="navlink-label"> Auditoria</span>
       </a>
-      <a href="/backups" class="<%= ncls(isActive('/backups')) %>">
-        <span class="navlink-icon">💾</span> Backups
+      <a href="/backups" class="<%= ncls(isActive('/backups')) %>" title="Backups">
+        <span class="navlink-icon">💾</span><span class="navlink-label"> Backups</span>
       </a>
     <% } %>
   </nav>
 
   <!-- User card at bottom -->
   <div class="px-3 py-3 border-t border-slate-200 bg-white/60">
-    <div class="flex items-center gap-2.5 px-2 py-1.5 rounded-lg">
+    <div class="flex items-center gap-2.5 px-2 py-1.5 rounded-lg user-block" title="<%= user.name %>">
       <% if (user.avatar) { %>
-        <img src="<%= user.avatar %>" alt="" class="w-8 h-8 rounded-full ring-2 ring-white shadow-card">
+        <img src="<%= user.avatar %>" alt="" class="w-8 h-8 rounded-full ring-2 ring-white shadow-card user-avatar shrink-0">
       <% } else { %>
-        <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600"><%= (user.name || '?').charAt(0).toUpperCase() %></div>
+        <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600 user-avatar shrink-0"><%= (user.name || '?').charAt(0).toUpperCase() %></div>
       <% } %>
-      <div class="flex-1 min-w-0">
+      <div class="flex-1 min-w-0 user-meta">
         <div class="text-sm font-semibold text-slate-900 truncate"><%= user.name %></div>
         <div class="text-[10px] uppercase tracking-wide font-bold
           <% if (user.role === 'admin') { %>text-rose-600
@@ -87,7 +92,7 @@
           <% } else if (user.role === 'agent') { %>text-blue-600
           <% } else { %>text-slate-400<% } %>"><%= user.role %></div>
       </div>
-      <a href="/auth/logout" title="Salir" class="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-slate-100" aria-label="Cerrar sesion">
+      <a href="/auth/logout" title="Salir" class="user-logout-btn p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-slate-100" aria-label="Cerrar sesion">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
       </a>
     </div>
@@ -99,14 +104,26 @@
 
 <script>
   (function() {
+    // Mobile drawer toggle
     const t = document.getElementById('navMenuToggle');
     const s = document.getElementById('appSidebar');
     const o = document.getElementById('appOverlay');
-    if (!t) return;
-    t.addEventListener('click', () => {
-      s.classList.add('open');
-      o.classList.remove('hidden');
-    });
+    if (t && s && o) {
+      t.addEventListener('click', () => {
+        s.classList.add('open');
+        o.classList.remove('hidden');
+      });
+    }
+
+    // Desktop collapse toggle — persists in localStorage
+    const c = document.getElementById('navCollapseToggle');
+    if (c) {
+      c.addEventListener('click', () => {
+        const html = document.documentElement;
+        const collapsed = html.classList.toggle('sidebar-collapsed');
+        try { localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0'); } catch(e) {}
+      });
+    }
   })();
 </script>
 

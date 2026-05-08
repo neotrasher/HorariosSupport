@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#0f1825">
   <title>Horarios Support</title>
+  <!-- Apply persisted sidebar state ASAP to avoid layout flash -->
+  <script>
+    try {
+      if (localStorage.getItem('sidebarCollapsed') === '1') {
+        document.documentElement.classList.add('sidebar-collapsed');
+      }
+    } catch(e) {}
+  </script>
   <!-- PWA -->
   <link rel="manifest" href="/static/manifest.webmanifest">
   <link rel="icon" type="image/svg+xml" href="/static/icon.svg">
@@ -100,9 +108,43 @@
       box-shadow: 1px 0 0 0 rgb(15 24 37 / 0.04), 4px 0 12px -8px rgb(15 24 37 / 0.05);
       display: flex; flex-direction: column;
       z-index: 30;
+      transition: width 0.18s ease;
     }
-    .app-main { margin-left: 232px; min-width: 0; display: flex; flex-direction: column; }
+    .app-main { margin-left: 232px; min-width: 0; display: flex; flex-direction: column; transition: margin-left 0.18s ease; }
     .nav-mobile-bar { display: none; }
+
+    /* Collapsed sidebar (desktop only) — icon-only rail.
+       Applied via html.sidebar-collapsed (set early to avoid FOUC). */
+    @media (min-width: 769px) {
+      html.sidebar-collapsed .app-sidebar { width: 60px; }
+      html.sidebar-collapsed .app-main    { margin-left: 60px; }
+      html.sidebar-collapsed .navlink     { justify-content: center; padding: 10px 0; gap: 0; }
+      html.sidebar-collapsed .navlink-label,
+      html.sidebar-collapsed .nav-section-label,
+      html.sidebar-collapsed .brand-text,
+      html.sidebar-collapsed .user-meta,
+      html.sidebar-collapsed .user-logout-btn { display: none; }
+      html.sidebar-collapsed .navlink-icon { font-size: 18px; }
+      html.sidebar-collapsed .nav-brand    { justify-content: center; gap: 0; padding: 0; }
+      html.sidebar-collapsed .user-block   { justify-content: center; padding: 6px 0; gap: 0; }
+      html.sidebar-collapsed #navCollapseToggle { transform: rotate(180deg); }
+    }
+
+    /* Collapse toggle button — small chevron on the sidebar edge (desktop only) */
+    #navCollapseToggle {
+      display: none;
+      position: absolute; top: 18px; right: -12px;
+      width: 24px; height: 24px; border-radius: 50%;
+      background: #ffffff; border: 1px solid #e6eaf0;
+      align-items: center; justify-content: center;
+      box-shadow: 0 1px 3px 0 rgb(15 24 37 / 0.10);
+      color: #5b6f88; cursor: pointer; z-index: 31;
+      transition: transform 0.18s ease, background 0.12s, color 0.12s;
+      font-size: 11px;
+    }
+    #navCollapseToggle:hover { background: #f5f7fa; color: #1f2c3d; }
+    @media (min-width: 769px) { #navCollapseToggle { display: flex; } }
+
     @media (max-width: 768px) {
       .app-sidebar {
         width: 280px; max-width: 85vw;
