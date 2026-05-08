@@ -155,7 +155,7 @@
                   <div class="text-xs font-semibold
                     <%= c.shift.dept === 'L1' ? 'text-blue-700' : 'text-violet-700' %>">
                     <%= c.shift.dept %>.<%= c.shift.shiftId %>
-                    <% if (c.shift.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
+                    <% if (c.shift.swapped) { %><span class="text-[11px]" title="Cambio de turno aprobado">🔁</span><% } %>
                   </div>
                   <div class="text-[10px] text-slate-500 font-mono"
                        data-utc="<%= c.shift.startUtc %>–<%= c.shift.endUtc %>"
@@ -170,7 +170,7 @@
       <% }) %>
     </div>
     <p class="text-xs text-slate-400 mt-3">
-      <span class="font-mono">↔</span> = cambio de turno aprobado · <span class="font-mono" id="tzNote">Horas en <%= localTz %></span>
+      <span>🔁</span> = cambio de turno aprobado · <span class="font-mono" id="tzNote">Horas en <%= localTz %></span>
     </p>
   <% } %>
 

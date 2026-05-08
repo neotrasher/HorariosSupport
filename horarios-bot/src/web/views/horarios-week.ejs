@@ -108,14 +108,14 @@
                              title="<%= tip %>">
                             <% if (!a.native) { %><span class="px-1 rounded bg-white/60 text-[9px] font-bold"><%= a.nativeDept %></span><% } %>
                             <%= a.name.split(' ')[0] %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
-                            <% if (a.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
+                            <% if (a.swapped) { %><span class="text-[11px]" title="Cambio de turno aprobado">🔁</span><% } %>
                           </a>
                         <% } else { %>
                           <span class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
                                 title="<%= tip %>">
                             <% if (!a.native) { %><span class="px-1 rounded bg-white/60 text-[9px] font-bold"><%= a.nativeDept %></span><% } %>
                             <%= a.name.split(' ')[0] %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
-                            <% if (a.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
+                            <% if (a.swapped) { %><span class="text-[11px]" title="Cambio de turno aprobado">🔁</span><% } %>
                           </span>
                         <% } %>
                         <% if (isManager) { %>
@@ -221,14 +221,14 @@
                                title="<%= tip %>">
                               <% if (!a.native) { %><span class="px-1 rounded bg-white/60 text-[9px] font-bold"><%= a.nativeDept %></span><% } %>
                               <%= a.name.split(' ')[0] %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
-                              <% if (a.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
+                              <% if (a.swapped) { %><span class="text-[11px]" title="Cambio de turno aprobado">🔁</span><% } %>
                             </a>
                           <% } else { %>
                             <span class="pill inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
                                   title="<%= tip %>">
                               <% if (!a.native) { %><span class="px-1 rounded bg-white/60 text-[9px] font-bold"><%= a.nativeDept %></span><% } %>
                               <%= a.name.split(' ')[0] %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
-                              <% if (a.swapped) { %><span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span><% } %>
+                              <% if (a.swapped) { %><span class="text-[11px]" title="Cambio de turno aprobado">🔁</span><% } %>
                             </span>
                           <% } %>
                           <% if (isManager) { %>
@@ -305,7 +305,7 @@
 
   </div><!-- /.hidden md:block (desktop grid) -->
 
-  <p class="text-xs text-slate-400 mt-3 hidden md:block">Cada agente tiene un color consistente. <span class="font-mono">*</span> = horas custom · <span class="px-1 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">↔</span> = turno cambiado (cambio aprobado). Click en el chip (managers) abre el drill-down.</p>
+  <p class="text-xs text-slate-400 mt-3 hidden md:block">Cada agente tiene un color consistente. <span class="font-mono">*</span> = horas custom · <span>🔁</span> = turno cambiado (cambio aprobado). Click en el chip (managers) abre el drill-down.</p>
 
 <% if (isManager) { %>
   <%- include('partials/horariosEditModals', { dateStrForEdit: '', allAgents }) %>
