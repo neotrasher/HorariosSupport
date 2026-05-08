@@ -101,14 +101,14 @@
                        title="<%= tip %>">
                       <% if (!a.native) { %><span class="px-1 rounded bg-white/70 text-[9px] font-bold tracking-wide"><%= a.nativeDept %></span><% } %>
                       <%= a.name.split(' ')[0] %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
-                      <% if (a.swapped) { %><span class="text-[11px]" title="Cambio de turno aprobado">🔁</span><% } %>
+                      <% if (a.swapped) { %><span class="text-[11px]" title="Cambio de turno aprobado">🔁</span><% } %><% if (a.pendingTimeoff) { %><span class="text-[11px]" title="Tiene <%= a.pendingTimeoff %> pendiente de aprobar">⏳</span><% } %><% if (a.pendingSwap) { %><span class="text-[11px]" title="Tiene un cambio de turno pendiente (<%= a.pendingSwap === 'requester' ? 'pidió' : 'le pidieron' %>)">↔️</span><% } %>
                     </a>
                   <% } else { %>
                     <span class="pill inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ring-1 <%= cls %> <%= a.swapped ? 'ring-2 ring-amber-400' : '' %>"
                           title="<%= tip %>">
                       <% if (!a.native) { %><span class="px-1 rounded bg-white/70 text-[9px] font-bold tracking-wide"><%= a.nativeDept %></span><% } %>
                       <%= a.name.split(' ')[0] %><% if (a.custom) { %><span class="opacity-60">*</span><% } %>
-                      <% if (a.swapped) { %><span class="text-[11px]" title="Cambio de turno aprobado">🔁</span><% } %>
+                      <% if (a.swapped) { %><span class="text-[11px]" title="Cambio de turno aprobado">🔁</span><% } %><% if (a.pendingTimeoff) { %><span class="text-[11px]" title="Tiene <%= a.pendingTimeoff %> pendiente de aprobar">⏳</span><% } %><% if (a.pendingSwap) { %><span class="text-[11px]" title="Tiene un cambio de turno pendiente (<%= a.pendingSwap === 'requester' ? 'pidió' : 'le pidieron' %>)">↔️</span><% } %>
                     </span>
                   <% } %>
                   <% if (isManager) { %>

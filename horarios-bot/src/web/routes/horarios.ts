@@ -10,6 +10,7 @@ import {
 } from '../../services/schedule';
 import { logAudit } from '../../services/audit';
 import { buildHeatmap } from '../../services/coverageHeatmap';
+import { buildPendingByAgentDate, lookupPending } from '../../services/pendingByDate';
 
 type ViewMode = 'day' | 'week' | 'month';
 
@@ -204,9 +205,12 @@ function renderDay(req: any, res: any, user: any) {
 
   const colorIndexFor = (id: number) => Math.abs(id * 2654435761 % 12);
 
-  type AgentChip = { name: string; plannerId: number; colorIdx: number; native: boolean; nativeDept: string; custom: boolean; swapped: boolean };
+  type AgentChip = { name: string; plannerId: number; slackId: string; colorIdx: number; native: boolean; nativeDept: string; custom: boolean; swapped: boolean; pendingTimeoff: string | null; pendingSwap: 'requester' | 'partner' | null };
   type ShiftRow = { id: string; label: string; startHour: number; endHour: number; agents: AgentChip[] };
   type DeptBlock = { dept: string; rows: ShiftRow[] };
+
+  const dateStr = date.toFormat('yyyy-LL-dd');
+  const pendingMap = buildPendingByAgentDate(dateStr, dateStr);
 
   const blocks: DeptBlock[] = [];
   for (const dept of Object.keys(SHIFTS).sort()) {
@@ -222,21 +226,23 @@ function renderDay(req: any, res: any, user: any) {
       if (!row) continue;
       const a = agentByPid.get(s.planner_id);
       if (!a) continue;
+      const pend = lookupPending(pendingMap, a.slack_id, dateStr);
       row.agents.push({
         name: a.name,
         plannerId: s.planner_id,
+        slackId: a.slack_id,
         colorIdx: colorIndexFor(s.planner_id),
         native: a.dept === dept,
         nativeDept: a.dept,
         custom: s.startHour !== s.shift.startHour || s.endHour !== s.shift.endHour,
-        swapped: s.source === 'swap'
+        swapped: s.source === 'swap',
+        pendingTimeoff: pend.timeoff,
+        pendingSwap: pend.swap
       });
     }
     rows.forEach(r => r.agents.sort((a, b) => a.name.localeCompare(b.name)));
     blocks.push({ dept, rows });
   }
-
-  const dateStr = date.toFormat('yyyy-LL-dd');
 
   // Resolve viewer's timezone for the local-hour display toggle
   const viewerAgent = getAgentBySlackId(user?.slack_id || '');
@@ -325,13 +331,16 @@ function renderWeek(req: any, res: any, user: any) {
   });
 
   // Build dept blocks: each block has shift rows × day cells with agent chips
-  type AgentChip = { name: string; plannerId: number; colorIdx: number; native: boolean; nativeDept: string; custom: boolean; swapped: boolean };
+  type AgentChip = { name: string; plannerId: number; slackId: string; colorIdx: number; native: boolean; nativeDept: string; custom: boolean; swapped: boolean; pendingTimeoff: string | null; pendingSwap: 'requester' | 'partner' | null };
   type Cell = { date: string; isToday: boolean; agents: AgentChip[] };
   type ShiftRow = { id: string; label: string; startHour: number; endHour: number; cells: Cell[] };
   type DeptBlock = { dept: string; rows: ShiftRow[] };
 
   // Stable color index per agent (so a given agent gets the same color across cells)
   const colorIndexFor = (id: number) => Math.abs(id * 2654435761 % 12);
+
+  // Pending timeoff/swap requests overlapping any day in the week
+  const pendingMap = buildPendingByAgentDate(startStr, endStr);
 
   const blocks: DeptBlock[] = [];
   for (const dept of Object.keys(SHIFTS).sort()) { // L1, L2 alphabetical
@@ -355,14 +364,18 @@ function renderWeek(req: any, res: any, user: any) {
       if (dayIdx < 0) continue;
       const a = agentByPid.get(s.planner_id);
       if (!a) continue;
+      const pend = lookupPending(pendingMap, a.slack_id, s.date);
       row.cells[dayIdx].agents.push({
         name: a.name,
         plannerId: s.planner_id,
+        slackId: a.slack_id,
         colorIdx: colorIndexFor(s.planner_id),
         native: a.dept === dept,
         nativeDept: a.dept,
         custom: s.startHour !== s.shift.startHour || s.endHour !== s.shift.endHour,
-        swapped: s.source === 'swap'
+        swapped: s.source === 'swap',
+        pendingTimeoff: pend.timeoff,
+        pendingSwap: pend.swap
       });
     }
 
