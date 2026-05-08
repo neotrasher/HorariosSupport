@@ -92,6 +92,14 @@
           <% } else if (user.role === 'agent') { %>text-blue-600
           <% } else { %>text-slate-400<% } %>"><%= user.role %></div>
       </div>
+      <button type="button" id="themeToggle" title="Cambiar tema (claro/oscuro)"
+        class="user-logout-btn p-1.5 rounded-md text-slate-400 hover:text-amber-600 hover:bg-slate-100 dark:hover:bg-slate-700"
+        aria-label="Cambiar tema">
+        <!-- Sun (visible in dark mode) -->
+        <svg class="hidden dark:block" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        <!-- Moon (visible in light mode) -->
+        <svg class="block dark:hidden" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+      </button>
       <a href="/auth/logout" title="Salir" class="user-logout-btn p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-slate-100" aria-label="Cerrar sesion">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
       </a>
@@ -122,6 +130,16 @@
         const html = document.documentElement;
         const collapsed = html.classList.toggle('sidebar-collapsed');
         try { localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0'); } catch(e) {}
+      });
+    }
+
+    // Theme toggle (light/dark) — persists in localStorage
+    const tt = document.getElementById('themeToggle');
+    if (tt) {
+      tt.addEventListener('click', () => {
+        const html = document.documentElement;
+        const isDark = html.classList.toggle('dark');
+        try { localStorage.setItem('theme', isDark ? 'dark' : 'light'); } catch(e) {}
       });
     }
   })();
