@@ -3,8 +3,10 @@ import { DateTime } from 'luxon';
 import { config, SHIFTS } from '../config';
 import {
   recordPunch, getShiftState, PunchType,
-  lastBreakInWithDur, lastPunchId, updatePunchNote, lastPunchForShift
+  lastBreakInWithDur, lastPunchId, updatePunchNote, lastPunchForShift,
+  deletePunchById
 } from '../services/punches';
+import { logAudit } from '../services/audit';
 import { getAgentBySlackId } from '../services/agents';
 import { findScheduleEntry } from '../services/schedule';
 import { punchButtonsBlocks, attendancePostBlocks } from '../ui/blocks';
@@ -212,4 +214,82 @@ export function registerPunchButtons(app: App) {
       }
     });
   }
+
+  // ── Undo clock_out (5-min window) ────────────────────────────────────
+  app.action('punch_undo_clock_out', async ({ ack, body, action, client, respond }) => {
+    await ack();
+    const slackId = (body as any).user?.id;
+    const value = (action as any).value as string;
+    if (!value || !slackId) return;
+    const [shiftDate, dept, shiftId] = value.split('|');
+    const shift = SHIFTS[dept]?.[shiftId];
+    if (!shift) return;
+
+    const agent = getAgentBySlackId(slackId);
+    if (!agent) return;
+
+    // Find the most recent clock_out punch for this shift and verify <5 min old
+    const punchId = lastPunchId(slackId, shiftDate, shiftId, 'clock_out');
+    if (!punchId) {
+      try {
+        await client.chat.postEphemeral({
+          channel: (body as any).channel?.id || slackId,
+          user: slackId,
+          text: '❌ No encontré un Clock Out reciente para deshacer.'
+        });
+      } catch {}
+      return;
+    }
+    const lp = lastPunchForShift(slackId, shiftDate, shiftId);
+    if (!lp || lp.type !== 'clock_out') return;
+    const ageMin = (Date.now() - new Date(lp.ts).getTime()) / 60000;
+    if (ageMin > 5) {
+      try {
+        await client.chat.postEphemeral({
+          channel: (body as any).channel?.id || slackId,
+          user: slackId,
+          text: '⏰ El plazo para deshacer (5 min) ya pasó. Pedile a un manager que use `/punch-fix`.'
+        });
+      } catch {}
+      return;
+    }
+
+    deletePunchById(punchId);
+    logAudit({
+      actorSlackId: slackId, actorName: agent.name,
+      action: 'punch.undo_clock_out',
+      targetKind: 'punch', targetId: String(punchId),
+      summary: `Deshizo Clock Out propio (${dept}.${shiftId} · ${shiftDate}) dentro del plazo de 5 min`,
+      payload: { punchId, shiftDate, dept, shiftId, ageMin: Math.round(ageMin) }
+    });
+
+    // Re-render DM with restored state
+    const now = DateTime.utc();
+    const baseDate = DateTime.fromISO(shiftDate, { zone: 'utc' });
+    const start = baseDate.startOf('day').plus({ hours: shift.startHour });
+    const end   = baseDate.startOf('day').plus({ hours: shift.endHour });
+    const newState = getShiftState(slackId, shiftDate, shiftId);
+    const lpAfter = lastPunchForShift(slackId, shiftDate, shiftId);
+    const blocks = punchButtonsBlocks({
+      state: newState,
+      dept, shift, shiftDate,
+      startISO: start.toISO()!,
+      endISO: end.toISO()!,
+      lastPunch: lpAfter ? { type: lpAfter.type, ts: lpAfter.ts } : null
+    });
+    try {
+      await respond({
+        replace_original: true,
+        blocks,
+        text: `Tu turno de hoy — ${dept} ${shift.label}`
+      });
+    } catch {}
+    try {
+      await client.chat.postEphemeral({
+        channel: (body as any).channel?.id || slackId,
+        user: slackId,
+        text: '↩ Clock Out deshecho. Volviste al estado anterior.'
+      });
+    } catch {}
+  });
 }

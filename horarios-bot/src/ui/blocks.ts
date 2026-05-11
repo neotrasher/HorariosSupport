@@ -15,6 +15,24 @@ export function punchButtonsBlocks(opts: {
   const startEpoch = Math.floor(new Date(startISO).getTime() / 1000);
   const endEpoch = Math.floor(new Date(endISO).getTime() / 1000);
 
+  // Confirmation dialog for Clock Out — prevents misclicks (e.g. agent meant
+  // Break Out but hit Clock Out). Text is contextual to current state.
+  const minsToEnd = Math.round((new Date(endISO).getTime() - Date.now()) / 60000);
+  let clockOutConfirmText: string;
+  if (state === 'on_break') {
+    clockOutConfirmText = '⚠️ Estás en *break*. Vas a *cerrar el turno*, no salir de break. ¿Continuar?';
+  } else if (minsToEnd > 30) {
+    clockOutConfirmText = `⚠️ Faltan *${minsToEnd} min* para terminar tu turno. ¿Cerrar igual?`;
+  } else {
+    clockOutConfirmText = 'Vas a cerrar tu turno. ¿Continuar?';
+  }
+  const clockOutConfirm = {
+    title:   { type: 'plain_text', text: 'Cerrar turno' },
+    text:    { type: 'plain_text', text: clockOutConfirmText },
+    confirm: { type: 'plain_text', text: 'Sí, cerrar' },
+    deny:    { type: 'plain_text', text: 'Cancelar' }
+  };
+
   const stateLabel = {
     off: '⚪ Sin marcar',
     in: '🟢 En turno',
@@ -46,7 +64,8 @@ export function punchButtonsBlocks(opts: {
     buttons.push({
       type: 'button', style: 'danger',
       text: { type: 'plain_text', text: 'Clock Out' },
-      action_id: 'punch_clock_out', value
+      action_id: 'punch_clock_out', value,
+      confirm: clockOutConfirm
     });
   }
   if (state === 'on_break') {
@@ -58,10 +77,29 @@ export function punchButtonsBlocks(opts: {
     buttons.push({
       type: 'button', style: 'danger',
       text: { type: 'plain_text', text: 'Clock Out' },
-      action_id: 'punch_clock_out', value
+      action_id: 'punch_clock_out', value,
+      confirm: clockOutConfirm
     });
   }
-  // state === 'completed' → no buttons; message frozen as "Turno finalizado"
+  // state === 'completed' → normalmente sin botones, PERO si el clock_out
+  // se hizo hace <5 min, mostramos un botón para deshacer por si fue misclick.
+  if (state === 'completed' && lastPunch && lastPunch.type === 'clock_out') {
+    const lpMs = new Date(lastPunch.ts).getTime();
+    const ageMin = (Date.now() - lpMs) / 60000;
+    if (ageMin < 5) {
+      buttons.push({
+        type: 'button',
+        text: { type: 'plain_text', text: '↩ Deshacer salida' },
+        action_id: 'punch_undo_clock_out', value,
+        confirm: {
+          title:   { type: 'plain_text', text: 'Deshacer salida' },
+          text:    { type: 'plain_text', text: 'Esto borra tu Clock Out reciente y te deja como estabas antes. ¿Continuar?' },
+          confirm: { type: 'plain_text', text: 'Sí, deshacer' },
+          deny:    { type: 'plain_text', text: 'Cancelar' }
+        }
+      });
+    }
+  }
 
   // Compose "última marca" line if we have a recent punch
   let lastLine = '';

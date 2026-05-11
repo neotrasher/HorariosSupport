@@ -89,6 +89,12 @@ export function clearPunchesForDate(slackId: string, shiftDate: string): number 
   return r.changes as number;
 }
 
+/** Delete a single punch by id. Used by undo flow. Returns true if found+deleted. */
+export function deletePunchById(id: number): boolean {
+  const r = db.prepare('DELETE FROM punches WHERE id = ?').run(id);
+  return (r.changes as number) > 0;
+}
+
 export function hasClockInOnDate(slackId: string, date: DateTime): boolean {
   const punches = getPunchesOnDate(slackId, date);
   return punches.some(p => p.type === 'clock_in');
