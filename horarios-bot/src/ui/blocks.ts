@@ -16,16 +16,12 @@ export function punchButtonsBlocks(opts: {
   const endEpoch = Math.floor(new Date(endISO).getTime() / 1000);
 
   // Confirmation dialog for Clock Out — prevents misclicks (e.g. agent meant
-  // Break Out but hit Clock Out). Text is contextual to current state.
-  const minsToEnd = Math.round((new Date(endISO).getTime() - Date.now()) / 60000);
-  let clockOutConfirmText: string;
-  if (state === 'on_break') {
-    clockOutConfirmText = '⚠️ Estás en *break*. Vas a *cerrar el turno*, no salir de break. ¿Continuar?';
-  } else if (minsToEnd > 30) {
-    clockOutConfirmText = `⚠️ Faltan *${minsToEnd} min* para terminar tu turno. ¿Cerrar igual?`;
-  } else {
-    clockOutConfirmText = 'Vas a cerrar tu turno. ¿Continuar?';
-  }
+  // Break Out but hit Clock Out). NOTE: Slack confirm dialogs are static at
+  // render time, so we avoid time-dependent text like "faltan X min" — that
+  // would go stale once the user clicks the button later.
+  const clockOutConfirmText = state === 'on_break'
+    ? '⚠️ Estás en break. Vas a cerrar el turno, no salir de break. ¿Estás seguro?'
+    : '¿Confirmás que querés cerrar tu turno?';
   const clockOutConfirm = {
     title:   { type: 'plain_text', text: 'Cerrar turno' },
     text:    { type: 'plain_text', text: clockOutConfirmText },
