@@ -131,7 +131,11 @@ agenteRouter.get('/:plannerId', (req, res) => {
         const bIn = DateTime.fromISO(breakIn.ts, { zone: 'utc' });
         const bOut = DateTime.fromISO(breakOut.ts, { zone: 'utc' });
         const breakMin = Math.round(bOut.diff(bIn, 'minutes').minutes);
-        if (breakMin > config.breakMaxMin) breakExcessMin = breakMin - config.breakMaxMin;
+        // Use the duration the agent CHOSE (30 or 60) as the limit, falling
+        // back to legacy config.breakMaxMin if the note doesn't have one.
+        const durMatch = (breakIn.note || '').match(/dur=(\d+)/);
+        const chosenDur = durMatch ? parseInt(durMatch[1], 10) : config.breakMaxMin;
+        if (breakMin > chosenDur) breakExcessMin = breakMin - chosenDur;
       }
 
       const forgotClockOut = !!(clockIn && !clockOut && now > w.end.plus({ hours: 4 }));

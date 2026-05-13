@@ -73,6 +73,7 @@ type PunchRow = {
   source: string;
   shift_date: string | null;
   shift_id: string | null;
+  note: string | null;
 };
 
 type ScheduleRow = {
@@ -111,7 +112,7 @@ export function buildReports(startStr: string, endStr: string): AgentReport[] {
 
   // 3) Punches with shift_date in the range (or with null shift_date but ts in the range)
   const punchRows = db.prepare(`
-    SELECT slack_id, type, ts, source, shift_date, shift_id FROM punches
+    SELECT slack_id, type, ts, source, shift_date, shift_id, note FROM punches
     WHERE (shift_date >= ? AND shift_date <= ?)
        OR (shift_date IS NULL AND ts >= ? AND ts <= ?)
   `).all(
@@ -219,8 +220,12 @@ export function buildReports(startStr: string, endStr: string): AgentReport[] {
       const bIn = DateTime.fromISO(breakIn.ts, { zone: 'utc' });
       const bOut = DateTime.fromISO(breakOut.ts, { zone: 'utc' });
       const breakMin = Math.round(bOut.diff(bIn, 'minutes').minutes);
-      if (breakMin > config.breakMaxMin) {
-        const excess = breakMin - config.breakMaxMin;
+      // Use the chosen duration (30/60) from break_in's note, not the legacy
+      // global config.breakMaxMin — otherwise 30-min breaks never trigger excess.
+      const durMatch = (breakIn.note || '').match(/dur=(\d+)/);
+      const chosenDur = durMatch ? parseInt(durMatch[1], 10) : config.breakMaxMin;
+      if (breakMin > chosenDur) {
+        const excess = breakMin - chosenDur;
         bucket.breakExcess.count++;
         bucket.breakExcess.totalMin += excess;
         bucket.breakExcess.incidents.push({ date: row.date, min: excess });
