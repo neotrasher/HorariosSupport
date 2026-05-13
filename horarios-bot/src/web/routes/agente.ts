@@ -53,6 +53,13 @@ agenteRouter.get('/:plannerId', (req, res) => {
 
   const now = DateTime.utc();
 
+  type PunchDisplay = {
+    type: string; ts: string; source: string; note: string | null;
+    /** For break_in: chosen duration (30 or 60). */
+    chosenDurMin?: number;
+    /** For break_out: actual elapsed minutes from the matching break_in. */
+    actualMin?: number;
+  };
   type Row = {
     date: string;
     dayName: string;
@@ -62,13 +69,18 @@ agenteRouter.get('/:plannerId', (req, res) => {
       dept: string; shiftId: string; label: string;
       startUtc: string; endUtc: string; custom: boolean; swapped: boolean;
       status: string; statusClass: string;
-      punches: { type: string; ts: string; source: string; note: string | null }[];
+      punches: PunchDisplay[];
       lateMin: number | null;
       breakExcessMin: number | null;
       forgotClockOut: boolean;
     };
     offReason?: string | null;
   };
+
+  // Aggregate stats across the month
+  let breaks30Count = 0;
+  let breaks60Count = 0;
+  let breakMinutesTotal = 0;
 
   const rows: Row[] = [];
   let cursor = monthStart;
@@ -138,12 +150,33 @@ agenteRouter.get('/:plannerId', (req, res) => {
           custom: sh.startHour !== sh.shift.startHour || sh.endHour !== sh.shift.endHour,
           swapped: sh.source === 'swap',
           status, statusClass,
-          punches: punches.map(p => ({
-            type: p.type,
-            ts: DateTime.fromISO(p.ts, { zone: 'utc' }).toFormat('HH:mm'),
-            source: p.source,
-            note: p.note
-          })),
+          punches: punches.map(p => {
+            const out: PunchDisplay = {
+              type: p.type,
+              ts: DateTime.fromISO(p.ts, { zone: 'utc' }).toFormat('HH:mm'),
+              source: p.source,
+              note: p.note
+            };
+            // Parse chosen duration from break_in note (format: "dur=30" or "dur=60")
+            if (p.type === 'break_in') {
+              const m = (p.note || '').match(/dur=(\d+)/);
+              const dur = m ? parseInt(m[1], 10) : 60; // legacy = 60
+              out.chosenDurMin = dur;
+              if (dur === 30) breaks30Count++;
+              else if (dur === 60) breaks60Count++;
+            }
+            // Actual elapsed for break_out: match against the most recent break_in before it
+            if (p.type === 'break_out' && breakIn) {
+              const bIn = DateTime.fromISO(breakIn.ts, { zone: 'utc' });
+              const bOut = DateTime.fromISO(p.ts, { zone: 'utc' });
+              const min = Math.round(bOut.diff(bIn, 'minutes').minutes);
+              if (min >= 0 && min < 24 * 60) {
+                out.actualMin = min;
+                breakMinutesTotal += min;
+              }
+            }
+            return out;
+          }),
           lateMin, breakExcessMin, forgotClockOut
         }
       });
@@ -175,7 +208,10 @@ agenteRouter.get('/:plannerId', (req, res) => {
     breakExcess: rows.filter(r => r.shift?.breakExcessMin).length,
     forgotClockOut: rows.filter(r => r.shift?.forgotClockOut).length,
     completed: rows.filter(r => r.shift?.statusClass === 'completed').length,
-    alerts: rows.filter(r => r.shift?.statusClass === 'alert').length
+    alerts: rows.filter(r => r.shift?.statusClass === 'alert').length,
+    breaks30: breaks30Count,
+    breaks60: breaks60Count,
+    breakMinutes: breakMinutesTotal
   };
 
   res.render('agente', {

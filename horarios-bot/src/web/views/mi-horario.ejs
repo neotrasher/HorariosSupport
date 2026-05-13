@@ -6,7 +6,11 @@
     <div class="min-w-0">
       <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Mi horario</h2>
       <% if (agent) { %>
-        <p class="text-sm text-slate-500 mt-1"><%= agent.name %> · <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide <%= agent.dept === 'L1' ? 'bg-blue-100 text-blue-700' : agent.dept === 'L2' ? 'bg-violet-100 text-violet-700' : 'bg-slate-100 text-slate-600' %>"><%= agent.dept %></span></p>
+        <p class="text-sm text-slate-500 mt-1">
+          <%= agent.name %>
+          · <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide <%= agent.dept === 'L1' ? 'bg-blue-100 text-blue-700' : agent.dept === 'L2' ? 'bg-violet-100 text-violet-700' : 'bg-slate-100 text-slate-600' %>"><%= agent.dept %></span>
+          · <a href="/horarios/agente/<%= agent.planner_id %>?month=<%= monthParam %>" class="text-sky-700 hover:text-sky-900 hover:underline">Ver detalle de marcas y breaks →</a>
+        </p>
       <% } else { %>
         <p class="text-sm text-amber-600 mt-1">⚠ Tu cuenta no esta vinculada a un agente.</p>
       <% } %>

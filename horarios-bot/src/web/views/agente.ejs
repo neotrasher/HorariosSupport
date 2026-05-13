@@ -15,7 +15,7 @@
     </div>
   </div>
 
-  <div class="grid grid-cols-2 sm:grid-cols-7 gap-3 mb-6">
+  <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
     <div class="bg-white rounded-lg border border-slate-200 shadow-card p-3">
       <div class="text-xl font-bold text-slate-900"><%= stats.shifts %></div>
       <div class="text-xs text-slate-500 mt-0.5">Turnos</div>
@@ -43,6 +43,22 @@
     <div class="bg-white rounded-lg border border-slate-200 shadow-card p-3">
       <div class="text-xl font-bold text-yellow-600"><%= stats.forgotClockOut %></div>
       <div class="text-xs text-slate-500 mt-0.5">Sin clock out</div>
+    </div>
+  </div>
+
+  <!-- Breaks summary del mes -->
+  <div class="grid grid-cols-3 gap-3 mb-6">
+    <div class="bg-white rounded-lg border border-slate-200 shadow-card p-3">
+      <div class="text-xl font-bold text-sky-700"><%= stats.breaks60 %></div>
+      <div class="text-xs text-slate-500 mt-0.5">Breaks de 1h tomados</div>
+    </div>
+    <div class="bg-white rounded-lg border border-slate-200 shadow-card p-3">
+      <div class="text-xl font-bold text-amber-700"><%= stats.breaks30 %></div>
+      <div class="text-xs text-slate-500 mt-0.5">Breaks de 30 min tomados</div>
+    </div>
+    <div class="bg-white rounded-lg border border-slate-200 shadow-card p-3">
+      <div class="text-xl font-bold text-slate-700"><%= stats.breakMinutes %><span class="text-sm font-normal text-slate-400"> min</span></div>
+      <div class="text-xs text-slate-500 mt-0.5">Tiempo total en break</div>
     </div>
   </div>
 
@@ -108,6 +124,18 @@
                       title="<%= p.source %><%= p.note ? ' · ' + p.note : '' %>">
                       <span class="font-mono text-slate-500"><%= p.ts %></span>
                       <span class="text-slate-700"><%= p.type.replace('_',' ') %></span>
+                      <% if (p.type === 'break_in' && p.chosenDurMin) { %>
+                        <span class="px-1 rounded text-[9px] font-bold <%= p.chosenDurMin === 60 ? 'bg-sky-100 text-sky-800' : 'bg-amber-100 text-amber-800' %>">
+                          <%= p.chosenDurMin === 60 ? '1h' : p.chosenDurMin + 'm' %>
+                        </span>
+                      <% } %>
+                      <% if (p.type === 'break_out' && typeof p.actualMin === 'number') { %>
+                        <% const overBy = p.actualMin > 60 ? p.actualMin - 60 : (p.actualMin > 30 && r.shift.punches.find(x => x.type==='break_in' && x.chosenDurMin===30) ? p.actualMin - 30 : 0); %>
+                        <span class="px-1 rounded text-[9px] font-bold <%= overBy > 0 ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800' %>"
+                              title="Duración real del break">
+                          <%= p.actualMin %>m
+                        </span>
+                      <% } %>
                       <% if (p.source !== 'button') { %><span class="text-orange-600">[<%= p.source %>]</span><% } %>
                     </span>
                   <% }) %>
