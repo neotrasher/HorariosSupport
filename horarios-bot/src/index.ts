@@ -29,6 +29,18 @@ async function main() {
   applyDbSettings();
   applyDbRoles();
 
+  // Staging mode: skip Slack bot entirely, only run the web server.
+  // Prevents stealing events from prod when both share tokens.
+  if (config.slackDisabled) {
+    console.log('🔕 SLACK_DISABLED=true → skipping Slack bot, web-only mode.');
+    if (config.web.slackClientId) {
+      startWeb(null);
+    } else {
+      console.log('Web: SLACK_WEB_CLIENT_ID not set — web platform disabled');
+    }
+    return;
+  }
+
   const app = new App({
     token: config.slack.botToken,
     appToken: config.slack.appToken,

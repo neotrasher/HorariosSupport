@@ -77,7 +77,10 @@ export const config = {
   // IANA timezone shown alongside UTC in status/hoy headers (e.g. America/Bogota)
   displayTimezone: process.env.DISPLAY_TIMEZONE || 'UTC',
   logLevel: process.env.LOG_LEVEL || 'info',
-  cronDisabled: (process.env.CRON_DISABLED || '').toLowerCase() === 'true'
+  cronDisabled: (process.env.CRON_DISABLED || '').toLowerCase() === 'true',
+  // Skip Slack bot entirely (only run web server). Useful for staging where
+  // we don't want to compete with prod for Slack events.
+  slackDisabled: (process.env.SLACK_DISABLED || '').toLowerCase() === 'true'
 };
 
 export const DAYS = ['L', 'M', 'C', 'J', 'V', 'S', 'D'] as const;
