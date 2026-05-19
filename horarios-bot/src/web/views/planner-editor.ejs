@@ -220,6 +220,40 @@
 .ctab{padding:5px 13px;border-radius:5px;cursor:pointer;font-size:13px;font-weight:700;color:#a0aec0;border:none;background:transparent;transition:all .15s}
 .ctab:hover{color:#fff}
 .ctab.active{background:var(--accent);color:#fff;box-shadow:0 1px 4px rgba(66,153,225,.4)}
+.view-toggle{display:flex;gap:2px;background:#2d3748;padding:3px;border-radius:8px}
+.vtbtn{padding:5px 13px;border-radius:5px;cursor:pointer;font-size:12px;font-weight:700;color:#a0aec0;border:none;background:transparent;transition:all .15s;font-family:inherit}
+.vtbtn:hover{color:#fff}
+.vtbtn.active{background:#10b981;color:#fff;box-shadow:0 1px 4px rgba(16,185,129,.4)}
+/* Agent-view grid (rows = agents, cols = days) */
+.agent-grid{display:grid;min-width:540px}
+.agent-name-cell{padding:6px 10px;font-size:12px;font-weight:700;color:var(--text);background:#f7fafc;border-bottom:1px solid var(--border);border-right:1px solid var(--border);display:flex;align-items:center;gap:6px;min-height:46px}
+.agent-name-cell .adot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.agent-name-cell .aname{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.agent-name-cell .ainit{font-size:10px;color:var(--muted);font-weight:700;font-family:ui-monospace,monospace}
+.agent-name-cell .adept-tag{font-size:9px;font-weight:800;padding:1px 5px;border-radius:3px;flex-shrink:0}
+.subdept-hdr{padding:5px 10px;background:#f1f5f9;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:4px;font-size:11px}
+/* Homebase-style chip: time on top, agent name below — fills cell width */
+.hb-chip{display:flex;flex-direction:column;padding:4px 7px 4px 8px;border-radius:4px;color:#fff;line-height:1.25;box-shadow:0 1px 2px rgba(0,0,0,.18);position:relative;width:100%;box-sizing:border-box;transition:opacity .12s}
+.hb-chip.dimmed{opacity:.2}
+.hb-chip.chip-warn{outline:2px solid #f6ad55;outline-offset:1px}
+.hb-time{font-size:9.5px;font-weight:600;opacity:.9;font-family:ui-monospace,monospace;letter-spacing:.2px}
+.hb-name{font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hb-x{position:absolute;top:2px;right:3px;width:13px;height:13px;border-radius:50%;background:rgba(0,0,0,.18);display:none;align-items:center;justify-content:center;font-size:9px;font-weight:700;cursor:pointer;line-height:1}
+.hb-chip:hover .hb-x{display:flex}
+.hb-x:hover{background:rgba(0,0,0,.4)}
+.agent-cell{padding:4px 5px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);min-height:46px;display:flex;flex-direction:column;gap:2px;cursor:pointer;transition:background .1s;position:relative}
+.agent-cell:hover{background:#ebf8ff}
+.agent-cell:last-child{border-right:none}
+.agent-cell.empty{background:#fafbfc}
+.agent-cell.empty:hover{background:#edf2f7}
+.agent-cell.conflict{background:#fff5f5;box-shadow:inset 0 0 0 2px #fc8181}
+.shift-pill{display:flex;flex-direction:column;padding:3px 6px;border-radius:5px;font-size:10px;font-weight:700;color:#fff;line-height:1.25;box-shadow:0 1px 2px rgba(0,0,0,.15)}
+.shift-pill .sp-time{font-size:9px;opacity:.85;font-family:ui-monospace,monospace;font-weight:600;letter-spacing:.2px}
+.shift-pill.cross{outline:1px dashed rgba(255,255,255,.45);outline-offset:-2px}
+.off-pill{display:inline-flex;align-items:center;gap:3px;padding:3px 7px;border-radius:5px;font-size:10px;font-weight:700;background:#fed7aa;color:#7b341e;align-self:flex-start}
+.empty-hint{font-size:10px;color:#cbd5e0;font-weight:600;align-self:flex-start;font-style:italic}
+.conflict-badge{position:absolute;top:2px;right:3px;font-size:10px;color:#c53030;font-weight:800;line-height:1}
+.agent-cell:hover .add-indicator{display:flex}
 .hdr-actions{margin-left:auto;display:flex;gap:6px}
 .btn{padding:5px 12px;border-radius:6px;border:none;cursor:pointer;font-size:12px;font-weight:600;transition:all .15s}
 .btn-ghost{background:transparent;color:#a0aec0;border:1px solid #4a5568}
@@ -419,6 +453,12 @@
     <button class="ctab" data-cycle="C">Sem C</button>
     <button class="ctab" data-cycle="D">Sem D</button>
   </div>
+  <div class="hdr-sep"></div>
+  <span class="hdr-lbl">Vista</span>
+  <div class="view-toggle" id="viewToggle">
+    <button class="vtbtn active" data-view="by-shift" title="Filas = franjas, columnas = días">Por turno</button>
+    <button class="vtbtn" data-view="by-agent" title="Filas = agentes, columnas = días (estilo Homebase)">Por agente</button>
+  </div>
   <div class="hdr-actions">
     <span id="saveStatus" class="hdr-status"></span>
     <button class="btn btn-ghost" id="btnCopy">Copiar ciclo →</button>
@@ -453,6 +493,26 @@
     <div class="modal-ftr">
       <button class="btn btn-ghost" id="btnMClose">Cancelar</button>
       <button class="btn btn-primary" id="btnMSave">Aplicar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Agent-day modal (vista por agente) -->
+<div class="overlay" id="ovAgentDay">
+  <div class="modal" style="width:420px">
+    <div class="modal-hdr">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div id="adEmpDot" style="width:12px;height:12px;border-radius:50%;flex-shrink:0"></div>
+        <div>
+          <div class="modal-title" id="adTitle"></div>
+          <div class="modal-sub" id="adSub"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-body" id="adBody"></div>
+    <div class="modal-ftr">
+      <button class="btn btn-ghost" id="btnADClose">Cancelar</button>
+      <button class="btn btn-primary" id="btnADSave">Aplicar</button>
     </div>
   </div>
 </div>
@@ -618,21 +678,571 @@ function initSchedule() {
 
 // ── STATE ────────────────────────────────────────────────────────────────────
 let currentCycle = 'A';
-let modalCell = null;   // {deptId, day, shiftId}
-let modalSel = [];      // temp employee selection
-let modalNote = '';     // temp note
+let viewMode = 'by-shift';   // 'by-shift' | 'by-agent'
+let modalCell = null;        // {deptId, day, shiftId}
+let modalSel = [];           // temp employee selection
+let modalNote = '';          // temp note
+let adState = null;          // {empId, day, sel:Set("deptId|shiftId"), off:boolean}
 
 // ── RENDER ───────────────────────────────────────────────────────────────────
 function render() {
   document.getElementById('sbCycleLabel').textContent = currentCycle;
   renderSidebar();
-  renderSchedule();
+  if (viewMode === 'by-agent') renderScheduleByAgent();
+  else renderSchedule();
 }
 
 function renderSchedule() {
   const area = document.getElementById('schedArea');
   area.innerHTML = '';
   for (const dept of DEPTS) area.appendChild(buildDeptCard(dept));
+}
+
+// ── Vista "por agente" (estilo Homebase) ───────────────────────────────────
+// Filas = agentes, columnas = 7 días, celda = turnos del día.
+// Agentes agrupados por su turno predominante en el ciclo actual:
+// M, T, EL2 (intermedio L2), EL1 (intermedio L1), N, o "Sin asignar".
+
+// Grupos en orden de prioridad (también usado para desempates).
+const SHIFT_GROUPS = [
+  { key: 'M',   label: 'Mañana',         color: '#276749', hint: 'M' },
+  { key: 'T',   label: 'Tarde',          color: '#2b6cb0', hint: 'T' },
+  { key: 'EL2', label: 'Intermedio L2',  color: '#b45309', hint: 'E·L2' },
+  { key: 'EL1', label: 'Intermedio L1',  color: '#b45309', hint: 'E·L1' },
+  { key: 'N',   label: 'Noche',          color: '#553c9a', hint: 'N' },
+];
+
+// Devuelve la clave de grupo para un (deptId, shiftId).
+// M/T/N son comunes a L1+L2. E se desdobla en EL1 / EL2.
+function groupKeyFor(deptId, shiftId) {
+  if (shiftId === 'E') return deptId === 'L1' ? 'EL1' : 'EL2';
+  return shiftId; // 'M', 'T', 'N'
+}
+
+// Calcula el grupo predominante de un agente en el ciclo actual.
+// Devuelve la key (string) o null si no tiene turnos asignados.
+function principalGroupOf(empId) {
+  const counts = {};
+  for (const dept of DEPTS) {
+    for (const day of DAYS) {
+      for (const sh of dept.shifts) {
+        if (schedule[currentCycle][dept.id][day][sh.id].emps.includes(empId)) {
+          const k = groupKeyFor(dept.id, sh.id);
+          counts[k] = (counts[k] || 0) + 1;
+        }
+      }
+    }
+  }
+  let best = null, bestCount = 0;
+  for (const g of SHIFT_GROUPS) {
+    const c = counts[g.key] || 0;
+    if (c > bestCount) { best = g.key; bestCount = c; }
+    // Empate: el orden del array gana (M > T > EL2 > EL1 > N)
+  }
+  return best;
+}
+
+function renderScheduleByAgent() {
+  const area = document.getElementById('schedArea');
+  area.innerHTML = '';
+  // 1 card por turno (M, T, EL2, EL1, N).
+  // Eje Y = roles (L1, L2). Eje X = días.
+  // Celda = chips de agentes asignados a ese (dept, día, turno), c/u con nombre + hora.
+  for (const g of SHIFT_GROUPS) {
+    const card = buildShiftCard(g);
+    if (card) area.appendChild(card);
+  }
+}
+
+// Devuelve los pares (deptId, shiftId) que pertenecen a un grupo
+function deptShiftsForGroup(groupKey) {
+  if (groupKey === 'EL1') return [{ deptId: 'L1', shiftId: 'E' }];
+  if (groupKey === 'EL2') return [{ deptId: 'L2', shiftId: 'E' }];
+  // M, T, N → uno por dept
+  return DEPTS.map(d => ({ deptId: d.id, shiftId: groupKey }));
+}
+
+// Devuelve los depts cuyo eje Y debe aparecer en este card
+function deptsForGroup(groupKey) {
+  if (groupKey === 'EL1') return ['L1'];
+  if (groupKey === 'EL2') return ['L2'];
+  return ['L1', 'L2'];
+}
+
+// Cuenta cuántas asignaciones hay en este grupo en todo el ciclo — para skip cards vacíos
+function groupHasAnyAssignment(groupKey) {
+  const pairs = deptShiftsForGroup(groupKey);
+  for (const day of DAYS) {
+    for (const { deptId, shiftId } of pairs) {
+      if (schedule[currentCycle][deptId][day][shiftId].emps.length > 0) return true;
+    }
+  }
+  return false;
+}
+
+function buildShiftCard(group) {
+  // Si nadie está en este grupo en el ciclo, no mostrar el card (evita ruido)
+  if (!groupHasAnyAssignment(group.key)) return null;
+
+  const card = document.createElement('div');
+  card.className = 'dept-card';
+
+  const hdr = document.createElement('div');
+  hdr.className = 'dept-hdr';
+  // Contar agentes únicos en el card
+  const empSet = new Set();
+  for (const day of DAYS) {
+    for (const { deptId, shiftId } of deptShiftsForGroup(group.key)) {
+      for (const e of schedule[currentCycle][deptId][day][shiftId].emps) empSet.add(e);
+    }
+  }
+  hdr.innerHTML = `
+    <span class="dept-badge" style="background:${group.color};color:#fff">${group.hint}</span>
+    <span class="dept-title">${group.label}</span>
+    <span style="font-size:11px;color:#a0aec0;font-weight:600;margin-left:6px">${empSet.size} agente${empSet.size !== 1 ? 's' : ''}</span>`;
+  card.appendChild(hdr);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'grid-wrap';
+  const grid = document.createElement('div');
+  grid.className = 'sgrid';
+  grid.style.gridTemplateColumns = `70px repeat(${DAYS.length}, 1fr)`;
+
+  // Header row: corner + días
+  const corner = document.createElement('div');
+  corner.className = 'gh';
+  grid.appendChild(corner);
+  for (const day of DAYS) {
+    const h = document.createElement('div');
+    h.className = 'gh';
+    h.title = DAY_FULL[day];
+    h.innerHTML = `<span style="font-size:14px;font-weight:800">${day}</span>
+      <br><span style="font-size:9px;color:#a0aec0;font-weight:500">${DAY_FULL[day].slice(0,3)}</span>`;
+    grid.appendChild(h);
+  }
+
+  // Una fila por dept en este card
+  const depts = deptsForGroup(group.key);
+  for (let i = 0; i < depts.length; i++) {
+    const deptId = depts[i];
+    const dept = DEPTS.find(d => d.id === deptId);
+    const sh = dept.shifts.find(s => s.id === (group.key === 'EL1' || group.key === 'EL2' ? 'E' : group.key));
+    const isLastRow = i === depts.length - 1;
+
+    // Label de dept (eje Y)
+    const lbl = document.createElement('div');
+    lbl.className = 'gh';
+    lbl.style.cssText = `text-align:left;padding:7px 10px;border-left:3px solid ${sh.color};${isLastRow ? 'border-bottom:none;' : ''}`;
+    lbl.innerHTML = `<span class="dept-badge badge-${deptId}" style="font-size:11px">${deptId}</span>
+      <br><span style="font-size:9px;color:#718096;font-weight:500;margin-top:2px;display:inline-block">${sh.time}</span>`;
+    grid.appendChild(lbl);
+
+    // Una celda por día
+    for (let di = 0; di < DAYS.length; di++) {
+      const day = DAYS[di];
+      const cell = buildShiftDeptDayCell(deptId, day, sh);
+      if (di === DAYS.length - 1) cell.style.borderRight = 'none';
+      if (isLastRow) cell.style.borderBottom = 'none';
+      grid.appendChild(cell);
+    }
+  }
+
+  wrap.appendChild(grid);
+  card.appendChild(wrap);
+  return card;
+}
+
+// Celda de un (dept, día, turno) — muestra cada agente asignado como chip
+// con nombre + hora, estilo Homebase. Click en celda = abrir modal de selección
+// (reusa el modal "Por turno"). Click en × del chip = quitar agente.
+function buildShiftDeptDayCell(deptId, day, sh) {
+  const cell = document.createElement('div');
+  cell.className = 'gcell' + (sh.id === 'E' ? ' gcell-E' : '');
+  cell.style.minHeight = '52px';
+  cell.style.flexDirection = 'column';
+  cell.style.gap = '3px';
+  cell.style.alignContent = 'stretch';
+
+  const data = schedule[currentCycle][deptId][day][sh.id];
+
+  for (const eid of data.emps) {
+    const emp = EMPLOYEES.find(e => e.id === eid);
+    if (!emp) continue;
+    const isDimmed = filteredEmps.size > 0 && !filteredEmps.has(emp.id);
+    const onDayOff = isOffDay(emp.id, day);
+
+    const chip = document.createElement('div');
+    chip.className = 'hb-chip' + (isDimmed ? ' dimmed' : '') + (onDayOff ? ' chip-warn' : '');
+    chip.style.background = sh.color;
+    chip.title = onDayOff
+      ? `⚠ ${emp.name} tiene libre este día`
+      : `${emp.name} · ${sh.time}`;
+    chip.innerHTML = `
+      <div class="hb-time">${sh.time}</div>
+      <div class="hb-name">${emp.name}</div>
+      <span class="hb-x" data-dept="${deptId}" data-day="${day}" data-shift="${sh.id}" data-emp="${eid}">×</span>`;
+    chip.querySelector('.hb-x').addEventListener('click', e => {
+      e.stopPropagation();
+      removeEmp(deptId, day, sh.id, parseInt(e.target.dataset.emp));
+    });
+    cell.appendChild(chip);
+  }
+
+  if (data.note) {
+    const nt = document.createElement('div');
+    nt.className = 'chip-note';
+    nt.textContent = data.note;
+    cell.appendChild(nt);
+  }
+
+  const plus = document.createElement('div');
+  plus.className = 'add-indicator';
+  plus.textContent = '+';
+  cell.appendChild(plus);
+
+  cell.addEventListener('click', () => openModal(deptId, day, sh.id));
+  return cell;
+}
+
+function buildShiftGroupCard(group, emps) {
+  const card = document.createElement('div');
+  card.className = 'dept-card';
+
+  const hdr = document.createElement('div');
+  hdr.className = 'dept-hdr';
+  hdr.innerHTML = `
+    <span class="dept-badge" style="background:${group.color};color:#fff">${group.hint}</span>
+    <span class="dept-title">${group.label}</span>
+    <span style="font-size:11px;color:#a0aec0;font-weight:600;margin-left:6px">${emps.length} agente${emps.length !== 1 ? 's' : ''}</span>`;
+  card.appendChild(hdr);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'grid-wrap';
+  const grid = document.createElement('div');
+  grid.className = 'agent-grid';
+  grid.style.gridTemplateColumns = `140px repeat(${DAYS.length}, 1fr)`;
+
+  // Cabecera: corner + días
+  const corner = document.createElement('div');
+  corner.className = 'gh';
+  grid.appendChild(corner);
+  for (const day of DAYS) {
+    const h = document.createElement('div');
+    h.className = 'gh';
+    h.title = DAY_FULL[day];
+    h.innerHTML = `<span style="font-size:14px;font-weight:800">${day}</span>
+      <br><span style="font-size:9px;color:#a0aec0;font-weight:500">${DAY_FULL[day].slice(0,3)}</span>`;
+    grid.appendChild(h);
+  }
+
+  // Sub-secciones por dept (L1, L2), cada una con sus agentes
+  const subDepts = ['L1', 'L2'];
+  // Calcular cuál es el último dept con agentes para no poner border-bottom en su última fila
+  const deptHasEmps = {};
+  for (const d of subDepts) deptHasEmps[d] = emps.filter(e => e.dept === d);
+  const lastDeptWithEmps = subDepts.slice().reverse().find(d => deptHasEmps[d].length > 0);
+
+  for (const deptId of subDepts) {
+    const deptEmps = deptHasEmps[deptId];
+    if (deptEmps.length === 0) continue;
+    deptEmps.sort((a, b) => a.name.localeCompare(b.name, 'es'));
+
+    // Sub-header: una fila que ocupa las 8 columnas (1 nombre + 7 días) usando grid-column span
+    const subHdr = document.createElement('div');
+    subHdr.className = 'subdept-hdr';
+    subHdr.style.gridColumn = `1 / -1`;
+    subHdr.innerHTML = `<span class="dept-badge badge-${deptId}" style="font-size:10px">${deptId}</span>
+      <span style="font-size:11px;color:#4a5568;font-weight:700;margin-left:5px">${deptEmps.length} agente${deptEmps.length !== 1 ? 's' : ''}</span>`;
+    grid.appendChild(subHdr);
+
+    for (let ei = 0; ei < deptEmps.length; ei++) {
+      const emp = deptEmps[ei];
+      const isLastRowOfLastDept = (deptId === lastDeptWithEmps) && (ei === deptEmps.length - 1);
+      const isDimmed = filteredEmps.size > 0 && !filteredEmps.has(emp.id);
+
+      const nameCell = document.createElement('div');
+      nameCell.className = 'agent-name-cell';
+      if (isLastRowOfLastDept) nameCell.style.borderBottom = 'none';
+      if (isDimmed) nameCell.style.opacity = '0.35';
+      nameCell.innerHTML = `<div class="adot" style="background:${emp.color}"></div>
+        <span class="aname">${emp.name}</span>`;
+      grid.appendChild(nameCell);
+
+      for (let di = 0; di < DAYS.length; di++) {
+        const day = DAYS[di];
+        const cell = buildAgentDayCell(emp, day);
+        if (di === DAYS.length - 1) cell.style.borderRight = 'none';
+        if (isLastRowOfLastDept) cell.style.borderBottom = 'none';
+        if (isDimmed) cell.style.opacity = '0.35';
+        grid.appendChild(cell);
+      }
+    }
+  }
+
+  wrap.appendChild(grid);
+  card.appendChild(wrap);
+  return card;
+}
+
+// Kept for backwards-compat (no longer called from render, pero por si algo lo invoca)
+function buildAgentDeptCard(dept) {
+  const emps = EMPLOYEES.filter(e => e.dept === dept.id);
+  if (emps.length === 0) return null;
+
+  const card = document.createElement('div');
+  card.className = 'dept-card';
+
+  // Header reusa el del dept (badge + label)
+  const hdr = document.createElement('div');
+  hdr.className = 'dept-hdr';
+  hdr.innerHTML = `<span class="dept-badge badge-${dept.id}">${dept.id}</span>
+    <span class="dept-title">${dept.label} · por agente</span>`;
+  card.appendChild(hdr);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'grid-wrap';
+  const grid = document.createElement('div');
+  grid.className = 'agent-grid';
+  // 140px para nombre + ancho igual por día
+  grid.style.gridTemplateColumns = `140px repeat(${DAYS.length}, 1fr)`;
+
+  // Cabecera: corner + días
+  const corner = document.createElement('div');
+  corner.className = 'gh';
+  grid.appendChild(corner);
+  for (const day of DAYS) {
+    const h = document.createElement('div');
+    h.className = 'gh';
+    h.title = DAY_FULL[day];
+    h.innerHTML = `<span style="font-size:14px;font-weight:800">${day}</span>
+      <br><span style="font-size:9px;color:#a0aec0;font-weight:500">${DAY_FULL[day].slice(0,3)}</span>`;
+    grid.appendChild(h);
+  }
+
+  // Una fila por agente
+  for (let ei = 0; ei < emps.length; ei++) {
+    const emp = emps[ei];
+    const isLastRow = ei === emps.length - 1;
+
+    const nameCell = document.createElement('div');
+    nameCell.className = 'agent-name-cell';
+    if (isLastRow) nameCell.style.borderBottom = 'none';
+    const isDimmed = filteredEmps.size > 0 && !filteredEmps.has(emp.id);
+    if (isDimmed) nameCell.style.opacity = '0.35';
+    nameCell.innerHTML = `<div class="adot" style="background:${emp.color}"></div>
+      <span class="aname">${emp.name}</span>`;
+    grid.appendChild(nameCell);
+
+    for (let di = 0; di < DAYS.length; di++) {
+      const day = DAYS[di];
+      const cell = buildAgentDayCell(emp, day);
+      if (di === DAYS.length - 1) cell.style.borderRight = 'none';
+      if (isLastRow) cell.style.borderBottom = 'none';
+      if (isDimmed) cell.style.opacity = '0.35';
+      grid.appendChild(cell);
+    }
+  }
+
+  wrap.appendChild(grid);
+  card.appendChild(wrap);
+  return card;
+}
+
+function buildAgentDayCell(emp, day) {
+  const cell = document.createElement('div');
+  cell.className = 'agent-cell';
+  cell.addEventListener('click', () => openAgentDayModal(emp.id, day));
+
+  // ¿Está libre ese día en este ciclo?
+  const isOff = (daysOff[emp.id]?.[currentCycle] || []).includes(day);
+
+  // ¿Qué turnos tiene asignados? (busca en todos los depts)
+  const assigned = []; // {deptId, sh, crossDept}
+  for (const dept of DEPTS) {
+    for (const sh of dept.shifts) {
+      const cellData = schedule[currentCycle][dept.id][day][sh.id];
+      if (cellData.emps.includes(emp.id)) {
+        assigned.push({ deptId: dept.id, sh, crossDept: dept.id !== emp.dept });
+      }
+    }
+  }
+
+  // Conflicto: tiene turno asignado Y está marcado como libre
+  const conflict = isOff && assigned.length > 0;
+  if (conflict) {
+    cell.classList.add('conflict');
+    const badge = document.createElement('div');
+    badge.className = 'conflict-badge';
+    badge.textContent = '⚠';
+    badge.title = 'Conflicto: agente tiene turno y día libre el mismo día';
+    cell.appendChild(badge);
+  }
+
+  // Render shifts
+  for (const a of assigned) {
+    const pill = document.createElement('div');
+    pill.className = 'shift-pill' + (a.crossDept ? ' cross' : '');
+    pill.style.background = a.sh.color;
+    pill.title = `${a.sh.label}${a.crossDept ? ' (cobertura ' + a.deptId + ')' : ''}`;
+    pill.innerHTML = `<span>${a.crossDept ? a.deptId + '·' : ''}${a.sh.id} · ${a.sh.label}</span>
+      <span class="sp-time">${a.sh.time}</span>`;
+    cell.appendChild(pill);
+  }
+
+  if (isOff) {
+    const off = document.createElement('div');
+    off.className = 'off-pill';
+    off.textContent = '🌴 libre';
+    cell.appendChild(off);
+  }
+
+  if (!isOff && assigned.length === 0) {
+    cell.classList.add('empty');
+    const hint = document.createElement('div');
+    hint.className = 'empty-hint';
+    hint.textContent = 'sin asignar';
+    cell.appendChild(hint);
+  }
+
+  return cell;
+}
+
+// ── Modal agente×día ────────────────────────────────────────────────────────
+function openAgentDayModal(empId, day) {
+  const emp = EMPLOYEES.find(e => e.id === empId);
+  if (!emp) return;
+  adState = { empId, day, sel: new Set(), off: false };
+  // Pre-seleccionar turnos actuales
+  for (const dept of DEPTS) {
+    for (const sh of dept.shifts) {
+      if (schedule[currentCycle][dept.id][day][sh.id].emps.includes(empId)) {
+        adState.sel.add(dept.id + '|' + sh.id);
+      }
+    }
+  }
+  adState.off = (daysOff[empId]?.[currentCycle] || []).includes(day);
+
+  document.getElementById('adTitle').textContent = `${emp.name} — ${DAY_FULL[day]}`;
+  document.getElementById('adSub').textContent = `Sem ${currentCycle} · click para asignar/quitar turno`;
+  document.getElementById('adEmpDot').style.background = emp.color;
+  renderAgentDayBody();
+  document.getElementById('ovAgentDay').classList.add('show');
+}
+
+function renderAgentDayBody() {
+  const body = document.getElementById('adBody');
+  body.innerHTML = '';
+
+  for (const dept of DEPTS) {
+    const sec = document.createElement('div');
+    sec.className = 'qs-section';
+    const lbl = document.createElement('div');
+    lbl.className = 'qs-lbl';
+    lbl.textContent = dept.label;
+    sec.appendChild(lbl);
+
+    const pills = document.createElement('div');
+    pills.className = 'qs-pills';
+    for (const sh of dept.shifts) {
+      const key = dept.id + '|' + sh.id;
+      const isSel = adState.sel.has(key);
+      const pill = document.createElement('button');
+      pill.type = 'button';
+      pill.className = 'qs-pill' + (isSel ? ' sel' : '');
+      pill.style.borderColor = sh.color;
+      if (isSel) { pill.style.background = sh.color; pill.style.color = '#fff'; }
+      pill.innerHTML = `<span class="qs-pill-dept">${dept.id}</span>
+        <span class="qs-pill-sh">${sh.id} · ${sh.label}</span>
+        <span class="qs-pill-time">${sh.time}</span>`;
+      pill.addEventListener('click', () => {
+        if (adState.sel.has(key)) adState.sel.delete(key);
+        else adState.sel.add(key);
+        renderAgentDayBody();
+      });
+      pills.appendChild(pill);
+    }
+    sec.appendChild(pills);
+    body.appendChild(sec);
+  }
+
+  // Día libre toggle
+  const offSec = document.createElement('div');
+  offSec.className = 'qs-section';
+  const offCount = countOffDaysAllCycles(adState.empId);
+  offSec.innerHTML = `<div class="qs-lbl">Día libre</div>
+    <label class="qs-radio" style="cursor:pointer">
+      <input type="checkbox" id="adOffChk" ${adState.off ? 'checked' : ''}>
+      Marcar ${DAY_FULL[adState.day]} como libre en Sem ${currentCycle}
+    </label>
+    <div style="font-size:10px;color:var(--muted);margin-top:4px">
+      Total días libres del agente (todos los ciclos): ${offCount}/8
+    </div>`;
+  offSec.querySelector('#adOffChk').addEventListener('change', e => {
+    adState.off = e.target.checked;
+  });
+  body.appendChild(offSec);
+
+  // Warning si hay conflicto en la selección actual
+  if (adState.off && adState.sel.size > 0) {
+    const warn = document.createElement('div');
+    warn.style.cssText = 'background:#fff5f5;border:1px solid #fc8181;border-radius:6px;padding:8px 10px;font-size:11px;color:#c53030;margin-top:4px';
+    warn.innerHTML = '⚠ Vas a dejar al agente con turno y día libre el mismo día. Quita uno de los dos antes de aplicar.';
+    body.appendChild(warn);
+  }
+}
+
+function countOffDaysAllCycles(empId) {
+  if (!daysOff[empId]) return 0;
+  return CYCLES.reduce((s, cy) => s + (daysOff[empId][cy] || []).length, 0);
+}
+
+function closeAgentDayModal() {
+  document.getElementById('ovAgentDay').classList.remove('show');
+  adState = null;
+}
+
+function saveAgentDayModal() {
+  if (!adState) return;
+  // Bloquear si quedan conflictos
+  if (adState.off && adState.sel.size > 0) {
+    showToast('⚠ Conflicto: quita el día libre o los turnos antes de aplicar');
+    return;
+  }
+  const { empId, day, sel, off } = adState;
+
+  // Actualizar shifts: para cada dept/sh, agregar o quitar al agente según sel
+  for (const dept of DEPTS) {
+    for (const sh of dept.shifts) {
+      const key = dept.id + '|' + sh.id;
+      const cellData = schedule[currentCycle][dept.id][day][sh.id];
+      const wantsAssigned = sel.has(key);
+      const isAssigned = cellData.emps.includes(empId);
+      if (wantsAssigned && !isAssigned) cellData.emps.push(empId);
+      else if (!wantsAssigned && isAssigned) {
+        cellData.emps = cellData.emps.filter(id => id !== empId);
+      }
+    }
+  }
+
+  // Actualizar daysOff
+  if (!daysOff[empId]) daysOff[empId] = {};
+  if (!daysOff[empId][currentCycle]) daysOff[empId][currentCycle] = [];
+  const arr = daysOff[empId][currentCycle];
+  const i = arr.indexOf(day);
+  if (off && i < 0) arr.push(day);
+  else if (!off && i >= 0) arr.splice(i, 1);
+
+  closeAgentDayModal();
+  render();
+  autosave();
+  showToast('✓ Día actualizado');
+}
+
+function switchViewMode(v) {
+  if (v !== 'by-shift' && v !== 'by-agent') return;
+  viewMode = v;
+  document.querySelectorAll('.vtbtn').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  render();
 }
 
 function buildDeptCard(dept) {
@@ -1455,6 +2065,15 @@ function showToast(msg) {
 document.getElementById('cycleTabs').addEventListener('click', e=>{
   const t = e.target.closest('.ctab');
   if (t) switchCycle(t.dataset.cycle);
+});
+document.getElementById('viewToggle').addEventListener('click', e => {
+  const t = e.target.closest('.vtbtn');
+  if (t) switchViewMode(t.dataset.view);
+});
+document.getElementById('btnADClose').addEventListener('click', closeAgentDayModal);
+document.getElementById('btnADSave').addEventListener('click', saveAgentDayModal);
+document.getElementById('ovAgentDay').addEventListener('click', e => {
+  if (e.target === document.getElementById('ovAgentDay')) closeAgentDayModal();
 });
 
 document.getElementById('btnSave').addEventListener('click', saveData);
