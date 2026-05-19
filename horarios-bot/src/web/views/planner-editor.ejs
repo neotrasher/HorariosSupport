@@ -1581,6 +1581,22 @@ function renderSidebar() {
       row.title = `${emp.name} — ${emp.dept} · click para filtrar`;
       const shiftsToShow = ['M','T','N','E'];
       const statHtml = shiftsToShow.map(s=>`<span class="st">${s}${st[s]||0}</span>`).join('');
+      // Total turnos del ciclo completo (todas las semanas)
+      const totalAll = totalShiftsAllCycles(emp.id);
+      const expected = expectedShiftsTotal();
+      let totalColor = 'background:#edf2f7;color:#4a5568';
+      let totalTitle = `Total en el ciclo: ${totalAll} de ${expected} esperados`;
+      if (totalAll > expected) {
+        totalColor = 'background:#fc8181;color:#742a2a';
+        totalTitle = `⚠ Excede: ${totalAll}/${expected} turnos (sobreasignado)`;
+      } else if (totalAll === expected) {
+        totalColor = 'background:#9ae6b4;color:#22543d';
+        totalTitle = `✓ Exacto: ${totalAll}/${expected}`;
+      } else if (totalAll === 0) {
+        totalColor = 'background:#fed7aa;color:#7b341e';
+        totalTitle = `Sin turnos asignados`;
+      }
+      const totalHtml = `<span class="st" style="${totalColor};font-weight:800" title="${totalTitle}">Σ${totalAll}/${expected}</span>`;
       const doTags = CYCLES.map(cy => {
         const d = (daysOff[emp.id]?.[cy] || []);
         return d.length
@@ -1596,7 +1612,7 @@ function renderSidebar() {
         </div>
         <div class="emp-row-bot">
           <div class="emp-do-row">${doTags}</div>
-          <div class="emp-stats">${statHtml}</div>
+          <div class="emp-stats">${statHtml}${totalHtml}</div>
         </div>`;
       row.querySelector('.emp-do-btn').addEventListener('click', e => {
         e.stopPropagation();
@@ -1622,6 +1638,26 @@ function calcStats() {
         for (const eid of cy[dept.id][day][sh.id].emps)
           if (s[eid]) s[eid][sh.id]=(s[eid][sh.id]||0)+1;
   return s;
+}
+
+// Total de turnos del agente sumando TODOS los ciclos activos (no solo el actual)
+function totalShiftsAllCycles(empId) {
+  let n = 0;
+  for (const cy of CYCLES) {
+    for (const dept of DEPTS) {
+      for (const day of DAYS) {
+        for (const sh of dept.shifts) {
+          if (schedule[cy][dept.id][day][sh.id].emps.includes(empId)) n++;
+        }
+      }
+    }
+  }
+  return n;
+}
+
+// Total esperado: 5 turnos por semana × N ciclos activos (3 ciclos→15, 4 ciclos→20)
+function expectedShiftsTotal() {
+  return CYCLES.length * 5;
 }
 
 // ── QUICK-SHIFT MODAL (multi-day) ────────────────────────────────────────────
