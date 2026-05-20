@@ -51,6 +51,13 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
     const view = (req.query.view as string) === 'swaps' ? 'swaps' : 'timeoff';
     const filterStatus = (req.query.status as string) || '';
     const filterAgent = ((req.query.agent as string) || '').trim();
+    // Optional date range filter (applies to time-off tab only).
+    // Una solicitud [start, end] aparece si solapa con [from, to].
+    const filterFromRaw = ((req.query.from as string) || '').trim();
+    const filterToRaw = ((req.query.to as string) || '').trim();
+    const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+    const filterFrom = dateRe.test(filterFromRaw) ? filterFromRaw : '';
+    const filterTo = dateRe.test(filterToRaw) ? filterToRaw : '';
 
     const isPriv = user.role === 'manager' || user.role === 'admin';
 
@@ -101,6 +108,9 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
       } else {
         rawRequests = listByRequester(user.slack_id);
       }
+      // Date-range overlap filter: keep requests whose [start, end] solapa con [from, to]
+      if (filterFrom) rawRequests = rawRequests.filter(r => r.end_date >= filterFrom);
+      if (filterTo) rawRequests = rawRequests.filter(r => r.start_date <= filterTo);
       requests = rawRequests.map(r => {
         const a = getAgentBySlackId(r.requester_slack_id);
         const apprA = r.approver_slack_id ? getAgentBySlackId(r.approver_slack_id) : null;
@@ -137,6 +147,8 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
       pendingSwapsCount,
       filterStatus: filterStatus || '',
       filterAgent,
+      filterFrom,
+      filterTo,
       agentOptions,
       isManager: isPriv
     });
