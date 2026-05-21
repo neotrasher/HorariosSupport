@@ -71,6 +71,28 @@ export function registerPunchButtons(app: App) {
       const start = date.startOf('day').plus({ hours: shift.startHour });
       const end = date.startOf('day').plus({ hours: shift.endHour });
 
+      // Idempotencia: si el último punch de este turno es del MISMO tipo y muy
+      // reciente (<60s), tratar como doble-clic accidental y descartar este.
+      // Evita registros duplicados cuando el usuario clickea más de una vez
+      // por demora de red antes de que el mensaje DM se actualice.
+      {
+        const lp = lastPunchForShift(slackId, shiftDate, shiftId);
+        if (lp && lp.type === type) {
+          const elapsed = now.diff(DateTime.fromISO(lp.ts, { zone: 'utc' }), 'seconds').seconds;
+          if (elapsed < 60) {
+            console.log(`[punch] dedupe: ignorando ${type} repetido de ${slackId} (${Math.round(elapsed)}s tras el anterior)`);
+            try {
+              await client.chat.postEphemeral({
+                channel: (body as any).channel?.id || slackId,
+                user: slackId,
+                text: `⏱ Ya registré tu ${type.replace('_', ' ')} hace ${Math.round(elapsed)}s. Ignoré el clic repetido.`
+              });
+            } catch { /* ignore */ }
+            return;
+          }
+        }
+      }
+
       // Determine break duration if it's a break_in (30 or 60). 0 otherwise.
       const breakDur = type === 'break_in' ? durMinFromActionId(actionId) : 0;
 
