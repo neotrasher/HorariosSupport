@@ -77,6 +77,14 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
           s.requester_slack_id === filterAgent || s.partner_slack_id === filterAgent
         );
       }
+      // Date-range filter: swap aparece si cualquiera de sus 2 fechas
+      // (requester_date / partner_date) cae dentro del rango.
+      if (filterFrom) rawSwaps = rawSwaps.filter(s =>
+        s.requester_date >= filterFrom || s.partner_date >= filterFrom
+      );
+      if (filterTo) rawSwaps = rawSwaps.filter(s =>
+        s.requester_date <= filterTo || s.partner_date <= filterTo
+      );
       swaps = rawSwaps.map(s => {
         const reqA = getAgentBySlackId(s.requester_slack_id);
         const partA = getAgentBySlackId(s.partner_slack_id);

@@ -70,37 +70,71 @@
     <!-- Swap filters -->
     <% if (isManager) {
          function buildSwapQs(overrides) {
-           const params = { view: 'swaps', status: filterStatus, agent: filterAgent, ...overrides };
+           const params = { view: 'swaps', status: filterStatus, agent: filterAgent, from: filterFrom, to: filterTo, ...overrides };
            const parts = Object.entries(params)
              .filter(([k, v]) => v !== '' && v !== undefined && v !== null)
              .map(([k, v]) => `${k}=${encodeURIComponent(v)}`);
            return parts.length ? '?' + parts.join('&') : '';
          }
     %>
-      <div class="flex flex-col sm:flex-row sm:items-center gap-2 mb-5 text-sm">
-        <div class="flex items-center gap-2 flex-wrap">
-          <span class="text-slate-500 shrink-0">Estado:</span>
-          <% const swFilters = [['','Todos'],['pending_partner','Esperando comp.'],['pending_approval','Esperando mgr.'],['approved','Aprobados'],['rejected_partner','Rech. comp.'],['rejected_approver','Rech. mgr.'],['cancelled','Cancelados']] %>
-          <% swFilters.forEach(([val, lbl]) => { %>
-            <a href="/solicitudes<%= buildSwapQs({ status: val }) %>"
-               class="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap <%= filterStatus === val ? 'bg-ink-800 text-white shadow-card' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50' %>">
-              <%= lbl %>
-            </a>
-          <% }) %>
-        </div>
-        <div class="flex items-center gap-2 sm:ml-auto">
-          <label class="text-slate-500 shrink-0 text-xs">Agente:</label>
-          <select onchange="location.href='/solicitudes?view=swaps' + (this.value ? ('<%= filterStatus ? '&status=' + filterStatus + '&' : '&' %>agent=' + encodeURIComponent(this.value)) : '<%= filterStatus ? '&status=' + filterStatus : '' %>')"
-                  class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white">
-            <option value="">Todos</option>
-            <% agentOptions.forEach(a => { %>
-              <option value="<%= a.slack_id %>" <%= filterAgent === a.slack_id ? 'selected' : '' %>><%= a.name %></option>
+      <div class="flex flex-col gap-3 mb-5 text-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-slate-500 shrink-0">Estado:</span>
+            <% const swFilters = [['','Todos'],['pending_partner','Esperando comp.'],['pending_approval','Esperando mgr.'],['approved','Aprobados'],['rejected_partner','Rech. comp.'],['rejected_approver','Rech. mgr.'],['cancelled','Cancelados']] %>
+            <% swFilters.forEach(([val, lbl]) => { %>
+              <a href="/solicitudes<%= buildSwapQs({ status: val }) %>"
+                 class="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap <%= filterStatus === val ? 'bg-ink-800 text-white shadow-card' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50' %>">
+                <%= lbl %>
+              </a>
             <% }) %>
-          </select>
-          <% if (filterAgent) { %>
-            <a href="/solicitudes<%= buildSwapQs({ agent: '' }) %>" class="text-xs text-slate-500 hover:text-rose-600" title="Quitar filtro">×</a>
-          <% } %>
+          </div>
+          <div class="flex items-center gap-2 sm:ml-auto">
+            <label class="text-slate-500 shrink-0 text-xs">Agente:</label>
+            <select onchange="var u=new URL(location.href); u.searchParams.set('view','swaps'); if(this.value) u.searchParams.set('agent', this.value); else u.searchParams.delete('agent'); location.href = u.pathname + (u.search || '');"
+                    class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white">
+              <option value="">Todos</option>
+              <% agentOptions.forEach(a => { %>
+                <option value="<%= a.slack_id %>" <%= filterAgent === a.slack_id ? 'selected' : '' %>><%= a.name %></option>
+              <% }) %>
+            </select>
+            <% if (filterAgent) { %>
+              <a href="/solicitudes<%= buildSwapQs({ agent: '' }) %>" class="text-xs text-slate-500 hover:text-rose-600" title="Quitar filtro">×</a>
+            <% } %>
+          </div>
         </div>
+        <!-- Date range filter for swaps -->
+        <form method="get" action="/solicitudes" class="flex flex-wrap items-center gap-2">
+          <input type="hidden" name="view" value="swaps">
+          <input type="hidden" name="status" value="<%= filterStatus %>">
+          <input type="hidden" name="agent" value="<%= filterAgent %>">
+          <span class="text-slate-500 shrink-0 text-xs">Fechas:</span>
+          <input type="date" name="from" value="<%= filterFrom %>"
+                 class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white" title="Desde (inclusive)">
+          <span class="text-slate-400 text-xs">→</span>
+          <input type="date" name="to" value="<%= filterTo %>"
+                 class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white" title="Hasta (inclusive)">
+          <button type="submit" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-ink-800 text-white shadow-card hover:bg-ink-900">Aplicar</button>
+          <% if (filterFrom || filterTo) { %>
+            <a href="/solicitudes<%= buildSwapQs({ from: '', to: '' }) %>"
+               class="text-xs text-slate-500 hover:text-rose-600 px-2 py-1.5" title="Quitar rango">× limpiar</a>
+          <% } %>
+          <span class="text-slate-300 text-xs mx-1 hidden sm:inline">·</span>
+          <% const today2 = new Date(); const fmt2 = d => d.toISOString().slice(0,10);
+             const startMonth2 = fmt2(new Date(today2.getFullYear(), today2.getMonth(), 1));
+             const endMonth2 = fmt2(new Date(today2.getFullYear(), today2.getMonth() + 1, 0));
+             const startNextMonth2 = fmt2(new Date(today2.getFullYear(), today2.getMonth() + 1, 1));
+             const endNextMonth2 = fmt2(new Date(today2.getFullYear(), today2.getMonth() + 2, 0));
+             const startYear2 = `${today2.getFullYear()}-01-01`;
+             const endYear2 = `${today2.getFullYear()}-12-31`;
+          %>
+          <a href="/solicitudes<%= buildSwapQs({ from: startMonth2, to: endMonth2 }) %>"
+             class="text-xs px-2 py-1 rounded bg-slate-100 text-slate-600 hover:bg-slate-200">Este mes</a>
+          <a href="/solicitudes<%= buildSwapQs({ from: startNextMonth2, to: endNextMonth2 }) %>"
+             class="text-xs px-2 py-1 rounded bg-slate-100 text-slate-600 hover:bg-slate-200">Próximo mes</a>
+          <a href="/solicitudes<%= buildSwapQs({ from: startYear2, to: endYear2 }) %>"
+             class="text-xs px-2 py-1 rounded bg-slate-100 text-slate-600 hover:bg-slate-200"><%= today2.getFullYear() %></a>
+        </form>
       </div>
     <% } %>
 
@@ -226,7 +260,7 @@
         </div>
         <div class="flex items-center gap-2 sm:ml-auto">
           <label class="text-slate-500 shrink-0 text-xs">Agente:</label>
-          <select onchange="(() => { const u = new URL(location.href); if (this.value) u.searchParams.set('agent', this.value); else u.searchParams.delete('agent'); location.href = u.pathname + (u.search || ''); })()"
+          <select onchange="var u=new URL(location.href); if(this.value) u.searchParams.set('agent', this.value); else u.searchParams.delete('agent'); location.href = u.pathname + (u.search || '');"
                   class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white">
             <option value="">Todos</option>
             <% agentOptions.forEach(a => { %>
