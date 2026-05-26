@@ -91,13 +91,19 @@
           </div>
           <div class="flex items-center gap-2 sm:ml-auto">
             <label class="text-slate-500 shrink-0 text-xs">Agente:</label>
-            <select onchange="var u=new URL(location.href); u.searchParams.set('view','swaps'); if(this.value) u.searchParams.set('agent', this.value); else u.searchParams.delete('agent'); location.href = u.pathname + (u.search || '');"
-                    class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white">
-              <option value="">Todos</option>
-              <% agentOptions.forEach(a => { %>
-                <option value="<%= a.slack_id %>" <%= filterAgent === a.slack_id ? 'selected' : '' %>><%= a.name %></option>
-              <% }) %>
-            </select>
+            <form method="get" action="/solicitudes" class="flex items-center gap-1">
+              <input type="hidden" name="view" value="swaps">
+              <input type="hidden" name="status" value="<%= filterStatus %>">
+              <input type="hidden" name="from" value="<%= filterFrom %>">
+              <input type="hidden" name="to" value="<%= filterTo %>">
+              <select name="agent" onchange="this.form.submit()"
+                      class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white">
+                <option value="">Todos</option>
+                <% agentOptions.forEach(a => { %>
+                  <option value="<%= a.slack_id %>" <%= filterAgent === a.slack_id ? 'selected' : '' %>><%= a.name %></option>
+                <% }) %>
+              </select>
+            </form>
             <% if (filterAgent) { %>
               <a href="/solicitudes<%= buildSwapQs({ agent: '' }) %>" class="text-xs text-slate-500 hover:text-rose-600" title="Quitar filtro">×</a>
             <% } %>
@@ -260,13 +266,18 @@
         </div>
         <div class="flex items-center gap-2 sm:ml-auto">
           <label class="text-slate-500 shrink-0 text-xs">Agente:</label>
-          <select onchange="var u=new URL(location.href); if(this.value) u.searchParams.set('agent', this.value); else u.searchParams.delete('agent'); location.href = u.pathname + (u.search || '');"
-                  class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white">
-            <option value="">Todos</option>
-            <% agentOptions.forEach(a => { %>
-              <option value="<%= a.slack_id %>" <%= filterAgent === a.slack_id ? 'selected' : '' %>><%= a.name %></option>
-            <% }) %>
-          </select>
+          <form method="get" action="/solicitudes" class="flex items-center gap-1">
+            <input type="hidden" name="status" value="<%= filterStatus %>">
+            <input type="hidden" name="from" value="<%= filterFrom %>">
+            <input type="hidden" name="to" value="<%= filterTo %>">
+            <select name="agent" onchange="this.form.submit()"
+                    class="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-white">
+              <option value="">Todos</option>
+              <% agentOptions.forEach(a => { %>
+                <option value="<%= a.slack_id %>" <%= filterAgent === a.slack_id ? 'selected' : '' %>><%= a.name %></option>
+              <% }) %>
+            </select>
+          </form>
           <% if (filterAgent) { %>
             <a href="/solicitudes<%= buildQs({ agent: '' }) %>" class="text-xs text-slate-500 hover:text-rose-600" title="Quitar filtro">×</a>
           <% } %>
