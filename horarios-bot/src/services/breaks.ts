@@ -327,27 +327,37 @@ export function sweepExpiredReservations(now: DateTime = DateTime.utc()): Reserv
  * Agents in this cohort whose latest punch is `break_in` without a matching
  * `break_out` — i.e. currently on break. dur_min comes from the break_in note
  * (encoded as `dur=30` or `dur=60`).
+ *
+ * IMPORTANT: la membresía del cohort se determina por la entrada en
+ * schedule_entries (el turno que el agente está CUBRIENDO ese día), NO por
+ * su dept nativa. Así un agente L2 que cubre L1.T cuenta para el cap de L1
+ * durante ese día, aunque su perfil siga marcándolo como L2.
  */
 export function listAgentsOnBreakInCohort(
   dept: string, shiftId: string, shiftDate: string
 ): { slack_id: string; break_in_ts: string; dur_min: number }[] {
-  // Find all break_in punches for this cohort/date that don't have a later break_out
+  // Cohort actual (basado en schedule_entries) — quién está REALMENTE
+  // cubriendo este (dept, shift) hoy, independiente de su dept nativa.
+  const cohort = listCohort(dept, shiftId, shiftDate);
+  if (cohort.length === 0) return [];
+  const cohortIds = cohort.map(c => c.slack_id);
+  const placeholders = cohortIds.map(() => '?').join(',');
+
+  // Filtrar break_in sin break_out posterior, restringido al cohort.
   const rows = db.prepare(`
     SELECT p.slack_id, p.ts, p.note
       FROM punches p
      WHERE p.shift_date = ? AND p.shift_id = ? AND p.type = 'break_in'
+       AND p.slack_id IN (${placeholders})
        AND NOT EXISTS (
          SELECT 1 FROM punches q
           WHERE q.slack_id = p.slack_id AND q.shift_date = p.shift_date
             AND q.shift_id = p.shift_id AND q.type = 'break_out'
             AND q.ts > p.ts
        )
-  `).all(shiftDate, shiftId) as { slack_id: string; ts: string; note: string | null }[];
-  // Filter by dept
+  `).all(shiftDate, shiftId, ...cohortIds) as { slack_id: string; ts: string; note: string | null }[];
   const result: { slack_id: string; break_in_ts: string; dur_min: number }[] = [];
   for (const r of rows) {
-    const ag = getAgentBySlackId(r.slack_id);
-    if (!ag || ag.dept !== dept) continue;
     const m = r.note?.match(/dur=(\d+)/);
     const dur = m ? parseInt(m[1], 10) : 60;
     result.push({ slack_id: r.slack_id, break_in_ts: r.ts, dur_min: dur });
