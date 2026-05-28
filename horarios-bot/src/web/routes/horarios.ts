@@ -11,6 +11,8 @@ import {
 import { logAudit } from '../../services/audit';
 import { buildHeatmap } from '../../services/coverageHeatmap';
 import { buildPendingByAgentDate, lookupPending } from '../../services/pendingByDate';
+import { buildBreaksDashboard, cancelReservation } from '../../services/breaks';
+import { requireManager } from './auth';
 
 type ViewMode = 'day' | 'week' | 'month';
 
@@ -73,6 +75,53 @@ export function buildHorariosRouter(slackApp: SlackApp | null = null): Router {
  * Coverage heatmap. Shows agents-per-hour grid for a given month.
  * Optional ?dept=L1|L2 filters to one dept; default = all.
  */
+/**
+ * Breaks dashboard: shows today's break grid per (dept, shift) with reservations
+ * and on-break state. Manager can release any reservation.
+ */
+horariosRouter.get('/breaks', requireManager, (req, res) => {
+  const user = (req.session as any).user;
+  const dateParam = (req.query.date as string) || DateTime.utc().toFormat('yyyy-LL-dd');
+  const date = DateTime.fromISO(dateParam, { zone: 'utc' });
+  if (!date.isValid) {
+    res.status(400).render('error', { message: 'Fecha inválida (formato YYYY-MM-DD)', user });
+    return;
+  }
+  const dateStr = date.toFormat('yyyy-LL-dd');
+  const blocks = buildBreaksDashboard(dateStr);
+  res.render('horarios-breaks', {
+    user,
+    view: 'breaks',
+    currentDate: dateStr,
+    prevDate: date.minus({ days: 1 }).toFormat('yyyy-LL-dd'),
+    nextDate: date.plus({ days: 1 }).toFormat('yyyy-LL-dd'),
+    todayDate: DateTime.utc().toFormat('yyyy-LL-dd'),
+    blocks,
+    breaksCoordinationEnabled: config.breaksCoordinationEnabled
+  });
+});
+
+horariosRouter.post('/breaks/release/:reservationId', requireManager, (req, res) => {
+  const user = (req.session as any).user;
+  const id = parseInt(req.params.reservationId, 10);
+  if (Number.isNaN(id)) {
+    res.status(400).json({ ok: false, error: 'reservationId inválido' });
+    return;
+  }
+  const ok = cancelReservation(id);
+  if (ok) {
+    logAudit({
+      actorSlackId: user.slack_id, actorName: user.name,
+      action: 'break.release_by_manager',
+      targetKind: 'break', targetId: String(id),
+      summary: `Liberó reserva de break #${id} (override del manager)`,
+      payload: { reservationId: id }
+    });
+  }
+  const back = (req.body.back as string) || '/horarios/breaks';
+  res.redirect(back);
+});
+
 horariosRouter.get('/heatmap', (req, res) => {
   const user = (req.session as any).user;
   const monthParam = (req.query.month as string) || DateTime.utc().toFormat('yyyy-LL');

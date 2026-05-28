@@ -1,0 +1,172 @@
+<%- include('partials/head') %>
+<%- include('partials/nav', { user }) %>
+
+<%
+  // Helper: hash → color para chips de agentes (consistente entre vistas)
+  function colorForAgent(slackId) {
+    let h = 0;
+    for (let i = 0; i < slackId.length; i++) h = (h * 31 + slackId.charCodeAt(i)) >>> 0;
+    const palette = [
+      ['bg-emerald-100', 'text-emerald-800', 'ring-emerald-300'],
+      ['bg-sky-100', 'text-sky-800', 'ring-sky-300'],
+      ['bg-violet-100', 'text-violet-800', 'ring-violet-300'],
+      ['bg-amber-100', 'text-amber-800', 'ring-amber-300'],
+      ['bg-rose-100', 'text-rose-800', 'ring-rose-300'],
+      ['bg-cyan-100', 'text-cyan-800', 'ring-cyan-300'],
+      ['bg-fuchsia-100', 'text-fuchsia-800', 'ring-fuchsia-300'],
+      ['bg-lime-100', 'text-lime-800', 'ring-lime-300']
+    ];
+    return palette[h % palette.length];
+  }
+  function firstName(name) { return name ? name.split(' ')[0] : '?'; }
+%>
+
+<main class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+  <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-5">
+    <div class="min-w-0">
+      <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Coordinación de breaks</h2>
+      <p class="text-sm text-slate-500 mt-1">Grilla de reservas y breaks en curso por cohort (dept + turno + fecha).</p>
+    </div>
+    <%- include('partials/viewSwitch', { view: 'breaks', currentDate }) %>
+  </div>
+
+  <!-- Date navigator -->
+  <div class="flex items-center gap-2 text-sm flex-wrap mb-4">
+    <a href="/horarios/breaks?date=<%= prevDate %>" class="px-3 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card">←</a>
+    <span class="px-4 py-2 font-semibold bg-white border border-slate-200 rounded-lg shadow-card text-slate-900 font-mono"><%= currentDate %></span>
+    <a href="/horarios/breaks?date=<%= nextDate %>" class="px-3 py-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-card">→</a>
+    <% if (currentDate !== todayDate) { %>
+      <a href="/horarios/breaks?date=<%= todayDate %>" class="px-3 py-2 bg-ink-800 text-white rounded-lg shadow-card font-semibold">Hoy</a>
+    <% } %>
+    <span class="ml-auto text-xs">
+      <% if (breaksCoordinationEnabled) { %>
+        <span class="px-2 py-1 rounded bg-emerald-100 text-emerald-800 font-semibold ring-1 ring-emerald-300">Feature ON</span>
+      <% } else { %>
+        <span class="px-2 py-1 rounded bg-slate-100 text-slate-600 font-semibold ring-1 ring-slate-300" title="BREAKS_COORDINATION=false">Feature OFF</span>
+      <% } %>
+    </span>
+  </div>
+
+  <% if (blocks.length === 0) { %>
+    <div class="bg-white rounded-xl border border-slate-200 shadow-card p-12 text-center">
+      <div class="text-4xl mb-2 opacity-30">◌</div>
+      <p class="text-sm text-slate-400">Nadie programado para este día.</p>
+    </div>
+  <% } %>
+
+  <% blocks.forEach(block => { %>
+    <div class="bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden mb-5">
+      <!-- Header del cohort -->
+      <div class="flex items-center gap-3 px-4 py-3 border-b border-slate-200 flex-wrap">
+        <span class="inline-flex items-center px-2.5 py-1 rounded text-xs font-extrabold
+              <%= block.dept === 'L1' ? 'bg-blue-100 text-blue-800' : 'bg-violet-100 text-violet-800' %>">
+          <%= block.dept %>.<%= block.shift_id %>
+        </span>
+        <span class="font-semibold text-slate-900"><%= block.shiftLabel %></span>
+        <span class="text-xs text-slate-500 font-mono">
+          <%= String(block.startHour).padStart(2,'0') %>:00 → <%= String(block.endHour).padStart(2,'0') %>:00 UTC
+        </span>
+        <span class="ml-auto text-xs flex items-center gap-2 flex-wrap">
+          <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold">
+            <%= block.cohortSize %> agente<%= block.cohortSize !== 1 ? 's' : '' %>
+          </span>
+          <span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-semibold" title="Máximo de agentes en break simultáneo">
+            cap <%= block.cap %>
+          </span>
+        </span>
+      </div>
+
+      <!-- Lista de agentes del cohort (chips) -->
+      <div class="px-4 py-2 border-b border-slate-100 flex flex-wrap gap-1.5">
+        <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider self-center mr-1">Cohort:</span>
+        <% block.cohort.forEach(m => { const c = colorForAgent(m.slack_id); %>
+          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= c[0] %> <%= c[1] %> <%= c[2] %>">
+            <%= m.name %>
+          </span>
+        <% }) %>
+      </div>
+
+      <!-- Grilla de slots -->
+      <% if (block.slots.length === 0) { %>
+        <div class="px-4 py-6 text-center text-sm text-slate-400">
+          Sin slots disponibles para este turno (ventana muy corta).
+        </div>
+      <% } else { %>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50/60 border-b border-slate-200 text-xs uppercase tracking-wider">
+              <tr>
+                <th class="text-left px-3 py-2 font-semibold text-slate-500 w-24">Slot</th>
+                <th class="text-left px-3 py-2 font-semibold text-slate-500">Reservas</th>
+                <th class="text-left px-3 py-2 font-semibold text-slate-500">En break ahora</th>
+                <th class="text-right px-3 py-2 font-semibold text-slate-500 w-32">Estado</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <% block.slots.forEach(s => { %>
+                <tr class="<%= s.full ? 'bg-rose-50/40' : '' %>">
+                  <td class="px-3 py-2 font-mono text-xs text-slate-700 font-semibold"><%= s.label %></td>
+                  <td class="px-3 py-2">
+                    <% if (s.cell.reservations.length === 0) { %>
+                      <span class="text-xs text-slate-300">—</span>
+                    <% } else { %>
+                      <div class="flex flex-wrap gap-1.5">
+                        <% s.cell.reservations.forEach(r => { const c = colorForAgent(r.slack_id); %>
+                          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= c[0] %> <%= c[1] %> <%= c[2] %>">
+                            <%= firstName(r.name) %>
+                            <span class="text-[9px] opacity-70 font-mono">· <%= r.durationMin === 60 ? '1h' : r.durationMin + 'm' %></span>
+                            <% if (r.status === 'taken') { %>
+                              <span class="text-[9px] font-bold" title="Ya entró al break">✓</span>
+                            <% } %>
+                            <form method="post" action="/horarios/breaks/release/<%= r.reservation_id %>" class="inline" onsubmit="return confirm('Liberar la reserva de <%= r.name %>?');">
+                              <input type="hidden" name="back" value="/horarios/breaks?date=<%= currentDate %>">
+                              <button type="submit" class="text-[10px] hover:text-rose-600" title="Liberar (override del manager)">×</button>
+                            </form>
+                          </span>
+                        <% }) %>
+                      </div>
+                    <% } %>
+                  </td>
+                  <td class="px-3 py-2">
+                    <% if (s.cell.onBreak.length === 0) { %>
+                      <span class="text-xs text-slate-300">—</span>
+                    <% } else { %>
+                      <div class="flex flex-wrap gap-1.5">
+                        <% s.cell.onBreak.forEach(b => { const c = colorForAgent(b.slack_id); %>
+                          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= c[0] %> <%= c[1] %> <%= c[2] %>" title="Inició break a las <%= b.break_in_ts.slice(11,16) %> UTC">
+                            🟠 <%= firstName(b.name) %>
+                          </span>
+                        <% }) %>
+                      </div>
+                    <% } %>
+                  </td>
+                  <td class="px-3 py-2 text-right text-xs">
+                    <% if (s.full) { %>
+                      <span class="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 font-semibold ring-1 ring-rose-300">lleno</span>
+                    <% } else if (s.cell.reservations.length > 0 || s.cell.onBreak.length > 0) { %>
+                      <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-semibold ring-1 ring-amber-300">en uso</span>
+                    <% } else { %>
+                      <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold ring-1 ring-emerald-300">libre</span>
+                    <% } %>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </div>
+  <% }) %>
+
+  <!-- Leyenda -->
+  <div class="mt-6 bg-slate-50/60 border border-slate-200 rounded-lg p-4 text-xs text-slate-600 space-y-1">
+    <div class="font-semibold text-slate-700 mb-2">Cómo leer esta vista</div>
+    <div>• <strong>Cap</strong> = máximo de agentes del dept que pueden estar en break al mismo tiempo. Por defecto 1; sube a 2 si el cohort tiene 4+ agentes.</div>
+    <div>• <strong>Reserva</strong> = el agente apartó ese slot desde su DM. Mientras está activa, otros del mismo dept no pueden ocuparla.</div>
+    <div>• <strong>En break ahora</strong> = punch <code>break_in</code> registrado sin <code>break_out</code> aún.</div>
+    <div>• El bot permite <strong>solape compartido</strong> de hasta 30 min cuando otro agente ya está rompiendo break y sale pronto.</div>
+    <div>• El <strong>×</strong> en una reserva libera el slot (override del manager — útil si el agente se atascó).</div>
+  </div>
+</main>
+
+<%- include('partials/foot') %>

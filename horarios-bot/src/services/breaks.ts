@@ -540,3 +540,71 @@ export function listReservationsForDate(date: string): Reservation[] {
      ORDER BY dept, shift_id, slot_start ASC
   `).all(date) as Reservation[];
 }
+
+// ── Manager dashboard helper ────────────────────────────────────────────
+
+export interface CohortSlotCell {
+  reservations: { reservation_id: number; slack_id: string; name: string; durationMin: number; status: string }[];
+  onBreak: { slack_id: string; name: string; break_in_ts: string }[];
+}
+
+export interface CohortBlockForView {
+  dept: string;
+  shift_id: string;
+  shiftLabel: string;
+  startHour: number;
+  endHour: number;
+  cohort: CohortMember[];
+  cap: number;
+  cohortSize: number;
+  slots: {
+    label: string;       // HH:mm
+    startISO: string;
+    cell: CohortSlotCell;
+    full: boolean;
+  }[];
+}
+
+/**
+ * Build all cohort blocks for a date (one per dept+shift with active agents).
+ * Used by the /horarios/breaks dashboard.
+ */
+export function buildBreaksDashboard(shiftDate: string): CohortBlockForView[] {
+  const date = DateTime.fromISO(shiftDate, { zone: 'utc' });
+  if (!date.isValid) return [];
+  const blocks: CohortBlockForView[] = [];
+  for (const dept of Object.keys(SHIFTS).sort()) {
+    for (const sh of Object.values(SHIFTS[dept])) {
+      const cohort = listCohort(dept, sh.id, shiftDate);
+      if (cohort.length === 0) continue;
+      const { cap, cohortSize } = getCohortCap(dept, sh.id, shiftDate);
+      const slots = generateSlots(dept, sh.id, shiftDate);
+      const slotsView = slots.map(s => {
+        const reservations = s.reservations.map(r => {
+          const resvRow = db.prepare(
+            "SELECT duration_min, status FROM break_reservations WHERE id = ?"
+          ).get(r.reservation_id) as { duration_min: number; status: string } | undefined;
+          return {
+            reservation_id: r.reservation_id,
+            slack_id: r.slack_id,
+            name: r.name,
+            durationMin: resvRow?.duration_min ?? 30,
+            status: resvRow?.status ?? 'active'
+          };
+        });
+        return {
+          label: s.start.toFormat('HH:mm'),
+          startISO: s.start.toISO()!,
+          cell: { reservations, onBreak: s.onBreak },
+          full: s.full
+        };
+      });
+      blocks.push({
+        dept, shift_id: sh.id, shiftLabel: sh.label,
+        startHour: sh.startHour, endHour: sh.endHour,
+        cohort, cap, cohortSize, slots: slotsView
+      });
+    }
+  }
+  return blocks;
+}

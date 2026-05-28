@@ -6,10 +6,12 @@
   const weekHref  = '/horarios?view=week'  + (cd ? '&date=' + cd : '');
   const monthHref = '/horarios?view=month' + (month ? '&month=' + month : '');
   const heatHref  = '/horarios/heatmap'    + (month ? '?month=' + month : '');
+  const breaksHref = '/horarios/breaks'    + (cd ? '?date=' + cd : '');
 %>
 <div class="inline-flex rounded-lg border border-slate-200 bg-white text-sm overflow-hidden shadow-card">
   <a href="<%= dayHref %>" class="px-3 py-1.5 font-medium <%= view === 'day' ? 'bg-ink-800 text-white' : 'text-slate-600 hover:bg-slate-50' %>">Dia</a>
   <a href="<%= weekHref %>" class="px-3 py-1.5 font-medium border-l border-slate-200 <%= view === 'week' ? 'bg-ink-800 text-white' : 'text-slate-600 hover:bg-slate-50' %>">Semana</a>
   <a href="<%= monthHref %>" class="px-3 py-1.5 font-medium border-l border-slate-200 <%= view === 'month' ? 'bg-ink-800 text-white' : 'text-slate-600 hover:bg-slate-50' %>">Mes</a>
   <a href="<%= heatHref %>" class="px-3 py-1.5 font-medium border-l border-slate-200 <%= view === 'heatmap' ? 'bg-ink-800 text-white' : 'text-slate-600 hover:bg-slate-50' %>" title="Heatmap de cobertura">🔥</a>
+  <a href="<%= breaksHref %>" class="px-3 py-1.5 font-medium border-l border-slate-200 <%= view === 'breaks' ? 'bg-ink-800 text-white' : 'text-slate-600 hover:bg-slate-50' %>" title="Coordinación de breaks">🍽️</a>
 </div>
