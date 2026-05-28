@@ -222,6 +222,26 @@ export function migrate() {
       sent_at   TEXT NOT NULL DEFAULT (datetime('now')),
       PRIMARY KEY (kind, target, date)
     );
+
+    -- Break reservations: agents can reserve a 30-min slot for their break
+    -- to avoid collisions within their (dept, shift, date) cohort. Optional —
+    -- agents can also take break without reserving if the cap allows.
+    CREATE TABLE IF NOT EXISTS break_reservations (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      slack_id      TEXT NOT NULL,
+      shift_date    TEXT NOT NULL,            -- YYYY-MM-DD (UTC, shift start date)
+      dept          TEXT NOT NULL,            -- 'L1' | 'L2'
+      shift_id      TEXT NOT NULL,            -- 'M' | 'T' | 'E' | 'N'
+      slot_start    TEXT NOT NULL,            -- ISO UTC timestamp of slot start
+      duration_min  INTEGER NOT NULL DEFAULT 30, -- 30 | 60 (1 or 2 slots)
+      status        TEXT NOT NULL DEFAULT 'active', -- active | taken | expired | cancelled
+      created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_breakres_cohort
+      ON break_reservations(shift_date, dept, shift_id, status);
+    CREATE INDEX IF NOT EXISTS idx_breakres_user
+      ON break_reservations(slack_id, shift_date, status);
   `);
 }
 
