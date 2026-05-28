@@ -80,7 +80,11 @@ export const config = {
   cronDisabled: (process.env.CRON_DISABLED || '').toLowerCase() === 'true',
   // Skip Slack bot entirely (only run web server). Useful for staging where
   // we don't want to compete with prod for Slack events.
-  slackDisabled: (process.env.SLACK_DISABLED || '').toLowerCase() === 'true'
+  slackDisabled: (process.env.SLACK_DISABLED || '').toLowerCase() === 'true',
+  // Coordinación de breaks (cap por cohort, reservas opcionales, dashboard).
+  // Si está apagado, el bot ignora el cap y se comporta como antes — útil
+  // para rollback inmediato si la regla genera fricción. Default: ON.
+  breaksCoordinationEnabled: (process.env.BREAKS_COORDINATION || 'true').toLowerCase() !== 'false'
 };
 
 export const DAYS = ['L', 'M', 'C', 'J', 'V', 'S', 'D'] as const;

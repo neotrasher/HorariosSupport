@@ -2,6 +2,24 @@ import { ShiftDef } from '../config';
 import type { ShiftState } from '../services/punches';
 import { describeSnapshot, AssignmentSnapshot } from '../services/swaps';
 
+export interface BreakSlotOption {
+  /** ISO UTC timestamp of slot start. */
+  slotISO: string;
+  /** "HH:mm" label. */
+  label: string;
+  /** 30 or 60. */
+  durationMin: number;
+}
+
+export interface BreakInfoForDM {
+  /** Slots offered as reservation options (already filtered to free ones). */
+  freeOptions: BreakSlotOption[];
+  /** Agent's current active reservation, if any. */
+  myReservation?: { slotISO: string; label: string; durationMin: number } | null;
+  /** Other agents' reservations in same dept for display context. */
+  otherReservations?: { name: string; label: string; durationMin: number }[];
+}
+
 export function punchButtonsBlocks(opts: {
   state: ShiftState;
   dept: string;
@@ -10,8 +28,9 @@ export function punchButtonsBlocks(opts: {
   startISO: string;
   endISO: string;
   lastPunch?: { type: string; ts: string; lateMin?: number; excessMin?: number } | null;
+  breakInfo?: BreakInfoForDM | null;
 }) {
-  const { state, dept, shift, shiftDate, startISO, endISO, lastPunch } = opts;
+  const { state, dept, shift, shiftDate, startISO, endISO, lastPunch, breakInfo } = opts;
   const startEpoch = Math.floor(new Date(startISO).getTime() / 1000);
   const endEpoch = Math.floor(new Date(endISO).getTime() / 1000);
 
@@ -117,6 +136,70 @@ export function punchButtonsBlocks(opts: {
     lastLine = `\n✓ Última marca: *${action}* · <!date^${lpEpoch}^{time}|${lastPunch.ts} UTC>${suffix}`;
   }
 
+  // Bloque opcional de reserva de break — sólo visible cuando estás en turno.
+  const breakBlocks: any[] = [];
+  if (breakInfo && state === 'in') {
+    const cohortValue = `${shiftDate}|${dept}|${shift.id}`;
+    if (breakInfo.myReservation) {
+      // Ya reservé → mostrar mi reserva + botones cambiar / liberar
+      const r = breakInfo.myReservation;
+      const durLbl = r.durationMin === 60 ? '1 h' : `${r.durationMin} min`;
+      const text = `🍽️ *Tu reserva de break*: ${r.label} UTC · ${durLbl}`;
+      breakBlocks.push({
+        type: 'section', text: { type: 'mrkdwn', text },
+        accessory: {
+          type: 'button',
+          text: { type: 'plain_text', text: 'Liberar' },
+          action_id: 'break_unreserve', value: cohortValue, style: 'danger'
+        }
+      });
+      // Si hay slots libres, mostrar select para cambiar
+      if (breakInfo.freeOptions.length > 0) {
+        breakBlocks.push({
+          type: 'actions',
+          elements: [{
+            type: 'static_select',
+            action_id: 'break_reserve_slot',
+            placeholder: { type: 'plain_text', text: 'Cambiar a otro slot…' },
+            options: breakInfo.freeOptions.slice(0, 100).map(o => ({
+              text: { type: 'plain_text', text: `${o.label} — ${o.durationMin === 60 ? '1 h' : o.durationMin + ' min'}` },
+              value: `${cohortValue}|${o.slotISO}|${o.durationMin}`
+            }))
+          }]
+        });
+      }
+    } else if (breakInfo.freeOptions.length > 0) {
+      // Sin reserva → ofrecer picker
+      const others = breakInfo.otherReservations || [];
+      const ctxLine = others.length > 0
+        ? `\n_Ya reservaron en ${dept}: ${others.map(o => `${o.label} ${o.name}`).join(' · ')}_`
+        : '';
+      breakBlocks.push({
+        type: 'section',
+        text: { type: 'mrkdwn', text: `🍽️ *Reserva tu break* (opcional, ayuda a coordinar con el equipo)${ctxLine}` }
+      });
+      breakBlocks.push({
+        type: 'actions',
+        elements: [{
+          type: 'static_select',
+          action_id: 'break_reserve_slot',
+          placeholder: { type: 'plain_text', text: 'Elegir slot…' },
+          options: breakInfo.freeOptions.slice(0, 100).map(o => ({
+            text: { type: 'plain_text', text: `${o.label} — ${o.durationMin === 60 ? '1 h' : o.durationMin + ' min'}` },
+            value: `${cohortValue}|${o.slotISO}|${o.durationMin}`
+          }))
+        }]
+      });
+    } else if ((breakInfo.otherReservations || []).length > 0) {
+      // No quedan slots libres pero hay reservas de otros — mostrarlas como info
+      const others = breakInfo.otherReservations || [];
+      breakBlocks.push({
+        type: 'section',
+        text: { type: 'mrkdwn', text: `🍽️ *Reservas de break en ${dept} hoy*\n${others.map(o => `• ${o.label} — ${o.name}`).join('\n')}\n_No hay slots libres por ahora._` }
+      });
+    }
+  }
+
   return [
     {
       type: 'section',
@@ -128,6 +211,7 @@ export function punchButtonsBlocks(opts: {
       }
     },
     ...(buttons.length ? [{ type: 'actions', elements: buttons }] : []),
+    ...breakBlocks,
     {
       type: 'context',
       elements: [{ type: 'mrkdwn', text: `_Fecha: ${shiftDate} · Turno: ${shift.id}_` }]

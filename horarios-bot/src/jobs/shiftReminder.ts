@@ -7,6 +7,7 @@ import {
   getShiftState, alertAlreadySent, markAlertSent, setShiftMessage
 } from '../services/punches';
 import { punchButtonsBlocks } from '../ui/blocks';
+import { buildBreakInfoForDM } from '../services/breaks';
 
 /**
  * Runs every minute. For each scheduled shift starting in `REMINDER_LEAD_MIN`,
@@ -42,13 +43,17 @@ export async function runShiftReminder(app: App) {
     if (alertAlreadySent(agent.slack_id, shiftDate, c.shift.id, 'reminder')) continue;
 
     const state = getShiftState(agent.slack_id, shiftDate, c.shift.id);
+    const breakInfo = config.breaksCoordinationEnabled && state === 'in'
+      ? buildBreakInfoForDM({ slackId: agent.slack_id, dept: c.dept, shiftId: c.shift.id, shiftDate })
+      : null;
     const blocks = punchButtonsBlocks({
       state,
       dept: c.dept,
       shift: c.shift,
       shiftDate,
       startISO: w.start.toISO()!,
-      endISO: w.end.toISO()!
+      endISO: w.end.toISO()!,
+      breakInfo
     });
 
     try {

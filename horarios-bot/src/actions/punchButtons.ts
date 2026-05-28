@@ -10,7 +10,8 @@ import { logAudit } from '../services/audit';
 import { getAgentBySlackId } from '../services/agents';
 import { findScheduleEntry } from '../services/schedule';
 import {
-  canTakeBreakNow, getActiveReservation, markReservationTaken, sweepExpiredReservations
+  canTakeBreakNow, getActiveReservation, markReservationTaken, sweepExpiredReservations,
+  buildBreakInfoForDM, reserveSlot, cancelReservationsForShift
 } from '../services/breaks';
 import { punchButtonsBlocks, attendancePostBlocks } from '../ui/blocks';
 
@@ -122,8 +123,9 @@ export function registerPunchButtons(app: App) {
       // Rule 1b: cohort break cap — sólo X agentes del mismo dept en break a la vez.
       // Permite solape "compartido" hasta MAX_OVERLAP_MIN. Si el agente tiene
       // reserva en este momento, el check la respeta automáticamente.
+      // Si BREAKS_COORDINATION=false, se salta toda esta regla (rollback rápido).
       let breakNoteExtra: string | null = null;
-      if (type === 'break_in') {
+      if (type === 'break_in' && config.breaksCoordinationEnabled) {
         sweepExpiredReservations(now); // libera reservas vencidas antes de evaluar
         const elig = canTakeBreakNow({
           slackId, dept, shiftId, shiftDate, durationMin: breakDur, now
@@ -162,7 +164,7 @@ export function registerPunchButtons(app: App) {
 
       // Si el agente tenía una reserva activa para este turno y acaba de
       // hacer break_in, marcarla como "taken" para que no expire.
-      if (type === 'break_in') {
+      if (type === 'break_in' && config.breaksCoordinationEnabled) {
         const resv = getActiveReservation(slackId, shiftDate, dept, shiftId);
         if (resv) markReservationTaken(resv.id);
       }
@@ -202,6 +204,9 @@ export function registerPunchButtons(app: App) {
       // Update DM message with new per-shift state
       const newState = getShiftState(slackId, shiftDate, shiftId);
       const lp = lastPunchForShift(slackId, shiftDate, shiftId);
+      const breakInfo = config.breaksCoordinationEnabled && newState === 'in'
+        ? buildBreakInfoForDM({ slackId, dept, shiftId, shiftDate })
+        : null;
       const blocks = punchButtonsBlocks({
         state: newState,
         dept, shift, shiftDate,
@@ -212,7 +217,8 @@ export function registerPunchButtons(app: App) {
           ts: lp.ts,
           lateMin: lp.type === 'clock_in' ? lateMin : 0,
           excessMin: lp.type === 'break_out' ? reportedExcessMin : 0
-        } : null
+        } : null,
+        breakInfo
       });
       try {
         await respond({
@@ -358,5 +364,117 @@ export function registerPunchButtons(app: App) {
         text: '↩ Clock Out deshecho. Volviste al estado anterior.'
       });
     } catch {}
+  });
+
+  // ── Reservas de break ────────────────────────────────────────────────────
+
+  // Helper: re-renderiza el DM del agente con el estado actual + breakInfo.
+  async function rerenderDM(opts: {
+    slackId: string;
+    shiftDate: string;
+    dept: string;
+    shiftId: string;
+    respond: any;
+  }) {
+    const shift = SHIFTS[opts.dept]?.[opts.shiftId];
+    if (!shift) return;
+    const baseDate = DateTime.fromISO(opts.shiftDate, { zone: 'utc' });
+    const start = baseDate.startOf('day').plus({ hours: shift.startHour });
+    const end   = baseDate.startOf('day').plus({ hours: shift.endHour });
+    const newState = getShiftState(opts.slackId, opts.shiftDate, opts.shiftId);
+    const lp = lastPunchForShift(opts.slackId, opts.shiftDate, opts.shiftId);
+    const breakInfo = config.breaksCoordinationEnabled && newState === 'in'
+      ? buildBreakInfoForDM({ slackId: opts.slackId, dept: opts.dept, shiftId: opts.shiftId, shiftDate: opts.shiftDate })
+      : null;
+    const blocks = punchButtonsBlocks({
+      state: newState,
+      dept: opts.dept, shift, shiftDate: opts.shiftDate,
+      startISO: start.toISO()!,
+      endISO: end.toISO()!,
+      lastPunch: lp ? { type: lp.type, ts: lp.ts } : null,
+      breakInfo
+    });
+    try {
+      await opts.respond({
+        replace_original: true,
+        blocks,
+        text: `Tu turno de hoy — ${opts.dept} ${shift.label}`
+      });
+    } catch { /* message expired */ }
+  }
+
+  // Reservar slot (desde el static_select del DM).
+  app.action('break_reserve_slot', async ({ ack, body, action, client, respond }) => {
+    await ack();
+    if (!config.breaksCoordinationEnabled) return;
+    const slackId = (body as any).user?.id;
+    const selected = (action as any).selected_option;
+    if (!selected || !selected.value) return;
+    // value = shiftDate|dept|shiftId|slotISO|durationMin
+    const parts = (selected.value as string).split('|');
+    if (parts.length < 5) return;
+    const [shiftDate, dept, shiftId, slotISO, durStr] = parts;
+    const durationMin = parseInt(durStr, 10);
+    if (!Number.isInteger(durationMin) || ![30, 60].includes(durationMin)) return;
+
+    const res = reserveSlot({ slackId, shiftDate, dept, shiftId, slotStartISO: slotISO, durationMin });
+    if (!res.ok) {
+      try {
+        await client.chat.postEphemeral({
+          channel: (body as any).channel?.id || slackId,
+          user: slackId,
+          text: `❌ ${res.error || 'No se pudo reservar.'}`
+        });
+      } catch { /* ignore */ }
+      return;
+    }
+    const slotLabel = DateTime.fromISO(slotISO, { zone: 'utc' }).toFormat('HH:mm');
+    const agent = getAgentBySlackId(slackId);
+    logAudit({
+      actorSlackId: slackId, actorName: agent?.name || slackId,
+      action: 'break.reserve',
+      targetKind: 'break', targetId: String(res.reservationId),
+      summary: `Reservó break a las ${slotLabel} UTC (${durationMin} min) · ${dept}.${shiftId} · ${shiftDate}`,
+      payload: { reservationId: res.reservationId, slotISO, durationMin, dept, shiftId, shiftDate }
+    });
+    await rerenderDM({ slackId, shiftDate, dept, shiftId, respond });
+    try {
+      await client.chat.postEphemeral({
+        channel: (body as any).channel?.id || slackId,
+        user: slackId,
+        text: `✓ Reservaste tu break a las ${slotLabel} UTC (${durationMin === 60 ? '1 h' : durationMin + ' min'}).`
+      });
+    } catch { /* ignore */ }
+  });
+
+  // Liberar reserva (botón "Liberar" en el bloque de break del DM).
+  app.action('break_unreserve', async ({ ack, body, action, client, respond }) => {
+    await ack();
+    if (!config.breaksCoordinationEnabled) return;
+    const slackId = (body as any).user?.id;
+    const value = (action as any).value as string;
+    if (!value) return;
+    const [shiftDate, dept, shiftId] = value.split('|');
+    if (!shiftDate || !dept || !shiftId) return;
+
+    const n = cancelReservationsForShift(slackId, shiftDate, dept, shiftId);
+    if (n > 0) {
+      const agent = getAgentBySlackId(slackId);
+      logAudit({
+        actorSlackId: slackId, actorName: agent?.name || slackId,
+        action: 'break.unreserve',
+        targetKind: 'break', targetId: `${shiftDate}|${dept}|${shiftId}`,
+        summary: `Liberó su reserva de break · ${dept}.${shiftId} · ${shiftDate}`,
+        payload: { dept, shiftId, shiftDate, cancelledCount: n }
+      });
+    }
+    await rerenderDM({ slackId, shiftDate, dept, shiftId, respond });
+    try {
+      await client.chat.postEphemeral({
+        channel: (body as any).channel?.id || slackId,
+        user: slackId,
+        text: '🔓 Liberaste tu reserva. Ahora cualquiera del cohort puede tomar ese slot.'
+      });
+    } catch { /* ignore */ }
   });
 }

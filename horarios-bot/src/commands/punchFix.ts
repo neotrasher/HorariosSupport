@@ -8,6 +8,7 @@ import {
 import { getAgentBySlackId } from '../services/agents';
 import { findScheduleEntry } from '../services/schedule';
 import { punchButtonsBlocks } from '../ui/blocks';
+import { buildBreakInfoForDM } from '../services/breaks';
 
 /**
  * /punch-fix @user clock_in 2026-04-28T09:00 [note]
@@ -107,9 +108,13 @@ async function syncShiftDM(
   if (now.diff(end, 'hours').hours > 2) return ' · DM no enviado (turno antiguo)';
 
   const state = getShiftState(slackId, ctx.shiftDate, ctx.shiftId);
+  const breakInfo = config.breaksCoordinationEnabled && state === 'in'
+    ? buildBreakInfoForDM({ slackId, dept: ctx.dept, shiftId: ctx.shiftId, shiftDate: ctx.shiftDate })
+    : null;
   const blocks = punchButtonsBlocks({
     state, dept: ctx.dept, shift, shiftDate: ctx.shiftDate,
-    startISO: start.toISO()!, endISO: end.toISO()!
+    startISO: start.toISO()!, endISO: end.toISO()!,
+    breakInfo
   });
   const text = `Tu turno — ${ctx.dept} ${shift.label}`;
 

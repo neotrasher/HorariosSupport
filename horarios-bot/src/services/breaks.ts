@@ -453,6 +453,85 @@ export function canTakeBreakNow(opts: {
   return { ok: false, reason: 'No hay capacidad para break en este momento.' };
 }
 
+/**
+ * Build the data the DM block needs to render the slot picker for an agent.
+ * Returns null if breaks coordination is not relevant for this shift (e.g.
+ * window is empty, or shift is too short).
+ */
+export function buildBreakInfoForDM(opts: {
+  slackId: string;
+  dept: string;
+  shiftId: string;
+  shiftDate: string;
+}): {
+  freeOptions: { slotISO: string; label: string; durationMin: number }[];
+  myReservation: { slotISO: string; label: string; durationMin: number } | null;
+  otherReservations: { name: string; label: string; durationMin: number }[];
+} | null {
+  const slots = generateSlots(opts.dept, opts.shiftId, opts.shiftDate);
+  if (slots.length === 0) return null;
+  const my = getActiveReservation(opts.slackId, opts.shiftDate, opts.dept, opts.shiftId);
+  const myReservation = my
+    ? {
+        slotISO: my.slot_start,
+        label: DateTime.fromISO(my.slot_start, { zone: 'utc' }).toFormat('HH:mm'),
+        durationMin: my.duration_min
+      }
+    : null;
+
+  // Free options: slots that are not full AND don't already contain my reservation
+  // Build options for both 30 and 60 min durations.
+  const freeOptions: { slotISO: string; label: string; durationMin: number }[] = [];
+  for (let i = 0; i < slots.length; i++) {
+    const s = slots[i];
+    if (s.full) continue;
+    // For 30 min option: this slot must be free
+    freeOptions.push({
+      slotISO: s.start.toISO()!,
+      label: s.start.toFormat('HH:mm'),
+      durationMin: 30
+    });
+    // For 60 min option: this slot AND the next must be free
+    if (i + 1 < slots.length && !slots[i + 1].full) {
+      freeOptions.push({
+        slotISO: s.start.toISO()!,
+        label: s.start.toFormat('HH:mm'),
+        durationMin: 60
+      });
+    }
+  }
+
+  // Others' reservations in same cohort
+  const otherReservations: { name: string; label: string; durationMin: number }[] = [];
+  for (const s of slots) {
+    for (const r of s.reservations) {
+      if (r.slack_id === opts.slackId) continue;
+      // Avoid duplicates (a 60-min reservation appears in 2 consecutive slots)
+      const lbl = s.start.toFormat('HH:mm');
+      const already = otherReservations.find(o => o.name === r.name && o.label === lbl);
+      if (already) continue;
+      // Find the actual reservation for duration
+      const resvRow = db.prepare(`
+        SELECT duration_min FROM break_reservations WHERE id = ?
+      `).get(r.reservation_id) as { duration_min: number } | undefined;
+      otherReservations.push({
+        name: r.name.split(' ')[0],
+        label: lbl,
+        durationMin: resvRow?.duration_min ?? 30
+      });
+    }
+  }
+  // Dedupe by name (a 60-min reservation appears in 2 consecutive slots — keep earliest only)
+  const seen = new Set<string>();
+  const otherDedup = otherReservations.filter(o => {
+    if (seen.has(o.name)) return false;
+    seen.add(o.name);
+    return true;
+  });
+
+  return { freeOptions, myReservation, otherReservations: otherDedup };
+}
+
 /** List ALL active+taken reservations for a date (manager view). */
 export function listReservationsForDate(date: string): Reservation[] {
   return db.prepare(`
