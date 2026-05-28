@@ -112,17 +112,24 @@
                     <% } else { %>
                       <div class="flex flex-wrap gap-1.5">
                         <% s.cell.reservations.forEach(r => { const c = colorForAgent(r.slack_id); %>
-                          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= c[0] %> <%= c[1] %> <%= c[2] %>">
-                            <%= firstName(r.name) %>
-                            <span class="text-[9px] opacity-70 font-mono">· <%= r.durationMin === 60 ? '1h' : r.durationMin + 'm' %></span>
-                            <% if (r.status === 'taken') { %>
-                              <span class="text-[9px] font-bold" title="Ya entró al break">✓</span>
-                            <% } %>
-                            <form method="post" action="/horarios/breaks/release/<%= r.reservation_id %>" class="inline" onsubmit="return confirm('Liberar la reserva de <%= r.name %>?');">
-                              <input type="hidden" name="back" value="/horarios/breaks?date=<%= currentDate %>">
-                              <button type="submit" class="text-[10px] hover:text-rose-600" title="Liberar (override del manager)">×</button>
-                            </form>
-                          </span>
+                          <% if (r.isAnchor) { %>
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ring-1 <%= c[0] %> <%= c[1] %> <%= c[2] %>">
+                              <%= firstName(r.name) %>
+                              <span class="text-[9px] opacity-70 font-mono">· <%= r.anchorLabel %>–<%= r.endLabel %></span>
+                              <% if (r.status === 'taken') { %>
+                                <span class="text-[9px] font-bold" title="Ya entró al break">✓</span>
+                              <% } %>
+                              <form method="post" action="/horarios/breaks/release/<%= r.reservation_id %>" class="inline" onsubmit="return confirm('Liberar la reserva de <%= r.name %>?');">
+                                <input type="hidden" name="back" value="/horarios/breaks?date=<%= currentDate %>">
+                                <button type="submit" class="text-[10px] hover:text-rose-600" title="Liberar (override del manager)">×</button>
+                              </form>
+                            </span>
+                          <% } else { %>
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1 ring-slate-200 bg-slate-50 text-slate-400 italic"
+                                  title="Continuación de la reserva de <%= r.name %> que arranca a las <%= r.anchorLabel %>">
+                              ↑ <%= firstName(r.name) %> (cont.)
+                            </span>
+                          <% } %>
                         <% }) %>
                       </div>
                     <% } %>

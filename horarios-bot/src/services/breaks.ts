@@ -21,7 +21,7 @@
  */
 import { DateTime } from 'luxon';
 import { db } from '../db';
-import { SHIFTS } from '../config';
+import { SHIFTS, config } from '../config';
 import {
   getAllShiftsForDate, shiftWindow, ResolvedShift
 } from './schedule';
@@ -467,6 +467,11 @@ export function canTakeBreakNow(opts: {
  * Build the data the DM block needs to render the slot picker for an agent.
  * Returns null if breaks coordination is not relevant for this shift (e.g.
  * window is empty, or shift is too short).
+ *
+ * Slot labels se formatean en la TZ del agente (de su perfil) para ser
+ * consistente con el resto del DM que usa Slack `<!date^...>` (TZ del
+ * usuario que mira). Si el agente no tiene TZ configurada, fallback al
+ * displayTimezone del sistema, y de último UTC.
  */
 export function buildBreakInfoForDM(opts: {
   slackId: string;
@@ -477,69 +482,60 @@ export function buildBreakInfoForDM(opts: {
   freeOptions: { slotISO: string; label: string; durationMin: number }[];
   myReservation: { slotISO: string; label: string; durationMin: number } | null;
   otherReservations: { name: string; label: string; durationMin: number }[];
+  tzLabel: string;   // e.g. "Bogotá", "UTC" — para mostrar en la sección
 } | null {
   const slots = generateSlots(opts.dept, opts.shiftId, opts.shiftDate);
   if (slots.length === 0) return null;
+
+  // Resolver TZ del agente para formatear labels en local
+  const agent = getAgentBySlackId(opts.slackId);
+  const tz = (agent?.timezone) || config.displayTimezone || 'UTC';
+  const tzLabel = tz === 'UTC' ? 'UTC' : (tz.split('/').pop() || 'local').replace(/_/g, ' ');
+  const fmtLocal = (iso: string) => DateTime.fromISO(iso, { zone: 'utc' }).setZone(tz).toFormat('HH:mm');
+
   const my = getActiveReservation(opts.slackId, opts.shiftDate, opts.dept, opts.shiftId);
   const myReservation = my
     ? {
         slotISO: my.slot_start,
-        label: DateTime.fromISO(my.slot_start, { zone: 'utc' }).toFormat('HH:mm'),
+        label: fmtLocal(my.slot_start),
         durationMin: my.duration_min
       }
     : null;
 
-  // Free options: slots that are not full AND don't already contain my reservation
-  // Build options for both 30 and 60 min durations.
+  // Free options: slots that are not full. Build options for 30 and 60 min.
   const freeOptions: { slotISO: string; label: string; durationMin: number }[] = [];
   for (let i = 0; i < slots.length; i++) {
     const s = slots[i];
     if (s.full) continue;
-    // For 30 min option: this slot must be free
-    freeOptions.push({
-      slotISO: s.start.toISO()!,
-      label: s.start.toFormat('HH:mm'),
-      durationMin: 30
-    });
-    // For 60 min option: this slot AND the next must be free
+    const startISO = s.start.toISO()!;
+    freeOptions.push({ slotISO: startISO, label: fmtLocal(startISO), durationMin: 30 });
     if (i + 1 < slots.length && !slots[i + 1].full) {
-      freeOptions.push({
-        slotISO: s.start.toISO()!,
-        label: s.start.toFormat('HH:mm'),
-        durationMin: 60
-      });
+      freeOptions.push({ slotISO: startISO, label: fmtLocal(startISO), durationMin: 60 });
     }
   }
 
-  // Others' reservations in same cohort
+  // Others' reservations en mismo cohort, dedup por reservation_id (no por nombre+slot
+  // así soportamos múltiples reservas del mismo agente si las hubiera).
+  const seenResvIds = new Set<number>();
   const otherReservations: { name: string; label: string; durationMin: number }[] = [];
   for (const s of slots) {
     for (const r of s.reservations) {
       if (r.slack_id === opts.slackId) continue;
-      // Avoid duplicates (a 60-min reservation appears in 2 consecutive slots)
-      const lbl = s.start.toFormat('HH:mm');
-      const already = otherReservations.find(o => o.name === r.name && o.label === lbl);
-      if (already) continue;
-      // Find the actual reservation for duration
+      if (seenResvIds.has(r.reservation_id)) continue;
+      seenResvIds.add(r.reservation_id);
       const resvRow = db.prepare(`
-        SELECT duration_min FROM break_reservations WHERE id = ?
-      `).get(r.reservation_id) as { duration_min: number } | undefined;
+        SELECT duration_min, slot_start FROM break_reservations WHERE id = ?
+      `).get(r.reservation_id) as { duration_min: number; slot_start: string } | undefined;
+      if (!resvRow) continue;
       otherReservations.push({
         name: r.name.split(' ')[0],
-        label: lbl,
-        durationMin: resvRow?.duration_min ?? 30
+        label: fmtLocal(resvRow.slot_start),
+        durationMin: resvRow.duration_min
       });
     }
   }
-  // Dedupe by name (a 60-min reservation appears in 2 consecutive slots — keep earliest only)
-  const seen = new Set<string>();
-  const otherDedup = otherReservations.filter(o => {
-    if (seen.has(o.name)) return false;
-    seen.add(o.name);
-    return true;
-  });
 
-  return { freeOptions, myReservation, otherReservations: otherDedup };
+  return { freeOptions, myReservation, otherReservations, tzLabel };
 }
 
 /** List ALL active+taken reservations for a date (manager view). */
@@ -554,7 +550,19 @@ export function listReservationsForDate(date: string): Reservation[] {
 // ── Manager dashboard helper ────────────────────────────────────────────
 
 export interface CohortSlotCell {
-  reservations: { reservation_id: number; slack_id: string; name: string; durationMin: number; status: string }[];
+  reservations: {
+    reservation_id: number;
+    slack_id: string;
+    name: string;
+    durationMin: number;
+    status: string;
+    /** true si este es el slot donde arranca la reserva (no una continuación). */
+    isAnchor: boolean;
+    /** Label "HH:mm" del slot donde arranca la reserva (para mostrar en continuación). */
+    anchorLabel: string;
+    /** Label "HH:mm" del fin de la reserva (slot_start + durationMin). */
+    endLabel: string;
+  }[];
   onBreak: { slack_id: string; name: string; break_in_ts: string }[];
 }
 
@@ -592,14 +600,21 @@ export function buildBreaksDashboard(shiftDate: string): CohortBlockForView[] {
       const slotsView = slots.map(s => {
         const reservations = s.reservations.map(r => {
           const resvRow = db.prepare(
-            "SELECT duration_min, status FROM break_reservations WHERE id = ?"
-          ).get(r.reservation_id) as { duration_min: number; status: string } | undefined;
+            "SELECT duration_min, status, slot_start FROM break_reservations WHERE id = ?"
+          ).get(r.reservation_id) as { duration_min: number; status: string; slot_start: string } | undefined;
+          const durationMin = resvRow?.duration_min ?? 30;
+          const resvStartISO = resvRow?.slot_start ?? '';
+          const resvStart = resvStartISO ? DateTime.fromISO(resvStartISO, { zone: 'utc' }) : s.start;
+          const resvEnd = resvStart.plus({ minutes: durationMin });
           return {
             reservation_id: r.reservation_id,
             slack_id: r.slack_id,
             name: r.name,
-            durationMin: resvRow?.duration_min ?? 30,
-            status: resvRow?.status ?? 'active'
+            durationMin,
+            status: resvRow?.status ?? 'active',
+            isAnchor: resvStart.toISO() === s.start.toISO(),
+            anchorLabel: resvStart.toFormat('HH:mm'),
+            endLabel: resvEnd.toFormat('HH:mm')
           };
         });
         return {

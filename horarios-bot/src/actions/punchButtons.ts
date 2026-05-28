@@ -428,13 +428,16 @@ export function registerPunchButtons(app: App) {
       } catch { /* ignore */ }
       return;
     }
-    const slotLabel = DateTime.fromISO(slotISO, { zone: 'utc' }).toFormat('HH:mm');
     const agent = getAgentBySlackId(slackId);
+    const tz = (agent?.timezone) || config.displayTimezone || 'UTC';
+    const tzLabel = tz === 'UTC' ? 'UTC' : tz.split('/').pop()!.replace(/_/g, ' ');
+    const slotLabelUtc = DateTime.fromISO(slotISO, { zone: 'utc' }).toFormat('HH:mm');
+    const slotLabelLocal = DateTime.fromISO(slotISO, { zone: 'utc' }).setZone(tz).toFormat('HH:mm');
     logAudit({
       actorSlackId: slackId, actorName: agent?.name || slackId,
       action: 'break.reserve',
       targetKind: 'break', targetId: String(res.reservationId),
-      summary: `Reservó break a las ${slotLabel} UTC (${durationMin} min) · ${dept}.${shiftId} · ${shiftDate}`,
+      summary: `Reservó break a las ${slotLabelUtc} UTC (${durationMin} min) · ${dept}.${shiftId} · ${shiftDate}`,
       payload: { reservationId: res.reservationId, slotISO, durationMin, dept, shiftId, shiftDate }
     });
     await rerenderDM({ slackId, shiftDate, dept, shiftId, respond });
@@ -442,7 +445,7 @@ export function registerPunchButtons(app: App) {
       await client.chat.postEphemeral({
         channel: (body as any).channel?.id || slackId,
         user: slackId,
-        text: `✓ Reservaste tu break a las ${slotLabel} UTC (${durationMin === 60 ? '1 h' : durationMin + ' min'}).`
+        text: `✓ Reservaste tu break a las ${slotLabelLocal} (${tzLabel}) · ${durationMin === 60 ? '1 h' : durationMin + ' min'}.`
       });
     } catch { /* ignore */ }
   });
