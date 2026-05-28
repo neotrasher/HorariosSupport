@@ -64,7 +64,7 @@
         </span>
         <span class="font-semibold text-slate-900"><%= block.shiftLabel %></span>
         <span class="text-xs text-slate-500 font-mono">
-          <%= String(block.startHour).padStart(2,'0') %>:00 → <%= String(block.endHour).padStart(2,'0') %>:00 UTC
+          <%= String(block.startHour % 24).padStart(2,'0') %>:00 → <%= String(block.endHour % 24).padStart(2,'0') %>:00 UTC<% if (block.endHour >= 24) { %> <span class="text-[10px] text-slate-400">+1d</span><% } %>
         </span>
         <span class="ml-auto text-xs flex items-center gap-2 flex-wrap">
           <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold">
