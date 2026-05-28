@@ -9,6 +9,9 @@ import {
 import { logAudit } from '../services/audit';
 import { getAgentBySlackId } from '../services/agents';
 import { findScheduleEntry } from '../services/schedule';
+import {
+  canTakeBreakNow, getActiveReservation, markReservationTaken, sweepExpiredReservations
+} from '../services/breaks';
 import { punchButtonsBlocks, attendancePostBlocks } from '../ui/blocks';
 
 const ACTION_TO_TYPE: Record<string, PunchType> = {
@@ -116,11 +119,53 @@ export function registerPunchButtons(app: App) {
         }
       }
 
+      // Rule 1b: cohort break cap — sólo X agentes del mismo dept en break a la vez.
+      // Permite solape "compartido" hasta MAX_OVERLAP_MIN. Si el agente tiene
+      // reserva en este momento, el check la respeta automáticamente.
+      let breakNoteExtra: string | null = null;
+      if (type === 'break_in') {
+        sweepExpiredReservations(now); // libera reservas vencidas antes de evaluar
+        const elig = canTakeBreakNow({
+          slackId, dept, shiftId, shiftDate, durationMin: breakDur, now
+        });
+        if (!elig.ok) {
+          const msg = `❌ ${elig.reason || 'No se puede iniciar el break ahora.'}`;
+          try {
+            await client.chat.postEphemeral({
+              channel: (body as any).channel?.id || slackId,
+              user: slackId,
+              text: msg
+            });
+          } catch {
+            try { await client.chat.postMessage({ channel: slackId, text: msg }); } catch { /* ignore */ }
+          }
+          return;
+        }
+        // Si se permite con solape, anunciar el "shared break" al agente
+        if (elig.note) {
+          try {
+            await client.chat.postEphemeral({
+              channel: (body as any).channel?.id || slackId,
+              user: slackId,
+              text: `ℹ️ ${elig.note}`
+            });
+          } catch { /* ignore */ }
+          breakNoteExtra = ' · shared';
+        }
+      }
+
       // Record punch (encode break duration in note for break_in)
       recordPunch(slackId, type, {
         source: 'button', ts: now, shiftDate, shiftId,
-        note: type === 'break_in' ? `dur=${breakDur}` : undefined
+        note: type === 'break_in' ? `dur=${breakDur}${breakNoteExtra || ''}` : undefined
       });
+
+      // Si el agente tenía una reserva activa para este turno y acaba de
+      // hacer break_in, marcarla como "taken" para que no expire.
+      if (type === 'break_in') {
+        const resv = getActiveReservation(slackId, shiftDate, dept, shiftId);
+        if (resv) markReservationTaken(resv.id);
+      }
 
       const grace = config.gracePeriodMin;
 
