@@ -173,8 +173,9 @@ export function punchButtonsBlocks(opts: {
     } else if (breakInfo.freeOptions.length > 0) {
       // Sin reserva → ofrecer picker
       const others = breakInfo.otherReservations || [];
+      const fmtDur = (d: number) => d === 60 ? '1h' : `${d}m`;
       const ctxLine = others.length > 0
-        ? `\n_Ya reservaron en ${dept}: ${others.map(o => `${o.label} ${o.name}`).join(' · ')}_`
+        ? `\n_Ya reservaron: ${others.map(o => `${o.label} ${o.name} (${fmtDur(o.durationMin)})`).join(' · ')}_`
         : '';
       breakBlocks.push({
         type: 'section',
@@ -194,9 +195,10 @@ export function punchButtonsBlocks(opts: {
       });
     } else if ((breakInfo.otherReservations || []).length > 0) {
       const others = breakInfo.otherReservations || [];
+      const fmtDur2 = (d: number) => d === 60 ? '1h' : `${d}m`;
       breakBlocks.push({
         type: 'section',
-        text: { type: 'mrkdwn', text: `🍽️ *Reservas de break en ${dept} hoy* (${tzLbl})\n${others.map(o => `• ${o.label} — ${o.name}`).join('\n')}\n_No hay slots libres por ahora._` }
+        text: { type: 'mrkdwn', text: `🍽️ *Reservas de break hoy* (${tzLbl})\n${others.map(o => `• ${o.label} — ${o.name} (${fmtDur2(o.durationMin)})`).join('\n')}\n_No hay slots libres por ahora._` }
       });
     }
   }

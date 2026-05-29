@@ -90,6 +90,76 @@ export interface BreakEligibility {
 
 // ── Cohort + cap helpers ────────────────────────────────────────────────
 
+/**
+ * Functional cohort: agentes con la misma DEPT NATIVA (a.dept) que tienen
+ * cualquier schedule_entry hoy. Se usa para calcular el cap y la concurrencia
+ * de break — la idea es que un L2 nativo cubriendo L1.T sigue siendo "L2"
+ * para efectos de cobertura: su break impacta la cola L2, no la L1.
+ */
+export function listFunctionalCohort(nativeDept: string, shiftDate: string): CohortMember[] {
+  const rows = db.prepare(`
+    SELECT DISTINCT a.slack_id, a.name, a.planner_id
+      FROM agents a
+      JOIN schedule_entries s ON s.planner_id = a.planner_id
+     WHERE a.active = 1 AND a.dept = ? AND s.date = ?
+       AND NOT EXISTS (
+         SELECT 1 FROM days_off_entries d
+          WHERE d.planner_id = a.planner_id AND d.date = s.date
+       )
+  `).all(nativeDept, shiftDate) as { slack_id: string; name: string; planner_id: number }[];
+  return rows;
+}
+
+/**
+ * Cap basado en functional cohort para un agente. Cohort size escala el cap:
+ * 1 por defecto, 2 si el cohort tiene COHORT_LARGE_THRESHOLD+ agentes.
+ */
+export function getFunctionalCohortCap(slackId: string, shiftDate: string): {
+  cap: number;
+  cohortSize: number;
+  nativeDept: string;
+} {
+  const agent = getAgentBySlackId(slackId);
+  if (!agent) return { cap: DEFAULT_CAP_SMALL, cohortSize: 0, nativeDept: '?' };
+  const cohort = listFunctionalCohort(agent.dept, shiftDate);
+  const cap = cohort.length >= COHORT_LARGE_THRESHOLD ? DEFAULT_CAP_LARGE : DEFAULT_CAP_SMALL;
+  return { cap, cohortSize: cohort.length, nativeDept: agent.dept };
+}
+
+/**
+ * Agentes del functional cohort que están en break ahora (break_in sin
+ * break_out posterior, en cualquier shift del día). Esto incluye L2 nativos
+ * que cubren L1 o viceversa.
+ */
+export function listAgentsOnBreakByFunction(
+  nativeDept: string, shiftDate: string
+): { slack_id: string; break_in_ts: string; dur_min: number }[] {
+  const cohort = listFunctionalCohort(nativeDept, shiftDate);
+  if (cohort.length === 0) return [];
+  const cohortIds = cohort.map(c => c.slack_id);
+  const placeholders = cohortIds.map(() => '?').join(',');
+
+  const rows = db.prepare(`
+    SELECT p.slack_id, p.ts, p.note
+      FROM punches p
+     WHERE p.shift_date = ? AND p.type = 'break_in'
+       AND p.slack_id IN (${placeholders})
+       AND NOT EXISTS (
+         SELECT 1 FROM punches q
+          WHERE q.slack_id = p.slack_id AND q.shift_date = p.shift_date
+            AND q.shift_id = p.shift_id AND q.type = 'break_out'
+            AND q.ts > p.ts
+       )
+  `).all(shiftDate, ...cohortIds) as { slack_id: string; ts: string; note: string | null }[];
+  const result: { slack_id: string; break_in_ts: string; dur_min: number }[] = [];
+  for (const r of rows) {
+    const m = r.note?.match(/dur=(\d+)/);
+    const dur = m ? parseInt(m[1], 10) : 60;
+    result.push({ slack_id: r.slack_id, break_in_ts: r.ts, dur_min: dur });
+  }
+  return result;
+}
+
 /** Agents scheduled for this (dept, shift, date), excluding day-off. */
 export function listCohort(dept: string, shiftId: string, shiftDate: string): CohortMember[] {
   const date = DateTime.fromISO(shiftDate, { zone: 'utc' });
@@ -200,6 +270,94 @@ export function generateSlots(
   return slots;
 }
 
+/**
+ * Variante de generateSlots desde la perspectiva de UN agente específico.
+ * Slots se calculan en su ventana de shift, pero el flag `full` y las
+ * reservas/breaks que aparecen consideran el FUNCTIONAL COHORT (todos los
+ * agentes con la misma dept nativa scheduleados ese día).
+ *
+ * Usado por el DM picker para que Maria (L2 nativa en L1.T) vea reservas
+ * de Nelly (L2 nativa en L2.M) y compita con ella por el cap de L2.
+ */
+export function generateSlotsForAgent(opts: {
+  slackId: string;
+  dept: string;       // shift's dept (where the agent is working)
+  shiftId: string;
+  shiftDate: string;
+}): SlotInfo[] {
+  const shift = SHIFTS[opts.dept]?.[opts.shiftId];
+  if (!shift) return [];
+  const date = DateTime.fromISO(opts.shiftDate, { zone: 'utc' });
+  if (!date.isValid) return [];
+  const agent = getAgentBySlackId(opts.slackId);
+  if (!agent) return [];
+  const nativeDept = agent.dept;
+  const { cap } = getFunctionalCohortCap(opts.slackId, opts.shiftDate);
+
+  // Ventana de break en el shift del agente
+  const win = shiftWindow(date, { startHour: shift.startHour, endHour: shift.endHour });
+  const windowStart = win.start.plus({ minutes: BREAK_WINDOW_OFFSET_START_MIN });
+  const windowEnd = win.end.minus({ minutes: BREAK_WINDOW_OFFSET_END_MIN });
+
+  // Reservas activas del functional cohort (cualquier shift hoy)
+  const cohort = listFunctionalCohort(nativeDept, opts.shiftDate);
+  const cohortIds = cohort.map(c => c.slack_id);
+  let resvRows: { id: number; slack_id: string; slot_start: string; duration_min: number }[] = [];
+  if (cohortIds.length > 0) {
+    const ph = cohortIds.map(() => '?').join(',');
+    resvRows = db.prepare(`
+      SELECT id, slack_id, slot_start, duration_min
+        FROM break_reservations
+       WHERE shift_date = ? AND status = 'active'
+         AND slack_id IN (${ph})
+    `).all(opts.shiftDate, ...cohortIds) as typeof resvRows;
+  }
+
+  // Agentes del functional cohort en break ahora
+  const onBreakRows = listAgentsOnBreakByFunction(nativeDept, opts.shiftDate);
+
+  const slots: SlotInfo[] = [];
+  let cursor = windowStart;
+  while (cursor.plus({ minutes: SLOT_MIN }) <= windowEnd) {
+    const slotStart = cursor;
+    const slotEnd = cursor.plus({ minutes: SLOT_MIN });
+    const slotKey = `${opts.shiftDate}|${opts.dept}|${opts.shiftId}|${slotStart.toFormat('HH:mm')}`;
+
+    const reservations: SlotInfo['reservations'] = [];
+    for (const r of resvRows) {
+      const rStart = DateTime.fromISO(r.slot_start, { zone: 'utc' });
+      const rEnd = rStart.plus({ minutes: r.duration_min });
+      if (rStart < slotEnd && rEnd > slotStart) {
+        const ag = getAgentBySlackId(r.slack_id);
+        reservations.push({
+          reservation_id: r.id,
+          slack_id: r.slack_id,
+          name: ag?.name || r.slack_id
+        });
+      }
+    }
+
+    const onBreak: SlotInfo['onBreak'] = [];
+    for (const ob of onBreakRows) {
+      const biTs = DateTime.fromISO(ob.break_in_ts, { zone: 'utc' });
+      const obEnd = biTs.plus({ minutes: ob.dur_min || 60 });
+      if (biTs < slotEnd && obEnd > slotStart) {
+        const ag = getAgentBySlackId(ob.slack_id);
+        onBreak.push({ slack_id: ob.slack_id, name: ag?.name || ob.slack_id, break_in_ts: ob.break_in_ts });
+      }
+    }
+
+    const consumed = reservations.length + onBreak.length;
+    slots.push({
+      start: slotStart, end: slotEnd, key: slotKey,
+      reservations, onBreak,
+      full: consumed >= cap
+    });
+    cursor = cursor.plus({ minutes: SLOT_MIN });
+  }
+  return slots;
+}
+
 // ── Reservation CRUD ────────────────────────────────────────────────────
 
 /** Reserve a slot. Returns { ok, error?, reservationId? }. */
@@ -222,8 +380,13 @@ export function reserveSlot(opts: {
      WHERE slack_id = ? AND shift_date = ? AND dept = ? AND shift_id = ? AND status = 'active'
   `).run(opts.slackId, opts.shiftDate, opts.dept, opts.shiftId);
 
-  // Check capacity at the requested slot(s)
-  const slots = generateSlots(opts.dept, opts.shiftId, opts.shiftDate);
+  // Check capacity at the requested slot(s) usando functional cohort
+  const slots = generateSlotsForAgent({
+    slackId: opts.slackId,
+    dept: opts.dept,
+    shiftId: opts.shiftId,
+    shiftDate: opts.shiftDate
+  });
   const slotsTouched = Math.ceil(opts.durationMin / SLOT_MIN);
   const targetIdx = slots.findIndex(s =>
     s.start.toISO() === slotStart.toISO()
@@ -378,7 +541,10 @@ export function canTakeBreakNow(opts: {
   now?: DateTime;
 }): BreakEligibility {
   const now = opts.now ?? DateTime.utc();
-  const { cap, maxOverlapMin } = getCohortCap(opts.dept, opts.shiftId, opts.shiftDate);
+  // Cap se calcula por functional cohort (native dept del agente), NO por shift.
+  // Un L2 nativo cubriendo L1.T compite con otros L2 nativos por el cap de L2.
+  const { cap, nativeDept } = getFunctionalCohortCap(opts.slackId, opts.shiftDate);
+  const maxOverlapMin = MAX_OVERLAP_MIN;
 
   // 1. If the agent has an active reservation in the current window, allow.
   const reservation = getActiveReservation(opts.slackId, opts.shiftDate, opts.dept, opts.shiftId);
@@ -396,22 +562,28 @@ export function canTakeBreakNow(opts: {
     return { ok: true };
   }
 
-  // 2. No reservation → cohort capacity check.
-  const onBreak = listAgentsOnBreakInCohort(opts.dept, opts.shiftId, opts.shiftDate)
+  // 2. No reservation → functional cohort capacity check.
+  const onBreak = listAgentsOnBreakByFunction(nativeDept, opts.shiftDate)
     .filter(b => b.slack_id !== opts.slackId);
 
   if (onBreak.length < cap) {
-    // Free capacity — also check if anyone reserved a slot that overlaps with
-    // the agent's intended break window [now, now+duration).
+    // Free capacity — also check if cohort members reservaron este momento.
+    // Listar reservas activas de todos los del cohort (puede ser otro shift).
+    const cohort = listFunctionalCohort(nativeDept, opts.shiftDate);
+    const cohortIds = cohort.map(c => c.slack_id).filter(id => id !== opts.slackId);
     const intended = { from: now, to: now.plus({ minutes: opts.durationMin }) };
-    const conflictingResv = db.prepare(`
-      SELECT slack_id, slot_start, duration_min
-        FROM break_reservations
-       WHERE shift_date = ? AND dept = ? AND shift_id = ? AND status = 'active'
-         AND slack_id != ?
-    `).all(opts.shiftDate, opts.dept, opts.shiftId, opts.slackId) as {
-      slack_id: string; slot_start: string; duration_min: number
-    }[];
+    let conflictingResv: { slack_id: string; slot_start: string; duration_min: number }[] = [];
+    if (cohortIds.length > 0) {
+      const ph = cohortIds.map(() => '?').join(',');
+      conflictingResv = db.prepare(`
+        SELECT slack_id, slot_start, duration_min
+          FROM break_reservations
+         WHERE shift_date = ? AND status = 'active'
+           AND slack_id IN (${ph})
+      `).all(opts.shiftDate, ...cohortIds) as {
+        slack_id: string; slot_start: string; duration_min: number
+      }[];
+    }
     // Reservations whose window overlaps with the intended break window
     const overlapping = conflictingResv.filter(r => {
       const s = DateTime.fromISO(r.slot_start, { zone: 'utc' });
@@ -484,7 +656,13 @@ export function buildBreakInfoForDM(opts: {
   otherReservations: { name: string; label: string; durationMin: number }[];
   tzLabel: string;   // e.g. "Bogotá", "UTC" — para mostrar en la sección
 } | null {
-  const slots = generateSlots(opts.dept, opts.shiftId, opts.shiftDate);
+  // Slots desde la perspectiva del agente (functional cohort para cap)
+  const slots = generateSlotsForAgent({
+    slackId: opts.slackId,
+    dept: opts.dept,
+    shiftId: opts.shiftId,
+    shiftDate: opts.shiftDate
+  });
   if (slots.length === 0) return null;
 
   // Resolver TZ del agente para formatear labels en local
