@@ -77,9 +77,13 @@ export function buildHorariosRouter(slackApp: SlackApp | null = null): Router {
  */
 /**
  * Breaks dashboard: shows today's break grid per (dept, shift) with reservations
- * and on-break state. Manager can release any reservation.
+ * and on-break state.
+ *
+ * Read access: any authenticated user (agents pueden ver para planificar).
+ * Write access (release reservation): manager-only — el botón × del view se
+ * oculta para no-managers, y el POST /breaks/release exige requireManager.
  */
-horariosRouter.get('/breaks', requireManager, (req, res) => {
+horariosRouter.get('/breaks', (req, res) => {
   const user = (req.session as any).user;
   const dateParam = (req.query.date as string) || DateTime.utc().toFormat('yyyy-LL-dd');
   const date = DateTime.fromISO(dateParam, { zone: 'utc' });
@@ -89,6 +93,7 @@ horariosRouter.get('/breaks', requireManager, (req, res) => {
   }
   const dateStr = date.toFormat('yyyy-LL-dd');
   const blocks = buildBreaksDashboard(dateStr);
+  const isManager = user?.role === 'manager' || user?.role === 'admin';
   res.render('horarios-breaks', {
     user,
     view: 'breaks',
@@ -97,7 +102,8 @@ horariosRouter.get('/breaks', requireManager, (req, res) => {
     nextDate: date.plus({ days: 1 }).toFormat('yyyy-LL-dd'),
     todayDate: DateTime.utc().toFormat('yyyy-LL-dd'),
     blocks,
-    breaksCoordinationEnabled: config.breaksCoordinationEnabled
+    breaksCoordinationEnabled: config.breaksCoordinationEnabled,
+    isManager
   });
 });
 

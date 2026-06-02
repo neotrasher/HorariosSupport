@@ -119,10 +119,12 @@
                               <% if (r.status === 'taken') { %>
                                 <span class="text-[9px] font-bold" title="Ya entró al break">✓</span>
                               <% } %>
-                              <form method="post" action="/horarios/breaks/release/<%= r.reservation_id %>" class="inline" onsubmit="return confirm('Liberar la reserva de <%= r.name %>?');">
-                                <input type="hidden" name="back" value="/horarios/breaks?date=<%= currentDate %>">
-                                <button type="submit" class="text-[10px] hover:text-rose-600" title="Liberar (override del manager)">×</button>
-                              </form>
+                              <% if (isManager) { %>
+                                <form method="post" action="/horarios/breaks/release/<%= r.reservation_id %>" class="inline" onsubmit="return confirm('Liberar la reserva de <%= r.name %>?');">
+                                  <input type="hidden" name="back" value="/horarios/breaks?date=<%= currentDate %>">
+                                  <button type="submit" class="text-[10px] hover:text-rose-600" title="Liberar (override del manager)">×</button>
+                                </form>
+                              <% } %>
                             </span>
                           <% } else { %>
                             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ring-1 ring-slate-200 bg-slate-50 text-slate-400 italic"
@@ -172,7 +174,9 @@
     <div>• <strong>Reserva</strong> = el agente apartó ese slot desde su DM. Mientras está activa, otros del mismo dept no pueden ocuparla.</div>
     <div>• <strong>En break ahora</strong> = punch <code>break_in</code> registrado sin <code>break_out</code> aún.</div>
     <div>• El bot permite <strong>solape compartido</strong> de hasta 30 min cuando otro agente ya está rompiendo break y sale pronto.</div>
-    <div>• El <strong>×</strong> en una reserva libera el slot (override del manager — útil si el agente se atascó).</div>
+    <% if (isManager) { %>
+      <div>• El <strong>×</strong> en una reserva libera el slot (override del manager — útil si el agente se atascó).</div>
+    <% } %>
   </div>
 </main>
 
