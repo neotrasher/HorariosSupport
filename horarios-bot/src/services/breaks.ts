@@ -139,6 +139,48 @@ export function listFunctionalCohort(nativeDept: string, shiftDate: string): Coh
 }
 
 /**
+ * Cohort funcional RESTRINGIDO a la ventana horaria del shift del solicitante.
+ * Solo incluye agentes del mismo nativeDept (o MGMT cubriendo) cuyo turno
+ * se solapa con [refStartHour, refEndHour] del shift de referencia.
+ *
+ * Esto evita inflar el cap por incluir agentes de otras franjas del día
+ * que en realidad nunca coinciden en break con el solicitante.
+ * Ej: Laura (L1.N 16-24) + Michael (L1.N 16-24) = cohort 2, no 6.
+ */
+export function listFunctionalCohortAtShift(opts: {
+  nativeDept: string;
+  shiftDate: string;
+  refStartHour: number;  // hora UTC inicio del shift de referencia
+  refEndHour: number;    // hora UTC fin (puede ser >24 para shifts que cruzan medianoche)
+}): CohortMember[] {
+  const all = listFunctionalCohort(opts.nativeDept, opts.shiftDate);
+  if (all.length === 0) return [];
+  // Para cada miembro, obtener su shift hours y verificar overlap
+  const idsList = all.map(m => m.planner_id);
+  const placeholders = idsList.map(() => '?').join(',');
+  const rows = db.prepare(`
+    SELECT planner_id, dept, shift_id, custom_start_hour, custom_end_hour
+      FROM schedule_entries
+     WHERE date = ? AND planner_id IN (${placeholders})
+  `).all(opts.shiftDate, ...idsList) as {
+    planner_id: number; dept: string; shift_id: string;
+    custom_start_hour: number | null; custom_end_hour: number | null;
+  }[];
+  const overlapping = new Set<number>();
+  for (const r of rows) {
+    const sh = SHIFTS[r.dept]?.[r.shift_id];
+    if (!sh) continue;
+    const startH = r.custom_start_hour ?? sh.startHour;
+    const endH   = r.custom_end_hour   ?? sh.endHour;
+    // Overlap clásico: startH < refEnd && endH > refStart
+    if (startH < opts.refEndHour && endH > opts.refStartHour) {
+      overlapping.add(r.planner_id);
+    }
+  }
+  return all.filter(m => overlapping.has(m.planner_id));
+}
+
+/**
  * Cap basado en functional cohort para un agente cubriendo un shift dept.
  * Cohort size escala el cap: 1 por defecto, 2 si el cohort tiene
  * COHORT_LARGE_THRESHOLD+ agentes.
@@ -146,13 +188,35 @@ export function listFunctionalCohort(nativeDept: string, shiftDate: string): Coh
  * shiftDept es el dept del turno que el agente está trabajando — necesario
  * cuando la dept nativa no es operacional (MGMT cubriendo L1, etc).
  */
-export function getFunctionalCohortCap(slackId: string, shiftDate: string, shiftDept: string): {
+export function getFunctionalCohortCap(
+  slackId: string,
+  shiftDate: string,
+  shiftDept: string,
+  shiftId?: string
+): {
   cap: number;
   cohortSize: number;
   effectiveDept: string;
 } {
   const effectiveDept = getEffectiveFunctionalDept(slackId, shiftDept);
-  const cohort = listFunctionalCohort(effectiveDept, shiftDate);
+  let cohort: CohortMember[];
+  // Si se pasa el shift_id, restringimos el cohort a los que solapan en horario.
+  // Esto da un cap realista (Laura+Michael en L1.N = 2, no inflado por L1.M ni L1.T).
+  if (shiftId) {
+    const sh = SHIFTS[shiftDept]?.[shiftId];
+    if (sh) {
+      cohort = listFunctionalCohortAtShift({
+        nativeDept: effectiveDept,
+        shiftDate,
+        refStartHour: sh.startHour,
+        refEndHour: sh.endHour
+      });
+    } else {
+      cohort = listFunctionalCohort(effectiveDept, shiftDate);
+    }
+  } else {
+    cohort = listFunctionalCohort(effectiveDept, shiftDate);
+  }
   const cap = cohort.length >= COHORT_LARGE_THRESHOLD ? DEFAULT_CAP_LARGE : DEFAULT_CAP_SMALL;
   return { cap, cohortSize: cohort.length, effectiveDept };
 }
@@ -323,15 +387,22 @@ export function generateSlotsForAgent(opts: {
   const agent = getAgentBySlackId(opts.slackId);
   if (!agent) return [];
   const effectiveDept = getEffectiveFunctionalDept(opts.slackId, opts.dept);
-  const { cap } = getFunctionalCohortCap(opts.slackId, opts.shiftDate, opts.dept);
+  const { cap } = getFunctionalCohortCap(opts.slackId, opts.shiftDate, opts.dept, opts.shiftId);
 
   // Ventana de break en el shift del agente
   const win = shiftWindow(date, { startHour: shift.startHour, endHour: shift.endHour });
   const windowStart = win.start.plus({ minutes: BREAK_WINDOW_OFFSET_START_MIN });
   const windowEnd = win.end.minus({ minutes: BREAK_WINDOW_OFFSET_END_MIN });
 
-  // Reservas activas del functional cohort (cualquier shift hoy)
-  const cohort = listFunctionalCohort(effectiveDept, opts.shiftDate);
+  // Reservas activas del functional cohort RESTRINGIDO a quienes solapan
+  // en horario con el shift del agente (sino el cohort se infla con gente
+  // de otros turnos del día que nunca coincide en break).
+  const cohort = listFunctionalCohortAtShift({
+    nativeDept: effectiveDept,
+    shiftDate: opts.shiftDate,
+    refStartHour: shift.startHour,
+    refEndHour: shift.endHour
+  });
   const cohortIds = cohort.map(c => c.slack_id);
   let resvRows: { id: number; slack_id: string; slot_start: string; duration_min: number }[] = [];
   if (cohortIds.length > 0) {
@@ -344,8 +415,9 @@ export function generateSlotsForAgent(opts: {
     `).all(opts.shiftDate, ...cohortIds) as typeof resvRows;
   }
 
-  // Agentes del functional cohort en break ahora
-  const onBreakRows = listAgentsOnBreakByFunction(effectiveDept, opts.shiftDate);
+  // Agentes del functional cohort en break ahora — filtrar por overlap
+  const onBreakRows = listAgentsOnBreakByFunction(effectiveDept, opts.shiftDate)
+    .filter(b => cohortIds.includes(b.slack_id));
 
   const slots: SlotInfo[] = [];
   let cursor = windowStart;
@@ -574,7 +646,7 @@ export function canTakeBreakNow(opts: {
   const now = opts.now ?? DateTime.utc();
   // Cap se calcula por functional cohort. Si el agente es nativo L1/L2,
   // usa esa dept. Si es MGMT/admin, usa la dept del shift que está cubriendo.
-  const { cap, effectiveDept } = getFunctionalCohortCap(opts.slackId, opts.shiftDate, opts.dept);
+  const { cap, effectiveDept } = getFunctionalCohortCap(opts.slackId, opts.shiftDate, opts.dept, opts.shiftId);
   const maxOverlapMin = MAX_OVERLAP_MIN;
 
   // 1. If the agent has an active reservation in the current window, allow.
@@ -594,13 +666,23 @@ export function canTakeBreakNow(opts: {
   }
 
   // 2. No reservation → functional cohort capacity check.
+  // Restringimos el cohort a quienes solapan en horario con el shift del
+  // agente (mismo cap-realista que el picker).
+  const refShift = SHIFTS[opts.dept]?.[opts.shiftId];
+  const cohort = refShift
+    ? listFunctionalCohortAtShift({
+        nativeDept: effectiveDept,
+        shiftDate: opts.shiftDate,
+        refStartHour: refShift.startHour,
+        refEndHour: refShift.endHour
+      })
+    : listFunctionalCohort(effectiveDept, opts.shiftDate);
+  const cohortIdSet = new Set(cohort.map(c => c.slack_id));
   const onBreak = listAgentsOnBreakByFunction(effectiveDept, opts.shiftDate)
-    .filter(b => b.slack_id !== opts.slackId);
+    .filter(b => b.slack_id !== opts.slackId && cohortIdSet.has(b.slack_id));
 
   if (onBreak.length < cap) {
     // Free capacity — also check if cohort members reservaron este momento.
-    // Listar reservas activas de todos los del cohort (puede ser otro shift).
-    const cohort = listFunctionalCohort(effectiveDept, opts.shiftDate);
     const cohortIds = cohort.map(c => c.slack_id).filter(id => id !== opts.slackId);
     const intended = { from: now, to: now.plus({ minutes: opts.durationMin }) };
     let conflictingResv: { slack_id: string; slot_start: string; duration_min: number }[] = [];
