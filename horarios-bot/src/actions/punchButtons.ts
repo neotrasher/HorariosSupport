@@ -11,7 +11,7 @@ import { getAgentBySlackId } from '../services/agents';
 import { findScheduleEntry } from '../services/schedule';
 import {
   canTakeBreakNow, getActiveReservation, markReservationTaken, sweepExpiredReservations,
-  buildBreakInfoForDM, reserveSlot, cancelReservationsForShift
+  buildBreakInfoForDM, reserveSlot, cancelReservationsForShift, SHIFT_END_BUFFER_MIN
 } from '../services/breaks';
 import { punchButtonsBlocks, attendancePostBlocks } from '../ui/blocks';
 
@@ -101,10 +101,13 @@ export function registerPunchButtons(app: App) {
       const breakDur = type === 'break_in' ? durMinFromActionId(actionId) : 0;
 
       // Rule 1: block Break In if not enough time left for the chosen duration
+      // PLUS un buffer de SHIFT_END_BUFFER_MIN (30 min) de "wrap up" después
+      // del break, antes de cerrar turno. Mismo criterio que el picker.
       if (type === 'break_in') {
         const minsToEnd = end.diff(now, 'minutes').minutes;
-        if (minsToEnd <= breakDur) {
-          const msg = `❌ No alcanza para un break de ${breakDur} min: faltan ${Math.max(0, Math.round(minsToEnd))} min para terminar el turno.`;
+        const needed = breakDur + SHIFT_END_BUFFER_MIN;
+        if (minsToEnd < needed) {
+          const msg = `❌ No alcanza para un break de ${breakDur} min + ${SHIFT_END_BUFFER_MIN} min de cierre: faltan ${Math.max(0, Math.round(minsToEnd))} min para terminar el turno (necesitas ${needed}).`;
           try {
             await client.chat.postEphemeral({
               channel: (body as any).channel?.id || slackId,
@@ -448,6 +451,18 @@ export function registerPunchButtons(app: App) {
         text: `✓ Reservaste tu break a las ${slotLabelLocal} (${tzLabel}) · ${durationMin === 60 ? '1 h' : durationMin + ' min'}.`
       });
     } catch { /* ignore */ }
+
+    // Notificar al canal de fichajes que alguien reservó (visibilidad del equipo)
+    if (config.attendanceChannelId) {
+      try {
+        await client.chat.postMessage({
+          channel: config.attendanceChannelId,
+          text: `🍽️ ${agent?.name || slackId} reservó break · ${slotLabelUtc} UTC · ${durationMin === 60 ? '1 h' : durationMin + ' min'} · ${dept}.${shiftId}`
+        });
+      } catch (e) {
+        console.error('Failed to post reservation to attendance channel:', e);
+      }
+    }
   });
 
   // Liberar reserva (botón "Liberar" en el bloque de break del DM).

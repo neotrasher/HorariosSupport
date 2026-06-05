@@ -1,17 +1,49 @@
 import { App } from '@slack/bolt';
 import { DateTime } from 'luxon';
 import { config } from '../config';
-import { listAgents } from '../services/agents';
+import { listAgents, getAgentBySlackId } from '../services/agents';
 import { getAllShiftsForDate, shiftWindow, cycleForDate } from '../services/schedule';
+import { listUpcomingBreaks } from '../services/breaks';
 
-/** /horario-hoy — listado completo del día agrupado por turno. */
+/** /horario-hoy — listado completo del día agrupado por turno.
+ *
+ *  Subcomando: /horario-hoy breaks (o /horario-hoy 8h)
+ *    Lista las reservas + breaks en curso de las próximas 8 horas.
+ */
 export function registerHorarioHoy(app: App) {
   app.command('/horario-hoy', async ({ ack, respond, command }) => {
     await ack();
-    const arg = (command.text || '').trim();
+    const arg = (command.text || '').trim().toLowerCase();
+
+    // Subcomando: breaks / 8h / slots — lista las próximas 8h de breaks
+    if (arg === 'breaks' || arg === '8h' || arg === 'slots') {
+      const invoker = getAgentBySlackId(command.user_id);
+      const tz = (invoker?.timezone) || config.displayTimezone || 'UTC';
+      const tzLabel = tz === 'UTC' ? 'UTC' : (tz.split('/').pop() || 'local').replace(/_/g, ' ');
+      const items = listUpcomingBreaks({ hoursAhead: 8 });
+      if (items.length === 0) {
+        await respond({
+          response_type: 'ephemeral',
+          text: `🍽️ *Próximas 8h de breaks* — no hay reservas ni breaks en curso.`
+        });
+        return;
+      }
+      const lines = items.map(it => {
+        const local = DateTime.fromISO(it.slot_start, { zone: 'utc' }).setZone(tz).toFormat('HH:mm');
+        const dur = it.durationMin === 60 ? '1h' : `${it.durationMin}m`;
+        const tag = it.status === 'in_break' ? '🟠 ahora' : (it.status === 'taken' ? '✓ tomada' : '📌 reservada');
+        return `• \`${local}\` (${tzLabel}) — *${it.name}* · ${it.dept}.${it.shift_id} · ${dur} · _${tag}_`;
+      });
+      await respond({
+        response_type: 'ephemeral',
+        text: `🍽️ *Próximas 8h de breaks* (${items.length})\n${lines.join('\n')}`
+      });
+      return;
+    }
+
     const date = arg ? DateTime.fromISO(arg, { zone: 'utc' }) : DateTime.utc().startOf('day');
     if (!date.isValid) {
-      await respond({ response_type: 'ephemeral', text: '❌ Fecha inválida (formato: YYYY-MM-DD)' });
+      await respond({ response_type: 'ephemeral', text: '❌ Fecha inválida (formato: YYYY-MM-DD) o subcomando inválido. Usa `breaks` para ver los próximos breaks.' });
       return;
     }
 

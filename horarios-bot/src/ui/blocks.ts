@@ -18,6 +18,8 @@ export interface BreakInfoForDM {
   myReservation?: { slotISO: string; label: string; durationMin: number } | null;
   /** Other agents' reservations in same dept for display context. */
   otherReservations?: { name: string; label: string; durationMin: number }[];
+  /** Cross-cohort upcoming breaks in next 8h (visibility line). */
+  upcomingNext8h?: { name: string; dept: string; labelLocal: string; durationMin: number; status: string }[];
   /** Friendly TZ label to show in the section (e.g. "Bogotá", "UTC"). */
   tzLabel?: string;
 }
@@ -199,6 +201,20 @@ export function punchButtonsBlocks(opts: {
       breakBlocks.push({
         type: 'section',
         text: { type: 'mrkdwn', text: `🍽️ *Reservas de break hoy* (${tzLbl})\n${others.map(o => `• ${o.label} — ${o.name} (${fmtDur2(o.durationMin)})`).join('\n')}\n_No hay slots libres por ahora._` }
+      });
+    }
+
+    // Sección "Próximas 8h" cross-cohort — visibilidad global del equipo
+    const upcoming = (breakInfo.upcomingNext8h || []).slice(0, 12);
+    if (upcoming.length > 0) {
+      const fmtDur3 = (d: number) => d === 60 ? '1h' : `${d}m`;
+      const lines = upcoming.map(u => {
+        const tag = u.status === 'in_break' ? '🟠 ahora' : (u.status === 'taken' ? '✓ tomada' : 'reservada');
+        return `• ${u.labelLocal} — *${u.name}* (${u.dept}, ${fmtDur3(u.durationMin)}) · _${tag}_`;
+      });
+      breakBlocks.push({
+        type: 'context',
+        elements: [{ type: 'mrkdwn', text: `*Próximas 8h en el equipo* (${tzLbl})\n${lines.join('\n')}` }]
       });
     }
   }

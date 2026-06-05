@@ -42,8 +42,11 @@ const SLOT_MIN = 30;
 const RESERVATION_GRACE_MIN = 15;
 /** Earliest break slot offset from shift start (minutes). */
 const BREAK_WINDOW_OFFSET_START_MIN = 60;
+/** Buffer en minutos AL FINAL del turno tras terminar el break (wrap up).
+ *  El break debe terminar a más tardar shift_end - SHIFT_END_BUFFER_MIN. */
+export const SHIFT_END_BUFFER_MIN = 30;
 /** Latest break slot offset from shift end (minutes). */
-const BREAK_WINDOW_OFFSET_END_MIN = 60;
+const BREAK_WINDOW_OFFSET_END_MIN = SHIFT_END_BUFFER_MIN;
 
 // ── Types ───────────────────────────────────────────────────────────────
 export interface CohortMember {
@@ -654,7 +657,8 @@ export function buildBreakInfoForDM(opts: {
   freeOptions: { slotISO: string; label: string; durationMin: number }[];
   myReservation: { slotISO: string; label: string; durationMin: number } | null;
   otherReservations: { name: string; label: string; durationMin: number }[];
-  tzLabel: string;   // e.g. "Bogotá", "UTC" — para mostrar en la sección
+  upcomingNext8h: { name: string; dept: string; labelLocal: string; durationMin: number; status: string }[];
+  tzLabel: string;
 } | null {
   // Slots desde la perspectiva del agente (functional cohort para cap)
   const slots = generateSlotsForAgent({
@@ -680,15 +684,32 @@ export function buildBreakInfoForDM(opts: {
       }
     : null;
 
-  // Free options: slots that are not full. Build options for 30 and 60 min.
+  // Free options: slots not full + en el futuro + con tiempo suficiente
+  // para que el break termine ≥ SHIFT_END_BUFFER_MIN antes del shift_end.
+  const now = DateTime.utc();
+  const shift = SHIFTS[opts.dept]?.[opts.shiftId];
+  const date = DateTime.fromISO(opts.shiftDate, { zone: 'utc' });
+  const shiftEnd = shift ? date.startOf('day').plus({ hours: shift.endHour }) : null;
+
   const freeOptions: { slotISO: string; label: string; durationMin: number }[] = [];
   for (let i = 0; i < slots.length; i++) {
     const s = slots[i];
     if (s.full) continue;
+    // Saltar slots que ya pasaron (con tolerancia de 5 min para evitar
+    // que el slot actual desaparezca por desincronía de reloj)
+    if (s.start.plus({ minutes: 5 }) < now) continue;
     const startISO = s.start.toISO()!;
-    freeOptions.push({ slotISO: startISO, label: fmtLocal(startISO), durationMin: 30 });
+    // 30 min: end ≤ shift_end - 30
+    const end30 = s.start.plus({ minutes: 30 });
+    if (!shiftEnd || end30.plus({ minutes: SHIFT_END_BUFFER_MIN }) <= shiftEnd) {
+      freeOptions.push({ slotISO: startISO, label: fmtLocal(startISO), durationMin: 30 });
+    }
+    // 60 min: ambos slots libres Y end ≤ shift_end - 30
     if (i + 1 < slots.length && !slots[i + 1].full) {
-      freeOptions.push({ slotISO: startISO, label: fmtLocal(startISO), durationMin: 60 });
+      const end60 = s.start.plus({ minutes: 60 });
+      if (!shiftEnd || end60.plus({ minutes: SHIFT_END_BUFFER_MIN }) <= shiftEnd) {
+        freeOptions.push({ slotISO: startISO, label: fmtLocal(startISO), durationMin: 60 });
+      }
     }
   }
 
@@ -713,7 +734,116 @@ export function buildBreakInfoForDM(opts: {
     }
   }
 
-  return { freeOptions, myReservation, otherReservations, tzLabel };
+  // Próximas 8h en cualquier cohort, para visibilidad cross-team
+  const upcoming = listUpcomingBreaks({ now, hoursAhead: 8 });
+  const upcomingNext8h = upcoming
+    .filter(u => u.slack_id !== opts.slackId)  // no me incluyo a mí mismo
+    .map(u => ({
+      name: u.name.split(' ')[0],
+      dept: u.dept,
+      labelLocal: DateTime.fromISO(u.slot_start, { zone: 'utc' }).setZone(tz).toFormat('HH:mm'),
+      durationMin: u.durationMin,
+      status: u.status
+    }));
+
+  return { freeOptions, myReservation, otherReservations, upcomingNext8h, tzLabel };
+}
+
+/**
+ * Lista los breaks (reservados + en curso) en una ventana próxima desde `now`,
+ * sin filtrar por cohort. Útil para mostrar "qué viene en las próximas 8h"
+ * en el DM y en el slash command.
+ */
+export function listUpcomingBreaks(opts: {
+  now?: DateTime;
+  hoursAhead?: number;
+}): {
+  slack_id: string;
+  name: string;
+  dept: string;           // dept del shift donde la reserva vive
+  shift_id: string;
+  slot_start: string;     // ISO UTC
+  slotLabelUtc: string;
+  durationMin: number;
+  status: 'active' | 'taken' | 'in_break';
+}[] {
+  const now = opts.now ?? DateTime.utc();
+  const hoursAhead = opts.hoursAhead ?? 8;
+  const windowEnd = now.plus({ hours: hoursAhead });
+  const today = now.toFormat('yyyy-LL-dd');
+  const tomorrow = now.plus({ days: 1 }).toFormat('yyyy-LL-dd');
+
+  // Reservaciones activas + tomadas en las próximas N horas
+  const resvRows = db.prepare(`
+    SELECT id, slack_id, shift_date, dept, shift_id, slot_start, duration_min, status
+      FROM break_reservations
+     WHERE shift_date IN (?, ?)
+       AND status IN ('active', 'taken')
+       AND slot_start <= ?
+     ORDER BY slot_start ASC
+  `).all(today, tomorrow, windowEnd.toISO()) as {
+    id: number; slack_id: string; shift_date: string; dept: string;
+    shift_id: string; slot_start: string; duration_min: number; status: string;
+  }[];
+
+  const items: ReturnType<typeof listUpcomingBreaks> = [];
+  for (const r of resvRows) {
+    const slotStart = DateTime.fromISO(r.slot_start, { zone: 'utc' });
+    const slotEnd = slotStart.plus({ minutes: r.duration_min });
+    // Si la reserva ya pasó completa, no mostrarla
+    if (slotEnd < now) continue;
+    const ag = getAgentBySlackId(r.slack_id);
+    items.push({
+      slack_id: r.slack_id,
+      name: ag?.name || r.slack_id,
+      dept: r.dept,
+      shift_id: r.shift_id,
+      slot_start: r.slot_start,
+      slotLabelUtc: slotStart.toFormat('HH:mm'),
+      durationMin: r.duration_min,
+      status: r.status as 'active' | 'taken'
+    });
+  }
+
+  // Agentes EN BREAK ahora (sin break_out aún)
+  const onBreakRows = db.prepare(`
+    SELECT p.slack_id, p.ts, p.note, p.shift_date, p.shift_id
+      FROM punches p
+     WHERE p.shift_date IN (?, ?) AND p.type = 'break_in'
+       AND NOT EXISTS (
+         SELECT 1 FROM punches q
+          WHERE q.slack_id = p.slack_id AND q.shift_date = p.shift_date
+            AND q.shift_id = p.shift_id AND q.type = 'break_out'
+            AND q.ts > p.ts
+       )
+  `).all(today, tomorrow) as {
+    slack_id: string; ts: string; note: string | null; shift_date: string; shift_id: string;
+  }[];
+  for (const ob of onBreakRows) {
+    const ag = getAgentBySlackId(ob.slack_id);
+    const m = ob.note?.match(/dur=(\d+)/);
+    const dur = m ? parseInt(m[1], 10) : 60;
+    const biTs = DateTime.fromISO(ob.ts, { zone: 'utc' });
+    // Si ya tiene reserva taken correspondiente, evitar duplicar
+    const alreadyTaken = items.find(it => it.slack_id === ob.slack_id && it.status === 'taken' &&
+      DateTime.fromISO(it.slot_start, { zone: 'utc' }).diff(biTs, 'minutes').minutes < 10
+    );
+    if (alreadyTaken) continue;
+    items.push({
+      slack_id: ob.slack_id,
+      name: ag?.name || ob.slack_id,
+      dept: ag?.dept || '?',
+      shift_id: ob.shift_id,
+      slot_start: ob.ts,
+      slotLabelUtc: biTs.toFormat('HH:mm'),
+      durationMin: dur,
+      status: 'in_break'
+    });
+  }
+
+  // Ordenar cronológicamente
+  items.sort((a, b) => a.slot_start.localeCompare(b.slot_start));
+  return items;
 }
 
 /** List ALL active+taken reservations for a date (manager view). */
