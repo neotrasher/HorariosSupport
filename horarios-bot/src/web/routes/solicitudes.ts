@@ -283,7 +283,10 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
               requestId: reqRow.id,
               requesterName: targetAgent.name,
               requesterSlackId,
-              type, startDate, endDate, reason
+              type, startDate, endDate,
+              startTime: durationMode === 'hours' ? startTime : null,
+              endTime: durationMode === 'hours' ? endTime : null,
+              reason
             })
           });
           if (r.ts) targets.push({ slack_id: managerId, channel: ch, ts: r.ts });
@@ -305,7 +308,10 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
               requestId: reqRow.id,
               requesterName: targetAgent.name,
               requesterSlackId,
-              type, startDate, endDate, reason
+              type, startDate, endDate,
+              startTime: durationMode === 'hours' ? startTime : null,
+              endTime: durationMode === 'hours' ? endTime : null,
+              reason
             })
           });
           if (r.ts) targets.push({ slack_id: adminId, channel: ch, ts: r.ts });
@@ -323,7 +329,12 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
           const r = await slackApp.client.chat.postMessage({
             channel: ch,
             text: requesterSlackId === user.slack_id ? 'Solicitud enviada' : 'Tu manager creó una solicitud a tu nombre',
-            blocks: timeOffRequesterBlocks({ type, startDate, endDate, reason })
+            blocks: timeOffRequesterBlocks({
+              type, startDate, endDate,
+              startTime: durationMode === 'hours' ? startTime : null,
+              endTime: durationMode === 'hours' ? endTime : null,
+              reason
+            })
           });
           if (r.ts) setRequesterDm(reqRow.id, ch, r.ts);
         }
@@ -359,7 +370,8 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
       const r = getRequest(id);
       if (!r || !slackApp) return;
       const blocks = timeOffResolvedBlocks({
-        type: r.type, startDate: r.start_date, endDate: r.end_date, reason: r.reason,
+        type: r.type, startDate: r.start_date, endDate: r.end_date,
+        startTime: r.start_time, endTime: r.end_time, reason: r.reason,
         status: 'cancelled', audience: 'approver', requesterSlackId: r.requester_slack_id
       });
       for (const t of getDmTargets(id)) {
@@ -373,7 +385,8 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
             channel: r.requester_dm_channel, ts: r.requester_dm_ts,
             text: 'Solicitud cancelada',
             blocks: timeOffResolvedBlocks({
-              type: r.type, startDate: r.start_date, endDate: r.end_date, reason: r.reason,
+              type: r.type, startDate: r.start_date, endDate: r.end_date,
+              startTime: r.start_time, endTime: r.end_time, reason: r.reason,
               status: 'cancelled', audience: 'requester'
             })
           });
@@ -536,7 +549,8 @@ async function broadcastWebResolution(
   if (!r) return;
 
   const approverBlocks = timeOffResolvedBlocks({
-    type: r.type, startDate: r.start_date, endDate: r.end_date, reason: r.reason,
+    type: r.type, startDate: r.start_date, endDate: r.end_date,
+    startTime: r.start_time, endTime: r.end_time, reason: r.reason,
     status, approverSlackId, rejectionReason,
     audience: 'approver', requesterSlackId: r.requester_slack_id
   });
@@ -556,7 +570,8 @@ async function broadcastWebResolution(
         channel: r.requester_dm_channel, ts: r.requester_dm_ts,
         text: `Tu solicitud fue ${status === 'approved' ? 'aprobada' : 'rechazada'}`,
         blocks: timeOffResolvedBlocks({
-          type: r.type, startDate: r.start_date, endDate: r.end_date, reason: r.reason,
+          type: r.type, startDate: r.start_date, endDate: r.end_date,
+          startTime: r.start_time, endTime: r.end_time, reason: r.reason,
           status, approverSlackId, rejectionReason,
           audience: 'requester'
         })

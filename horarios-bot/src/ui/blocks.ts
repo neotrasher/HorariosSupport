@@ -375,12 +375,19 @@ export function swapResolvedBlocks(opts: {
 // ─── Time-off (permisos / vacaciones) ────────────────────────────
 
 function timeOffSummary(opts: {
-  type: string; startDate: string; endDate: string; reason?: string | null;
+  type: string; startDate: string; endDate: string;
+  startTime?: string | null; endTime?: string | null;
+  reason?: string | null;
 }): string {
+  const tipo = opts.type === 'vacaciones' ? '🏖️ Vacaciones' : '📝 Permiso';
+  // Permiso fraccionario (horas)
+  if (opts.startTime && opts.endTime) {
+    return `*${tipo}* · ${opts.startDate} · ⏱ ${opts.startTime}–${opts.endTime} UTC${opts.reason ? `\n_motivo:_ ${opts.reason}` : ''}`;
+  }
+  // Día completo (uno o más días)
   const range = opts.startDate === opts.endDate
     ? opts.startDate
     : `${opts.startDate} → ${opts.endDate}`;
-  const tipo = opts.type === 'vacaciones' ? '🏖️ Vacaciones' : '📝 Permiso';
   const days = Math.round(
     (new Date(opts.endDate).getTime() - new Date(opts.startDate).getTime()) / 86400000
   ) + 1;
@@ -394,6 +401,8 @@ export function timeOffApproverBlocks(opts: {
   type: string;
   startDate: string;
   endDate: string;
+  startTime?: string | null;
+  endTime?: string | null;
   reason?: string | null;
 }) {
   return [
@@ -426,7 +435,9 @@ export function timeOffApproverBlocks(opts: {
 }
 
 export function timeOffRequesterBlocks(opts: {
-  type: string; startDate: string; endDate: string; reason?: string | null;
+  type: string; startDate: string; endDate: string;
+  startTime?: string | null; endTime?: string | null;
+  reason?: string | null;
 }) {
   return [
     {
@@ -440,7 +451,9 @@ export function timeOffRequesterBlocks(opts: {
 }
 
 export function timeOffResolvedBlocks(opts: {
-  type: string; startDate: string; endDate: string; reason?: string | null;
+  type: string; startDate: string; endDate: string;
+  startTime?: string | null; endTime?: string | null;
+  reason?: string | null;
   status: 'approved' | 'rejected' | 'cancelled';
   approverSlackId?: string | null;
   rejectionReason?: string | null;

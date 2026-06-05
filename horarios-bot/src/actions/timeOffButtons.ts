@@ -157,7 +157,8 @@ async function broadcastResolution(
   // Update all manager DMs (the original ones with buttons → replaced with resolved state)
   const targets = getDmTargets(requestId);
   const approverBlocks = timeOffResolvedBlocks({
-    type: req.type, startDate: req.start_date, endDate: req.end_date, reason: req.reason,
+    type: req.type, startDate: req.start_date, endDate: req.end_date,
+    startTime: req.start_time, endTime: req.end_time, reason: req.reason,
     status, approverSlackId, rejectionReason,
     audience: 'approver', requesterSlackId: req.requester_slack_id
   });
@@ -181,7 +182,8 @@ async function broadcastResolution(
         ts: req.requester_dm_ts,
         text: `Tu solicitud fue ${status === 'approved' ? 'aprobada' : 'rechazada'}`,
         blocks: timeOffResolvedBlocks({
-          type: req.type, startDate: req.start_date, endDate: req.end_date, reason: req.reason,
+          type: req.type, startDate: req.start_date, endDate: req.end_date,
+          startTime: req.start_time, endTime: req.end_time, reason: req.reason,
           status, approverSlackId, rejectionReason,
           audience: 'requester'
         })
