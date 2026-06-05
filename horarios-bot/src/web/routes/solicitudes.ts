@@ -200,7 +200,7 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
       user, agent, allAgents, isPriv,
       error: null,
       myBalance, balanceByAgent,
-      form: { type: 'permiso', start_date: '', end_date: '', reason: '', target_slack_id: '' }
+      form: { type: 'permiso', start_date: '', end_date: '', start_time: '', end_time: '', reason: '', target_slack_id: '' }
     });
   });
 
@@ -211,6 +211,9 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
     const type = req.body.type as 'permiso' | 'vacaciones';
     const startDate = (req.body.start_date as string || '').trim();
     const endDate = (req.body.end_date as string || '').trim();
+    const durationMode = (req.body.duration_mode as string || 'day').trim();
+    const startTime = durationMode === 'hours' ? (req.body.start_time as string || '').trim() : '';
+    const endTime = durationMode === 'hours' ? (req.body.end_time as string || '').trim() : '';
     const reason = (req.body.reason as string || '').trim() || null;
     const targetSlackId = (req.body.target_slack_id as string || '').trim();
 
@@ -221,7 +224,11 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
     const allAgents = isPriv
       ? listAgents().filter(a => a.active !== 0).sort((a, b) => a.name.localeCompare(b.name))
       : [];
-    const formState = { type, start_date: startDate, end_date: endDate, reason: reason || '', target_slack_id: targetSlackId };
+    const formState = {
+      type, start_date: startDate, end_date: endDate,
+      start_time: startTime, end_time: endTime,
+      reason: reason || '', target_slack_id: targetSlackId
+    };
     const renderError = (msg: string) =>
       res.status(400).render('solicitudes-new', { user, agent: targetAgent || null, allAgents, isPriv, error: msg, form: formState, myBalance: null, balanceByAgent: {} });
 
@@ -235,6 +242,15 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
     if (!startDate || !endDate) return renderError('Las fechas son obligatorias.');
     if (endDate < startDate) return renderError('La fecha fin no puede ser anterior a la de inicio.');
 
+    // Validar permiso fraccionario
+    if (durationMode === 'hours') {
+      if (!startTime || !endTime) return renderError('En modo fracción debes indicar hora inicio y hora fin.');
+      const re = /^(\d{2}):(\d{2})$/;
+      if (!re.test(startTime) || !re.test(endTime)) return renderError('Formato de hora inválido (usa HH:mm).');
+      if (endTime <= startTime) return renderError('Hora fin debe ser mayor que hora inicio.');
+      if (startDate !== endDate) return renderError('Permiso por horas debe ser un solo día (inicio = fin).');
+    }
+
     const overlap = findOverlappingActive(requesterSlackId, startDate, endDate);
     if (overlap) {
       return renderError(`Ya hay una solicitud ${overlap.status} que se traslapa (${overlap.start_date} → ${overlap.end_date}).`);
@@ -242,7 +258,10 @@ export function buildSolicitudesRouter(slackApp: App | null): Router {
 
     const reqRow = createRequest({
       requesterSlackId,
-      type, startDate, endDate, reason,
+      type, startDate, endDate,
+      startTime: durationMode === 'hours' ? startTime : null,
+      endTime: durationMode === 'hours' ? endTime : null,
+      reason,
       source: 'web'
     });
 

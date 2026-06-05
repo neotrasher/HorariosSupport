@@ -1,6 +1,8 @@
 import { DateTime } from 'luxon';
 import { db } from '../db';
-import { insertDayOffEntry } from './schedule';
+import { insertDayOffEntry, findScheduleEntry } from './schedule';
+import { SHIFTS } from '../config';
+import { getAgentBySlackId } from './agents';
 
 export type TimeOffType = 'permiso' | 'vacaciones';
 export type TimeOffStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
@@ -11,6 +13,9 @@ export type TimeOffRequest = {
   type: TimeOffType;
   start_date: string;
   end_date: string;
+  /** HH:mm formato 24h. Si null → día completo. Set → permiso fraccionario. */
+  start_time: string | null;
+  end_time: string | null;
   reason: string | null;
   status: TimeOffStatus;
   approver_slack_id: string | null;
@@ -22,6 +27,21 @@ export type TimeOffRequest = {
   created_at: string;
   source: string;
 };
+
+/** True si la solicitud cubre solo una fracción del día (no día completo). */
+export function isPartialRequest(req: TimeOffRequest): boolean {
+  return !!(req.start_time && req.end_time);
+}
+
+/** Parsea "HH:mm" → horas decimales (ej. "14:30" → 14.5). */
+function parseHm(hm: string | null): number | null {
+  if (!hm) return null;
+  const m = hm.match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  const h = parseInt(m[1], 10), min = parseInt(m[2], 10);
+  if (h < 0 || h > 24 || min < 0 || min > 59) return null;
+  return h + min / 60;
+}
 
 export type DmTarget = { slack_id: string; channel: string; ts: string };
 
@@ -43,14 +63,29 @@ export function createRequest(opts: {
   type: TimeOffType;
   startDate: string;
   endDate: string;
+  startTime?: string | null;   // HH:mm; ambos set para permiso fraccionario
+  endTime?: string | null;
   reason: string | null;
   source: 'web' | 'bot';
 }): TimeOffRequest {
+  // Si una de las dos horas está set, ambas deben estarlo
+  const startTime = opts.startTime || null;
+  const endTime = opts.endTime || null;
+  if ((startTime && !endTime) || (!startTime && endTime)) {
+    throw new Error('start_time y end_time deben ir juntos (o ambos vacíos para día completo)');
+  }
+  // Permiso fraccionario solo válido si start_date === end_date (un solo día)
+  if (startTime && opts.startDate !== opts.endDate) {
+    throw new Error('Permiso por horas debe ser de un solo día (start_date = end_date)');
+  }
   const r = db.prepare(`
     INSERT INTO time_off_requests
-      (requester_slack_id, type, start_date, end_date, reason, status, source)
-    VALUES (?, ?, ?, ?, ?, 'pending', ?)
-  `).run(opts.requesterSlackId, opts.type, opts.startDate, opts.endDate, opts.reason, opts.source);
+      (requester_slack_id, type, start_date, end_date, start_time, end_time, reason, status, source)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+  `).run(
+    opts.requesterSlackId, opts.type, opts.startDate, opts.endDate,
+    startTime, endTime, opts.reason, opts.source
+  );
   return getRequest(r.lastInsertRowid as number)!;
 }
 
@@ -90,8 +125,21 @@ export function findOverlappingActive(slackId: string, startDate: string, endDat
 }
 
 /**
- * Approve and apply: sets status, creates days_off_entries for each date in range.
- * Idempotent on days_off via INSERT OR IGNORE. Atomic.
+ * Approve and apply.
+ *
+ * - Día completo (start_time/end_time null): crea days_off_entries para cada
+ *   fecha en el rango. Comportamiento legacy idempotente.
+ *
+ * - Permiso fraccionario (start_time + end_time set, una sola fecha):
+ *   modifica el schedule_entry del día para "recortar" la ventana de trabajo.
+ *   • Permiso al inicio del shift (start_time = shift_start): custom_start_hour
+ *     = end_time del permiso (agente entra tarde).
+ *   • Permiso al final del shift (end_time = shift_end): custom_end_hour
+ *     = start_time del permiso (agente sale temprano).
+ *   • Permiso en medio del shift: rechaza con error (caso poco común; el
+ *     manager lo gestiona a mano partiendo el shift).
+ *
+ * Atomic.
  */
 export function approveAndApply(id: number, approverSlackId: string, plannerId: number) {
   const tx = db.transaction(() => {
@@ -99,16 +147,62 @@ export function approveAndApply(id: number, approverSlackId: string, plannerId: 
     if (!req) throw new Error('not found');
     if (req.status !== 'pending') throw new Error('not pending');
 
+    // Caso día completo
+    if (!isPartialRequest(req)) {
+      db.prepare(`
+        UPDATE time_off_requests
+        SET status = 'approved', approver_slack_id = ?, approval_at = datetime('now')
+        WHERE id = ?
+      `).run(approverSlackId, id);
+      const dates = listDates(req.start_date, req.end_date);
+      for (const date of dates) {
+        insertDayOffEntry(plannerId, date, req.type);
+      }
+      return;
+    }
+
+    // Caso permiso fraccionario
+    const date = req.start_date;
+    const se = findScheduleEntry(plannerId, date);
+    if (!se) {
+      throw new Error(`El agente no tiene turno asignado el ${date}, no se puede aprobar permiso por horas.`);
+    }
+    const shift = SHIFTS[se.dept]?.[se.shift_id];
+    if (!shift) throw new Error(`Shift desconocido: ${se.dept}.${se.shift_id}`);
+    const shiftStartHour = se.custom_start_hour ?? shift.startHour;
+    const shiftEndHour   = se.custom_end_hour   ?? shift.endHour;
+    const offStart = parseHm(req.start_time);
+    const offEnd   = parseHm(req.end_time);
+    if (offStart == null || offEnd == null) throw new Error('Horas inválidas en la solicitud.');
+    if (offEnd <= offStart) throw new Error('Hora fin debe ser mayor que hora inicio.');
+
+    // Determinar tipo de recorte
+    const epsilon = 0.01;
+    const atFront = Math.abs(offStart - shiftStartHour) < epsilon;
+    const atBack  = Math.abs(offEnd   - shiftEndHour)   < epsilon;
+    if (!atFront && !atBack) {
+      throw new Error(
+        `Permiso debe ser al inicio o al final del turno (turno ${shiftStartHour}:00–${shiftEndHour}:00 UTC). ` +
+        `Permisos a la mitad del turno deben gestionarse manualmente partiendo el turno.`
+      );
+    }
+
+    let newStart = shiftStartHour;
+    let newEnd = shiftEndHour;
+    if (atFront) newStart = offEnd;   // agente entra tarde
+    if (atBack)  newEnd = offStart;   // agente sale temprano
+
+    db.prepare(`
+      UPDATE schedule_entries
+      SET custom_start_hour = ?, custom_end_hour = ?
+      WHERE id = ?
+    `).run(newStart, newEnd, se.id);
+
     db.prepare(`
       UPDATE time_off_requests
       SET status = 'approved', approver_slack_id = ?, approval_at = datetime('now')
       WHERE id = ?
     `).run(approverSlackId, id);
-
-    const dates = listDates(req.start_date, req.end_date);
-    for (const date of dates) {
-      insertDayOffEntry(plannerId, date, req.type);
-    }
   });
   tx();
 }
@@ -131,10 +225,19 @@ export function deleteRequest(id: number, plannerId: number | null) {
     const req = getRequest(id);
     if (!req) return;
     if (req.status === 'approved' && plannerId !== null) {
-      db.prepare(`
-        DELETE FROM days_off_entries
-        WHERE planner_id = ? AND date >= ? AND date <= ?
-      `).run(plannerId, req.start_date, req.end_date);
+      if (isPartialRequest(req)) {
+        // Restaurar el schedule_entry del día (limpiar custom_start/end_hour)
+        db.prepare(`
+          UPDATE schedule_entries
+          SET custom_start_hour = NULL, custom_end_hour = NULL
+          WHERE planner_id = ? AND date = ?
+        `).run(plannerId, req.start_date);
+      } else {
+        db.prepare(`
+          DELETE FROM days_off_entries
+          WHERE planner_id = ? AND date >= ? AND date <= ?
+        `).run(plannerId, req.start_date, req.end_date);
+      }
     }
     db.prepare('DELETE FROM time_off_requests WHERE id = ?').run(id);
   });
@@ -175,23 +278,59 @@ export function getDmTargets(id: number): DmTarget[] {
  * dates in [start_date, end_date] that fall within `year`. Cancelled and
  * rejected requests are ignored.
  */
+/**
+ * Sum of vacation days consumed by an agent in a given calendar year.
+ *
+ * - Día completo: cada fecha aprobada cuenta 1 día.
+ * - Fraccionario (start_time/end_time set): cuenta una fracción
+ *   proporcional al shift del día. Ej: 4h sobre shift de 8h = 0.5 días.
+ *   Si el shift no es resoluble (sin schedule_entry), asume 8h.
+ *
+ * Devuelve un número decimal (ej. 5.5 días).
+ */
 export function vacationDaysUsedInYear(slackId: string, year: number): number {
   const yearStart = `${year}-01-01`;
   const yearEnd = `${year}-12-31`;
   const rows = db.prepare(`
-    SELECT start_date, end_date FROM time_off_requests
-    WHERE requester_slack_id = ? AND type = 'vacaciones' AND status = 'approved'
-      AND NOT (end_date < ? OR start_date > ?)
-  `).all(slackId, yearStart, yearEnd) as { start_date: string; end_date: string }[];
+    SELECT start_date, end_date, start_time, end_time
+      FROM time_off_requests
+     WHERE requester_slack_id = ? AND type = 'vacaciones' AND status = 'approved'
+       AND NOT (end_date < ? OR start_date > ?)
+  `).all(slackId, yearStart, yearEnd) as {
+    start_date: string; end_date: string; start_time: string | null; end_time: string | null
+  }[];
   let total = 0;
+  const agent = getAgentBySlackId(slackId);
   for (const r of rows) {
+    // Caso fraccionario
+    if (r.start_time && r.end_time && r.start_date === r.end_date) {
+      const offStart = parseHm(r.start_time);
+      const offEnd = parseHm(r.end_time);
+      if (offStart == null || offEnd == null) continue;
+      const hoursOff = offEnd - offStart;
+      // Estimar duración del shift del día
+      let shiftHours = 8;
+      if (agent) {
+        const se = findScheduleEntry(agent.planner_id, r.start_date);
+        if (se) {
+          const sh = SHIFTS[se.dept]?.[se.shift_id];
+          const startH = se.custom_start_hour ?? sh?.startHour ?? 0;
+          const endH = se.custom_end_hour ?? sh?.endHour ?? 8;
+          if (endH > startH) shiftHours = endH - startH;
+        }
+      }
+      total += Math.max(0, hoursOff / shiftHours);
+      continue;
+    }
+    // Caso día completo (rango)
     const s = r.start_date < yearStart ? yearStart : r.start_date;
     const e = r.end_date > yearEnd ? yearEnd : r.end_date;
     const ds = DateTime.fromISO(s, { zone: 'utc' });
     const de = DateTime.fromISO(e, { zone: 'utc' });
     total += Math.max(0, Math.round(de.diff(ds, 'days').days) + 1);
   }
-  return total;
+  // Redondear a 2 decimales para evitar floats feos
+  return Math.round(total * 100) / 100;
 }
 
 export function setRequesterDm(id: number, channel: string, ts: string) {

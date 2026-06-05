@@ -357,7 +357,11 @@
                   <span class="text-slate-400">→</span>
                   <span class="font-mono"><%= fmtDate(r.end_date) %></span>
                 <% } %>
-                <span class="text-slate-400 ml-1">(<%= r.days %>d)</span>
+                <% if (r.start_time && r.end_time) { %>
+                  <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 ring-1 ring-amber-300" title="Permiso por horas">⏱ <%= r.start_time %>–<%= r.end_time %> UTC</span>
+                <% } else { %>
+                  <span class="text-slate-400 ml-1">(<%= r.days %>d)</span>
+                <% } %>
               </td>
               <td class="px-3 py-3 text-slate-600 text-xs max-w-xs"><%= r.reason || '—' %></td>
               <td class="px-3 py-3">

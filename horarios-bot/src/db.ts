@@ -164,6 +164,14 @@ export function migrate() {
   // Per-agent timezone for displaying shift hours in their local time
   if (!hasAgentCol('timezone'))                   db.exec('ALTER TABLE agents ADD COLUMN timezone TEXT');
 
+  // Partial-day time-off support: start_time + end_time como HH:mm.
+  // Si ambos están null → permiso/vacaciones de día completo (legacy).
+  // Si ambos están set → solo aplica a esas horas dentro del día.
+  const torCols = db.prepare("PRAGMA table_info(time_off_requests)").all() as { name: string }[];
+  const hasTorCol = (n: string) => torCols.some(c => c.name === n);
+  if (!hasTorCol('start_time')) db.exec('ALTER TABLE time_off_requests ADD COLUMN start_time TEXT');
+  if (!hasTorCol('end_time'))   db.exec('ALTER TABLE time_off_requests ADD COLUMN end_time TEXT');
+
   // Now safe to create indexes that reference the new columns
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_punches_shift
